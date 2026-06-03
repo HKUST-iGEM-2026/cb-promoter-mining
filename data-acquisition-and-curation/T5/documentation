@@ -1,7 +1,7 @@
 T5_documentation
 
 Date of download: 2026/06/03
-Time: 14:57
+Time: 16:00
 
 Website used: 
 https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=1485&reference_only=true
@@ -9,9 +9,9 @@ https://www.ncbi.nlm.nih.gov/datasets/genome/?taxon=1485&reference_only=true
 - https://www.ncbi.nlm.nih.gov/datasets/
 - Search term: "Clostridium"
 - Filter: RefSeq
-- Manually removed DSM 10702 strain
+- DSM 10702 strain excluded
 
 Files downloaded:
-- Clostridium_genomes_updated_166.zip
+- Clostridium_genomes_v2_166.zip
 
 Number of genomes: 166
