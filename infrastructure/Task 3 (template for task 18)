@@ -397,3 +397,34 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+# task18_prokbert_finetune/run_task18.sh
+#!/bin/bash
+#SBATCH --job-name=task18_prokbert
+#SBATCH --account=[YOUR_HPC4_ACCOUNT]
+#SBATCH --partition=gpu
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=32G
+#SBATCH --time=48:00:00
+#SBATCH --output=logs/task18_%j.out
+
+# Load modules
+module load anaconda3
+conda activate transformers_env
+
+# Install dependencies
+pip install transformers datasets accelerate optuna wandb scikit-learn
+
+# Run training
+python train_prokbert.py
+
+# Save model
+tar -czf prokbert_model.tar.gz models/prokbert_promoter/
