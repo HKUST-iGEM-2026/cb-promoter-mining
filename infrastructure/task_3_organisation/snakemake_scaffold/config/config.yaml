@@ -1,0 +1,7 @@
+# Placeholder config for the mock pipeline.
+# Real paths and parameters get filled in as tasks are implemented.
+clostridium_genomes: "data/genomes"     # T5 output dir
+bakta_db: "/path/to/bakta/db"           # T6
+upstream_window_bp: [100, 300]          # T13 extraction window
+cdhit_identity: 0.9                      # T15 clustering threshold
+random_seed: 42

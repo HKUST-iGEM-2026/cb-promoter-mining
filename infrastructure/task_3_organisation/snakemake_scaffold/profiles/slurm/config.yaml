@@ -1,0 +1,25 @@
+# SLURM profile for HPC4 (Snakemake 8+, snakemake-executor-plugin-slurm)
+# One entry point for the whole pipeline:
+#     snakemake --workflow-profile profiles/slurm
+#
+# Every rule is submitted as its own SLURM job with the defaults below.
+# A rule only needs a `resources:` block when it differs from these
+# defaults (e.g. GPU rules add --gpus-per-node=1 via slurm_extra).
+
+executor: slurm
+jobs: 20                       # max SLURM jobs in flight at once
+
+default-resources:
+  slurm_partition: "preempt"   # 5x cheaper than normal (HK$2.4 vs HK$12 / GPU-hr)
+  runtime: 60                  # minutes
+  mem_mb: 4000
+  cpus_per_task: 1
+  # Preempt hygiene on EVERY job: requeue when killed, and SIGUSR1 120s
+  # before kill so the job can checkpoint. The trap itself lives in each
+  # training script, not here.
+  slurm_extra: "'--requeue --signal=B:USR1@120'"
+
+# Billing rules (do not change without reason):
+#   - per-GPU billing only: GPU rules set --gpus-per-node=1 in their resources.
+#   - NEVER pass --exclusive (whole-node allocation = 8x cost).
+restart-times: 2               # auto-resubmit a preempted job up to 2x
