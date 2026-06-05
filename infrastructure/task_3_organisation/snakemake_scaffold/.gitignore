@@ -1,0 +1,7 @@
+# Snakemake run artifacts
+.snakemake/
+results/
+logs/
+
+# Phase A starting state (produced locally / uploaded to HPC4, not source)
+inputs/
