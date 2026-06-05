@@ -1,3 +1,22 @@
+# Ignore everything inside bakta_outputs recursively
+bakta_outputs/**
+
+# BUT allow Git to descend into subdirectories to scan them
+!bakta_outputs/**/
+
+# Re-include the three file types the pipeline needs
+!bakta_outputs/**/*.gff3
+!bakta_outputs/**/*.fna
+!bakta_outputs/**/*.tsv
+
+# ...except the specific tsv variants we do NOT need
+bakta_outputs/**/*.hypotheticals.tsv
+bakta_outputs/**/*.inference.tsv
+
+# Keep repo metadata safe
+!.gitignore
+!.gitattributes
 *.fna
-bakta_outputs/
+*.zip
+.DS_Store
 output_test_genome/
