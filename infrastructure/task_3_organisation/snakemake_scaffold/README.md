@@ -99,7 +99,8 @@ cluster, remove it from that `localrules:` list.
 
 Find your rule in the `Snakefile`. The output filenames are already realistic — keep
 them so the next rule's input still matches — and just replace the placeholder
-`shell:` line with the real command. Example, T13:
+`shell:` line with the real command (the `# real:` comment under each rule shows an
+example). E.g. T13:
 
 ```python
 rule t13_upstream_extraction:
