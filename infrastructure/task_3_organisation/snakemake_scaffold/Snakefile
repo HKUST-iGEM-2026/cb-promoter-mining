@@ -1,28 +1,19 @@
 # =====================================================================
-# Promoter Mining — HPC4 data pipeline scaffold (Task T3), MOCK
+# Promoter Mining — HPC4 pipeline scaffold (Task T3), MOCK
 #
-# This contains only the actual data-processing steps: Phase B (dataset
-# construction) -> C (training) -> D (evaluation) -> E (mining).
+# This pipeline starts at Phase B. Phase A (data acquisition + curation,
+# T5-T10) is done LOCALLY, one-shot, and its outputs are uploaded to HPC4
+# as the starting state (see context §3). Those outputs are consumed here
+# as the pre-staged files under inputs/ (defined below).
 #
-# NOT in here (on purpose):
-#   - Infrastructure T1-T4 (HPC4 access, repo, this scaffold, conda env):
-#     one-time setup / preconditions, not data steps.
-#   - Pre-tasks PT1-PT6: learning + reusable-code prep. They produce code
-#     and a locked output schema that downstream rules IMPORT, not files
-#     the pipeline consumes — so they aren't pipeline rules.
-#   - Phase A T5-T10 (acquisition + curation): done locally one-shot, see
-#     local_prep.smk. Its outputs are the pre-staged inputs/ below.
-# These are still real project tasks — they just live in the project plan,
-# not in this automation.
+# To produce the starting state locally for a mock run:
+#     snakemake -s local_prep.smk --cores 4      # creates inputs/
+# Then run this pipeline:
+#     snakemake --cores 4                        # local wiring test
+#     snakemake --workflow-profile profiles/slurm  # on HPC4
 #
-# Each rule's `shell:` is a mock (echo + touch). The `# real:` comment under
-# it is an example of the command to drop in when you implement that task.
-# Keep the input:/output: filenames as-is so the DAG stays connected.
-#
-# Run (mock):
-#   snakemake -s local_prep.smk --cores 4        # make inputs/ locally
-#   snakemake --cores 4                          # local wiring test
-#   snakemake --workflow-profile profiles/slurm  # on HPC4
+# Every rule below is a placeholder (echo + touch). Replace the shell:
+# line of your own rule with the real command when you implement it.
 # =====================================================================
 
 configfile: "config/config.yaml"
@@ -31,207 +22,215 @@ configfile: "config/config.yaml"
 GPU_EXTRA = "'--gpus-per-node=1 --requeue --signal=B:USR1@120'"
 
 # ---- Phase A starting state (produced locally, uploaded to HPC4) -----
-ANNOTATIONS = "inputs/annotations.gff3"          # T6  — Bakta annotations
-REFDB       = "inputs/reference_promoters.parquet"  # T8  — RegulonDB + DBTBS, normalised
-LIT_PROM    = "inputs/literature_promoters.tsv"  # T9  — curated synthetic promoters
-TSS_CALLS   = "inputs/tss_sites.gff3"            # T10 — TSSpredator empirical TSS
+# These files must already exist before the pipeline runs. They are the
+# outputs of the local Phase A step; the cluster pipeline does not build them.
+ANNOTATIONS = "inputs/annotations.done"           # T6  — Bakta annotations
+REFDB       = "inputs/refdb_parquet.done"         # T8  — RegulonDB + DBTBS, normalised
+LIT_PROM    = "inputs/literature_promoters.tsv"   # T9  — curated synthetic promoters
+TSS_CALLS   = "inputs/tss_calls.done"             # T10 — TSSpredator empirical TSS
 
-# Final targets = the four graph leaves (3 evaluation reports + deliverable).
+# The only true graph leaves (evaluation reports + final deliverable).
+LEAVES = ["T23", "T24", "T25", "T32"]
+
+
 rule all:
     input:
-        "results/eval/cv_results.tsv",        # T23
-        "results/eval/cross_species.tsv",     # T24
-        "results/eval/sigma_stratified.tsv",  # T25
-        "results/final_candidates.tsv",       # T32
+        expand("results/{t}.done", t=LEAVES),
 
 
-# Only the GPU-heavy tasks run on HPC4 (submitted as SLURM jobs). Everything
-# listed here runs locally on the login/submit node — see context §3/§8.
-# The 7 NOT listed are the cluster jobs: T18, T19, T20, T21, T23, T24, T28.
-localrules: all, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
+# Only the GPU-heavy tasks run on HPC4 (submitted as SLURM jobs). Every rule
+# listed here runs locally on the login/submit node instead — see context
+# §3/§8 ("HPC4 for necessary tasks only"). The 9 NOT listed are the cluster
+# jobs: PT1, PT5, T18, T19, T20, T21, T23, T24, T28. To move a hybrid task
+# (e.g. T15, T22, T29) onto the cluster, just remove it from this list.
+localrules: all, t1_hpc4_access, t2_github_repo, t3_snakemake_slurm_scaffold, t4_conda_env, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
 
 
 # ---------------------------------------------------------------------
-# Phase B — Dataset construction  (consumes Phase A inputs/)
+# Infrastructure
+# ---------------------------------------------------------------------
+rule t1_hpc4_access:
+    output: "results/T1.done"
+    shell: "echo '[T1] HPC4 access application (mock)' && touch {output}"
+
+rule t2_github_repo:
+    output: "results/T2.done"
+    shell: "echo '[T2] GitHub repository (mock)' && touch {output}"
+
+rule t3_snakemake_slurm_scaffold:
+    input: "results/T2.done"
+    output: "results/T3.done"
+    shell: "echo '[T3] Snakemake + SLURM scaffold (mock)' && touch {output}"
+
+rule t4_conda_env:
+    input: "results/T1.done", "results/T3.done"
+    output: "results/T4.done"
+    shell: "echo '[T4] conda/mamba env deploy on HPC4 (mock)' && touch {output}"
+
+
+# ---------------------------------------------------------------------
+# Pre-tasks (learning + reusable code)
+# ---------------------------------------------------------------------
+rule pt1_finetune_loop:
+    output: "results/PT1.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
+    shell: "echo '[PT1] fine-tune loop on RegulonDB/DBTBS (mock GPU)' && touch {output}"
+
+rule pt2_ship_to_huggingface:
+    input: "results/PT1.done"
+    output: "results/PT2.done"
+    shell: "echo '[PT2] ship ProkBERT to HuggingFace (mock)' && touch {output}"
+
+rule pt3_metrics_cv_stack:
+    output: "results/PT3.done"
+    shell: "echo '[PT3] metrics + CV stack on dummy classifier (mock)' && touch {output}"
+
+rule pt4_calibration_fdr_harness:
+    input: "results/PT3.done"
+    output: "results/PT4.done"
+    shell: "echo '[PT4] calibration + FDR harness (mock)' && touch {output}"
+
+rule pt5_sliding_window_ecoli:
+    output: "results/PT5.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
+    shell: "echo '[PT5] sliding-window inference on E. coli (mock GPU)' && touch {output}"
+
+rule pt6_validate_lock_schema:
+    input: "results/PT5.done"
+    output: "results/PT6.done"
+    shell: "echo '[PT6] validate pipeline + lock output schema (mock)' && touch {output}"
+
+
+# ---------------------------------------------------------------------
+# Phase B — Dataset construction
+#   (consumes the Phase A starting state: ANNOTATIONS, REFDB, TSS_CALLS)
 # ---------------------------------------------------------------------
 rule t11_housekeeping_set:
     input: ANNOTATIONS
-    output: "results/housekeeping_genes.tsv"
+    output: "results/T11.done"
     shell: "echo '[T11] housekeeping gene set (mock)' && touch {output}"
-    # real: python scripts/select_housekeeping.py --annotations {input} -o {output}
 
 rule t12_operon_detection:
-    input: ANNOTATIONS, "results/housekeeping_genes.tsv"
-    output: "results/operons.tsv"
+    input: ANNOTATIONS, "results/T11.done"
+    output: "results/T12.done"
     shell: "echo '[T12] operon detection (mock)' && touch {output}"
-    # real: python scripts/detect_operons.py --annotations {input[0]} --contig-end-buffer 350 -o {output}
 
 rule t13_upstream_extraction:
-    input: "results/housekeeping_genes.tsv", "results/operons.tsv"
-    output: "results/upstream_regions.fasta"
+    input: "results/T11.done", "results/T12.done"
+    output: "results/T13.done"
     shell: "echo '[T13] upstream region extraction (mock)' && touch {output}"
-    # real: python scripts/extract_upstream.py --operons {input[1]} --genome inputs/genomes.fna \
-    #            --min {config[upstream_window_bp][0]} --max {config[upstream_window_bp][1]} -o {output}
-    #       (add genome="inputs/genomes.fna" to input: when you wire the real version)
 
 rule t14_negative_set:
-    input: ANNOTATIONS, "results/upstream_regions.fasta"
-    output: "results/negatives.fasta"
+    input: ANNOTATIONS, "results/T13.done"
+    output: "results/T14.done"
     shell: "echo '[T14] four-class negatives incl. SRS (mock)' && touch {output}"
-    # real: python scripts/make_negatives.py --annotations {input[0]} --promoters {input[1]} \
-    #            --classes cds,intergenic,downstream,srs --srs-shuffle dinucleotide -o {output}
 
 rule t15_cdhit_splits:
-    input: REFDB, TSS_CALLS, "results/upstream_regions.fasta", "results/negatives.fasta"
-    output:
-        "results/splits/train.parquet",
-        "results/splits/val.parquet",
-        "results/splits/test.parquet",
-    threads: 8
+    input: REFDB, TSS_CALLS, "results/T13.done", "results/T14.done"
+    output: "results/T15.done"
     shell: "echo '[T15] CD-HIT clustering + cluster-aware splits (mock)' && touch {output}"
-    # real: python scripts/make_splits.py --identity {config[cdhit_identity]} --threads {threads} \
-    #            --positives {input[2]} --negatives {input[3]} --refdb {input[0]} --tss {input[1]} \
-    #            --train {output[0]} --val {output[1]} --test {output[2]}
 
 rule t16_tokenisation:
-    input: "results/splits/train.parquet", "results/splits/val.parquet"
-    output:
-        "results/tokenized/prokbert.parquet",
-        "results/tokenized/nt.parquet",
-        "results/tokenized/cnn.npz",
+    input: "results/T15.done"
+    output: "results/T16.done"
     shell: "echo '[T16] per-model tokenisation (mock)' && touch {output}"
-    # real: python scripts/tokenize.py --train {input[0]} --val {input[1]} \
-    #            --prokbert {output[0]} --nt {output[1]} --cnn {output[2]}
 
 
 # ---------------------------------------------------------------------
-# Phase C — Model training  (GPU, except the recipe)
+# Phase C — Model training  (GPU)
 # ---------------------------------------------------------------------
 rule t17_finetune_recipe:
-    output: "results/finetune_recipe.yaml"
+    input: "results/PT2.done"
+    output: "results/T17.done"
     shell: "echo '[T17] finalise fine-tuning recipe (mock)' && touch {output}"
-    # real: decision task — hand-author results/finetune_recipe.yaml (or generate it):
-    #       python scripts/build_recipe.py --base nucleotide-transformer-v2-250m-multispecies -o {output}
 
 rule t18_prokbert_finetune:
-    input: "results/tokenized/prokbert.parquet", "results/finetune_recipe.yaml"
-    output: "results/models/prokbert/model.safetensors"
+    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    output: "results/T18.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
-    log: "logs/t18.log"
     shell: "echo '[T18] ProkBERT-mini-long fine-tune (mock GPU)' && touch {output}"
-    # real: python train_prokbert.py --data {input[0]} --recipe {input[1]} --out {output} 2> {log}
-    #       (train_prokbert.py traps SIGUSR1 -> checkpoint, for preempt resume)
 
 rule t19_nt_lora_finetune:
-    input: "results/tokenized/nt.parquet", "results/finetune_recipe.yaml"
-    output: "results/models/nt_lora/adapter.safetensors"
+    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    output: "results/T19.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
-    log: "logs/t19.log"
     shell: "echo '[T19] NT v2 250M LoRA fine-tune (mock GPU)' && touch {output}"
-    # real: python train_nt_lora.py --data {input[0]} --recipe {input[1]} --out {output} 2> {log}
 
 rule t20_cnn_train:
-    input: "results/tokenized/cnn.npz", "results/finetune_recipe.yaml"
-    output: "results/models/cnn/model.pt"
+    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    output: "results/T20.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
-    log: "logs/t20.log"
     shell: "echo '[T20] custom 1D CNN from scratch (mock GPU)' && touch {output}"
-    # real: python train_cnn.py --data {input[0]} --recipe {input[1]} --out {output} 2> {log}
 
 rule t21_hparam_sweep:
-    input:
-        "results/models/prokbert/model.safetensors",
-        "results/models/nt_lora/adapter.safetensors",
-        "results/models/cnn/model.pt",
-    output: "results/sweep/tuned_models.json"
+    input: "results/T18.done", "results/T19.done", "results/T20.done"
+    output: "results/T21.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720, mem_mb=32000
-    log: "logs/t21.log"
-    shell: "echo '[T21] hyperparameter sweep -> tuned models (mock GPU)' && touch {output}"
-    # real: python sweep.py --models {input} --tuner optuna --trials 50 --out {output} 2> {log}
+    shell: "echo '[T21] hyperparameter sweep (mock GPU)' && touch {output}"
 
 
 # ---------------------------------------------------------------------
-# Phase D — Evaluation & calibration  (runs on the tuned models from T21)
+# Phase D — Evaluation & calibration
+#   (T24/T25/T26 consume Phase A starting state: LIT_PROM, TSS_CALLS)
 # ---------------------------------------------------------------------
 rule t22_metrics_suite:
-    input: "results/sweep/tuned_models.json"
-    output: "results/eval/metrics.tsv"
+    input: "results/PT3.done", "results/T21.done"
+    output: "results/T22.done"
     shell: "echo '[T22] metrics suite AUROC/AUPRC/MCC/F1 (mock)' && touch {output}"
-    # real: python scripts/metrics.py --models {input} --test results/splits/test.parquet -o {output}
 
 rule t23_cluster_cv:
-    input: "results/splits/val.parquet", "results/sweep/tuned_models.json"
-    output: "results/eval/cv_results.tsv"
+    input: "results/T15.done", "results/T21.done"
+    output: "results/T23.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720, mem_mb=32000
-    log: "logs/t23.log"
     shell: "echo '[T23] cluster-level 5-fold CV (mock GPU)' && touch {output}"
-    # real: python scripts/cluster_cv.py --data {input[0]} --models {input[1]} --folds 5 -o {output} 2> {log}
 
 rule t24_cross_species_holdout:
-    input: LIT_PROM, "results/sweep/tuned_models.json"
-    output: "results/eval/cross_species.tsv"
+    input: LIT_PROM, "results/T21.done"
+    output: "results/T24.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
-    log: "logs/t24.log"
     shell: "echo '[T24] external cross-species holdout (mock GPU)' && touch {output}"
-    # real: python scripts/eval_holdout.py --models {input[1]} --holdout {input[0]} -o {output} 2> {log}
 
 rule t25_sigma_stratified:
-    input: TSS_CALLS, "results/eval/metrics.tsv"
-    output: "results/eval/sigma_stratified.tsv"
+    input: TSS_CALLS, "results/T22.done"
+    output: "results/T25.done"
     shell: "echo '[T25] sigma-factor-stratified evaluation (mock)' && touch {output}"
-    # real: python scripts/sigma_eval.py --tss {input[0]} --metrics {input[1]} -o {output}
 
 rule t26_calibration:
-    input: LIT_PROM, "results/eval/metrics.tsv"
-    output: "results/calibration/calibrator.pkl"
+    input: "results/PT4.done", LIT_PROM, "results/T22.done"
+    output: "results/T26.done"
     shell: "echo '[T26] calibration regressor with AT covariate (mock)' && touch {output}"
-    # real: python scripts/calibrate.py --scores {input[1]} --literature {input[0]} --at-covariate -o {output}
 
 rule t27_empirical_fdr:
-    input: "results/negatives.fasta", "results/calibration/calibrator.pkl"
-    output: "results/calibration/qvalues.tsv"
+    input: "results/PT4.done", "results/T14.done", "results/T26.done"
+    output: "results/T27.done"
     shell: "echo '[T27] empirical FDR with SRS null (mock)' && touch {output}"
-    # real: python scripts/fdr.py --srs {input[0]} --calibrator {input[1]} -o {output}
 
 
 # ---------------------------------------------------------------------
 # Phase E — Mining & motif annotation
 # ---------------------------------------------------------------------
 rule t28_mining_inference:
-    input: "results/upstream_regions.fasta", "results/sweep/tuned_models.json"
-    output: "results/mining/window_scores.parquet"
+    input: "results/PT6.done", "results/T13.done", "results/T21.done"
+    output: "results/T28.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
-    log: "logs/t28.log"
     shell: "echo '[T28] sliding-window inference on Clostridium (mock GPU)' && touch {output}"
-    # real: python scripts/mine.py --regions {input[0]} --models {input[1]} \
-    #            --window 300 --stride 10 -o {output} 2> {log}
 
 rule t29_ensemble_aggregation:
-    input: "results/mining/window_scores.parquet"
-    output: "results/mining/ensemble_scores.parquet"
+    input: "results/T28.done"
+    output: "results/T29.done"
     shell: "echo '[T29] ensemble aggregation (mean rank-percentile) (mock)' && touch {output}"
-    # real: python scripts/ensemble.py --scores {input} --method mean-rank-percentile -o {output}
 
 rule t30_peak_calling:
-    input: "results/mining/ensemble_scores.parquet"
-    output: "results/mining/peaks.bed"
+    input: "results/T29.done"
+    output: "results/T30.done"
     shell: "echo '[T30] locus-level peak calling (mock)' && touch {output}"
-    # real: python scripts/call_peaks.py --scores {input} -o {output}
 
 rule t31_motif_annotation:
-    input: "results/mining/peaks.bed"
-    output: "results/mining/motifs.gff3"
+    input: "results/T30.done"
+    output: "results/T31.done"
     shell: "echo '[T31] motif annotation FIMO/MEME (mock)' && touch {output}"
-    # real: fimo --oc results/mining/fimo motifs/sigma_motifs.meme {input} \
-    #            && python scripts/fimo_to_gff.py results/mining/fimo/fimo.tsv -o {output}
 
 rule t32_final_output:
-    input:
-        "results/calibration/calibrator.pkl",
-        "results/calibration/qvalues.tsv",
-        "results/mining/peaks.bed",
-        "results/mining/motifs.gff3",
-    output: "results/final_candidates.tsv"
+    input: "results/T26.done", "results/T27.done", "results/T30.done", "results/T31.done"
+    output: "results/T32.done"
     shell: "echo '[T32] FINAL candidate output TSV/JSONL (mock)' && touch {output}"
-    # real: python scripts/assemble_candidates.py --peaks {input[2]} --motifs {input[3]} \
-    #            --calibrator {input[0]} --qvalues {input[1]} -o {output}
