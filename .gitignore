@@ -1,3 +1,12 @@
+results/
+final_prokbert_promoter_model/
+*.pt
+*.safetensors
+**/results/
+**/final_prokbert_promoter_model/
+**/*.pt
+**/*.safetensors
+
 # Ignore everything inside bakta_outputs recursively
 bakta_outputs/**
 
