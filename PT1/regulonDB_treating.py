@@ -1,7 +1,7 @@
 import pandas as pd
 
 # 1. Load your existing isolated promoter CSV file
-input_file = "regulonDB_prom.csv"  # Replace with your actual file name
+input_file = "regulonDB_prom.csv"
 df = pd.read_csv(input_file)
 
 # 2. Add a new column named 'label' (or whatever you prefer) and set all its values to 1
@@ -12,4 +12,5 @@ df['label'] = 1
 output_file = "promoters_with_labels.csv"
 df.to_csv(output_file, index=False)
 
+print(f"Successfully added labels! Saved training-ready file to: {output_file}")
 print(f"Successfully added labels! Saved training-ready file to: {output_file}")
