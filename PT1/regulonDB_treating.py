@@ -13,4 +13,3 @@ output_file = "promoters_with_labels.csv"
 df.to_csv(output_file, index=False)
 
 print(f"Successfully added labels! Saved training-ready file to: {output_file}")
-print(f"Successfully added labels! Saved training-ready file to: {output_file}")
