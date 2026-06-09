@@ -1,26 +1,25 @@
 import pandas as pd
 
-# 1. Load the TSV file
-# We use sep='\t' because TSV files are tab-separated
-input_file = "Gene_sequence.tsv"  # Replace with your actual file name
-df = pd.read_csv(input_file, sep='\t')
+# 1. Load isolated CDS file
+input_file = "geneCodingSequences.csv" 
+df = pd.read_csv(input_file)
 
-# 2. Inspect your columns to find the exact name of the promoter part
-print("Columns found in your file:")
-print(df.columns.tolist())
+# Get the name of sequence column
+column_name = df.columns[0]
 
-# 3. Specify the exact column name containing the promoter sequences
-# Replace 'promoter_sequence' with the exact header name printed above
-# promoter_column_name = '10)sequence' 
+# 2. Slice the first 81 bases from each sequence
+df['sliced_sequence'] = df[column_name].apply(lambda x: str(x)[:81])
 
-# If your file does not have a header row, you can use the column index instead (0-indexed).
-promoter_column_name = df.columns[9]
+# 3. Add the classification label '0' for negative controls
+df['label'] = 0
 
-# 4. Filter the dataframe to keep ONLY that single column
-cleaned_df = df[[promoter_column_name]]
+# 4. Drop the original massive column so we only keep our clean ML features
+final_df = df[['sliced_sequence', 'label']]
 
-# 5. Export directly to a clean CSV format
-output_file = "geneCodingSequences.csv"
-cleaned_df.to_csv(output_file, index=False)
+# 5. Save directly to negative dataset file
+output_file = "nonprom_with_labels.csv"
+final_df.to_csv(output_file, index=False)
 
-print(f"\nSuccess! Kept only column '{promoter_column_name}' and saved to {output_file}")
+print(f"Success! Slices complete. Saved 81-base negative controls to {output_file}")
+print("\nFirst row sample:")
+print(final_df.head(1))
