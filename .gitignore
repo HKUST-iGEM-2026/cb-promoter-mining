@@ -29,3 +29,6 @@ bakta_outputs/**/*.inference.tsv
 *.zip
 .DS_Store
 output_test_genome/
+
+pre-tasks/PT1/final_prokbert_promoter_model/
+pre-tasks/PT1/results/
