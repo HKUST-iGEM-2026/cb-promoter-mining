@@ -1,0 +1,77 @@
+name: promoter-mining-hpc4
+
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+
+dependencies:
+  # Python
+  - python=3.11
+
+  # Core scientific stack
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn>=1.3.0
+  - matplotlib
+  - seaborn
+  - jupyterlab
+  - ipykernel
+
+  # Bioinformatics CLI tools
+  - cd-hit>=4.8
+  - meme>=5.5.0              # includes FIMO for -10/-35 motif scanning
+  - seqkit
+  - biopython
+  - bedtools
+  - samtools
+  - prodigal                 # CDS prediction fallback
+  - bakta                    # PRIMARY genome annotator (Section 3.1, Phase A)
+                             # NOTE: after install, run: bakta_db --output $SCRATCH/bakta_db
+  - barrnap                  # rRNA prediction (Section 3.1)
+  - trnascan-se              # tRNA prediction (Section 3.1)
+  - ncbi-genome-download     # pull Clostridium assemblies from RefSeq (Phase A)
+
+  # Pipeline orchestration
+  - snakemake>=8.0
+
+  # Deep learning
+  - pytorch>=2.1
+  - pytorch-cuda=12.3        # confirmed from SuperPOD CUDA version
+
+  # Hyperparameter sweeps
+  - scikit-optimize
+
+  # pip-only packages
+  - pip
+  - pip:
+    # ProkBERT — must install from GitHub (Section 1 Tier A)
+    - git+https://github.com/nbrg-ppcu/prokbert.git
+
+    # HuggingFace ecosystem
+    - transformers>=4.35
+    - datasets
+    - peft                   # LoRA/QLoRA — cuts VRAM 3-4x (Section 5.1)
+    - accelerate             # mixed precision training
+    - bitsandbytes           # 4-bit/8-bit quantization for QLoRA
+    - sentencepiece
+    - tokenizers
+    - evaluate
+    - wandb                  # experiment tracking (optional)
+
+    # SLURM plugin for Snakemake (Section 5.5)
+    - snakemake-executor-plugin-slurm
+
+    # Sequence and genome parsing
+    - gffutils               # GFF/GTF parsing for upstream extraction (Section 3.3)
+    - pyarrow                # parquet I/O for pipeline intermediate files
+    - tqdm
+
+    # ODE/SSA modeling — circuit simulation output (Section 4 Phase D)
+    - tellurium
+    - gillespy2
+    - libroadrunner
+
+    # GC-matched negative sequence generation (Section 3.3)
+    - markovify
