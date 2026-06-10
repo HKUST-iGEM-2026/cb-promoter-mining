@@ -506,29 +506,25 @@ def create_model_card(config, results):
 # task19_nt_lora_finetune/run_task19.sh
 #!/bin/bash
 #SBATCH --job-name=task19_nt_lora
-#SBATCH --account=[YOUR_HPC4_ACCOUNT]
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=12
-#SBATCH --mem=64G
+#SBATCH --account=igem2026
+#SBATCH --partition=preempt
+#SBATCH --gpus-per-node=1
 #SBATCH --time=72:00:00
+#SBATCH --requeue
+#SBATCH --signal=B:USR1@120
 #SBATCH --output=logs/task19_%j.out
 
-# Load modules
-module load anaconda3
-module load cuda/11.8
+# Load modules (no --mem/--cpus on GPU jobs — SuperPOD auto-allocates per H800)
+module load <conda-module>   # exact name from `module avail` (e.g. miniforge3/anaconda3)
+module load cuda/12.1
 
-# Create environment with specific versions
-conda create -n nt_lora_env python=3.9 -y
-conda activate nt_lora_env
+# Use the shared T4 env (built once on /project) instead of a per-job env.
+conda activate /project/igem2026/envs/promoter-mining-hpc4
 
-# Install dependencies
-pip install torch==2.0.1 --index-url https://download.pytorch.org/whl/cu118
-pip install transformers==4.35.0
-pip install peft==0.6.0
-pip install bitsandbytes==0.41.0
-pip install accelerate==0.24.0
-pip install datasets optuna wandb scikit-learn pandas pyarrow
+# Dependencies come from that env. Kept as a version reference — note SuperPOD's H800
+# wants CUDA 12.x, so the cu118 torch pin below is superseded by the T4 env (torch + cu121):
+#   torch==2.0.1 (cu118)  transformers==4.35.0  peft==0.6.0  bitsandbytes==0.41.0
+#   accelerate==0.24.0  datasets optuna wandb scikit-learn pandas pyarrow
 
 # Run training with memory optimizations
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:128

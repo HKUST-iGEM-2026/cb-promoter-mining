@@ -1,0 +1,79 @@
+# Promoter Mining — HPC4 conda/mamba environment (Task T4)
+#
+# Scope: everything that runs on HPC4
+# pre-tasks on the cluster: PT1 (ProkBERT fine-tune) and PT5 (E. coli sliding-window
+# inference). PT1/PT5 use the same torch/ProkBERT stack as T18/T28, already included below.
+# Build / verify / lock steps: see DEPLOY.md (same folder).
+# Supersedes the earlier draft "task 4" (broken CUDA pin + out-of-scope packages).
+name: promoter-mining-hpc4
+
+channels:
+  - pytorch          # pytorch-cuda metapackage + CUDA torch builds
+  - nvidia           # CUDA runtime that pytorch-cuda pins against
+  - conda-forge
+  - bioconda
+  # 'defaults' intentionally omitted: bioconda recommends conda-forge > bioconda,
+  # and this avoids the Anaconda 'defaults' ToS. Prefer: conda config --set channel_priority strict
+
+dependencies:
+  # ---- Python ----
+  - python=3.11
+
+  # ---- Core scientific / evaluation stack (T15, T22, T23, T25, T26, T29, T30) ----
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn>=1.3.0      # StratifiedGroupKFold (T15/T23), metrics (T22), calibration (T26)
+  - matplotlib
+  - seaborn
+  - ipykernel
+  - jupyterlab               # interactive work on the login node (optional)
+
+  # ---- Bioinformatics CLI (Phase B, Phase E, T10) ----
+  - seqkit                   # FASTA wrangling
+  - biopython
+  - bedtools                 # interval ops (T12 / T13)
+  - samtools                 # faidx for upstream extraction (T13)
+  - cd-hit>=4.8              # clustering for cluster-aware splits (T15)
+  - meme>=5.5.0              # MEME suite — provides FIMO for -10/-35 motif scanning (T31)
+  - tsspredator              # empirical TSS calling on HPC4 (T10)
+  - sra-tools                # prefetch / fasterq-dump: pull dRNA-seq reads on the cluster (T10)
+  - segemehl                 # T10 read aligner (READemption/TSSpredator standard).
+                             # CONFIRM with Sine (T10 owner); swap for bowtie2/bwa if preferred.
+
+  # ---- Pipeline orchestration (matches the T3 SLURM scaffold) ----
+  - snakemake>=8.0
+
+  # ---- Deep learning (T18, T19, T20, T21, T23, T24, T28) ----
+  - pytorch>=2.1,<2.5        # <2.5: last torch line carrying the pytorch-cuda metapackage
+  - pytorch-cuda=12.1        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
+                             # VERIFY exact value against `module avail cuda` on SuperPOD and
+                             # repin if needed (only 11.8 / 12.1 / 12.4 are valid metapackages).
+  - scikit-optimize          # hyperparameter sweeps (T21) — see DEPLOY.md note re: scikit-learn>=1.3
+
+  # ---- pip-only ----
+  - pip
+  - pip:
+    - git+https://github.com/nbrg-ppcu/prokbert.git   # ProkBERT-mini-long (T18)
+
+    # HuggingFace ecosystem (T18 / T19 / T28)
+    - transformers>=4.35
+    - datasets
+    - peft                   # LoRA for Nucleotide Transformer v2 250M (T19)
+    - accelerate             # mixed-precision training
+    - bitsandbytes           # 8-/4-bit quantization (QLoRA)
+    - sentencepiece
+    - tokenizers
+    - evaluate
+    - wandb                  # experiment tracking (optional)
+
+    # Snakemake SLURM executor (required by profiles/slurm — T3)
+    - snakemake-executor-plugin-slurm
+
+    # Parsing / IO
+    - gffutils               # GFF parsing for upstream extraction (T13)
+    - pyarrow                # parquet input (T8) and parquet/JSONL output (T32)
+    - tqdm
+
+    # Negative-set construction
+    - ushuffle               # dinucleotide-preserving shuffle for SRS (T14 / T27)

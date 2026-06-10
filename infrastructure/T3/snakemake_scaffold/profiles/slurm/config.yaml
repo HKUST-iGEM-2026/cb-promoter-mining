@@ -10,10 +10,12 @@ executor: slurm
 jobs: 20                       # max SLURM jobs in flight at once
 
 default-resources:
+  slurm_account: "igem2026"    # REQUIRED on every SuperPOD job (nothing submits without it)
   slurm_partition: "preempt"   # 5x cheaper than normal (HK$2.4 vs HK$12 / GPU-hr)
   runtime: 60                  # minutes
-  mem_mb: 4000
   cpus_per_task: 1
+  # No mem_mb default on purpose: SuperPOD auto-allocates RAM (proportional to CPUs for
+  # CPU jobs, per-GPU for GPU jobs); you must NOT pass --mem on GPU jobs.
   # Preempt hygiene on EVERY job: requeue when killed, and SIGUSR1 120s
   # before kill so the job can checkpoint. The trap itself lives in each
   # training script, not here.

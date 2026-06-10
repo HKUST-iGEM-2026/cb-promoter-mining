@@ -1,32 +1,42 @@
-T7 - Clostridium dRNA-seq Data Download Instructions
+T7 — Download / processing instructions (TWO paths)
 
-Step 1: Install the sra toolkit
-Here is the link: 
-https://github.com/ncbi/sra-tools/wiki/02.-Installing-SRA-Toolkit
+The 47 runs are NOT one dataset. Only the 20 dRNA-seq runs go through TSSpredator (T10);
+the other 27 (Capp-Switch, 5' RNA-seq) use the papers' published TSS tables. See README.md
+for the full rationale. (This supersedes the old single-list instructions, which downloaded
+all 47 locally with fastq-dump.)
 
-Do the following steps in the terminal
-Step 2: Verify installation (if need)
-Open a terminal (Command Prompt on Windows, Terminal on Mac/Linux)
-and type: 
-fastq-dump --version
+============================================================
+PATH A — 20 dRNA-seq runs (C. difficile) -> TSSpredator (T10)
+============================================================
+Run this ON HPC4 (SuperPOD) — don't pull tens of GB to a laptop and re-upload. sra-tools is
+already in the T4 conda env (prefetch, fasterq-dump).
 
-Step 3: Clone the repository
-Type: 
-git clone https://github.com/HKUST-iGEM-2026/cb-promoter-mining.git
-cd cb-promoter-mining/data-acquisition-and-curation/T7
+  conda activate /project/igem2026/envs/promoter-mining-hpc4
+  cd <work dir>            # on /project or /scratch (see T4/DEPLOY.md)
 
-Step 4: Download the data
-Type: 
-prefetch --option-file SRR_Acc_List.txt
-Wait for downloading
+  # fetch only the 20 TSSpredator-compatible runs
+  prefetch --option-file <repo>/data-acquisition-and-curation/T7/SRR_dRNAseq_for_TSSpredator.txt
+  for srr in $(cat <repo>/data-acquisition-and-curation/T7/SRR_dRNAseq_for_TSSpredator.txt); do
+      fasterq-dump --split-3 "$srr" -O . && gzip -f "${srr}"*.fastq
+  done
 
-Step 5: Convert to FASTQ
-Run this command (press Enter after each line):
-for srr in $(cat SRR_Acc_List.txt); do
-    fastq-dump --split-3 --gzip ${srr}/${srr}.sra --outdir .
-done
+  # then, in T10:
+  #  - align to the CONFIRMED C. difficile assembly
+  #    (630 = AM180355 / NC_009089; 630Delta-erm = its own assembly — see README)
+  #  - build coverage/wiggle tracks
+  #  - run TSSpredator with the correct TEX+/TEX- pairing (README verify-item #1)
 
-Step 6: Verify download (if need)
-Type: 
-ls *.fastq.gz | wc -l
-du -sh .
+============================================================
+PATH B — 27 Capp-Switch + 5' RNA-seq runs -> published TSS tables
+============================================================
+Do NOT reprocess these with TSSpredator (they have no TEX- control). Use the supplementary
+TSS tables from the papers and lift over to the matching in-genus assembly:
+
+  - Hocq 2022 (Microbiol Spectr, doi:10.1128/spectrum.02288-21)
+    C. acetobutylicum ATCC 824, C. beijerinckii NCIMB 8052 / DSM 6423 (~12,114 mapped TSS).
+  - Al-Bassam 2018 (Nat Commun, doi:10.1038/s41467-018-06993-6)
+    C. ljungdahlii ATCC 55383.
+
+  (The raw runs stay in the per-method CSVs if a non-TSSpredator caller is ever needed.)
+
+Tip: check installation with `fasterq-dump --version` (sra-tools).

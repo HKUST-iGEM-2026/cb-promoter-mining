@@ -73,7 +73,7 @@ rule t4_conda_env:
 # ---------------------------------------------------------------------
 rule pt1_finetune_loop:
     output: "results/PT1.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[PT1] fine-tune loop on RegulonDB/DBTBS (mock GPU)' && touch {output}"
 
 rule pt2_ship_to_huggingface:
@@ -92,7 +92,7 @@ rule pt4_calibration_fdr_harness:
 
 rule pt5_sliding_window_ecoli:
     output: "results/PT5.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[PT5] sliding-window inference on E. coli (mock GPU)' && touch {output}"
 
 rule pt6_validate_lock_schema:
@@ -147,25 +147,25 @@ rule t17_finetune_recipe:
 rule t18_prokbert_finetune:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T18.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T18] ProkBERT-mini-long fine-tune (mock GPU)' && touch {output}"
 
 rule t19_nt_lora_finetune:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T19.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T19] NT v2 250M LoRA fine-tune (mock GPU)' && touch {output}"
 
 rule t20_cnn_train:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T20.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T20] custom 1D CNN from scratch (mock GPU)' && touch {output}"
 
 rule t21_hparam_sweep:
     input: "results/T18.done", "results/T19.done", "results/T20.done"
     output: "results/T21.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=720, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=720
     shell: "echo '[T21] hyperparameter sweep (mock GPU)' && touch {output}"
 
 
@@ -181,13 +181,13 @@ rule t22_metrics_suite:
 rule t23_cluster_cv:
     input: "results/T15.done", "results/T21.done"
     output: "results/T23.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=720, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=720
     shell: "echo '[T23] cluster-level 5-fold CV (mock GPU)' && touch {output}"
 
 rule t24_cross_species_holdout:
     input: LIT_PROM, "results/T21.done"
     output: "results/T24.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=240, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[T24] external cross-species holdout (mock GPU)' && touch {output}"
 
 rule t25_sigma_stratified:
@@ -212,7 +212,7 @@ rule t27_empirical_fdr:
 rule t28_mining_inference:
     input: "results/PT6.done", "results/T13.done", "results/T21.done"
     output: "results/T28.done"
-    resources: slurm_extra=GPU_EXTRA, runtime=480, mem_mb=32000
+    resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T28] sliding-window inference on Clostridium (mock GPU)' && touch {output}"
 
 rule t29_ensemble_aggregation:
