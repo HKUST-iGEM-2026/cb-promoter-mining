@@ -45,29 +45,6 @@ rule all:
 # (e.g. T15, T22, T29) onto the cluster, just remove it from this list.
 localrules: all, t1_hpc4_access, t2_github_repo, t3_snakemake_slurm_scaffold, t4_conda_env, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
 
-
-# ---------------------------------------------------------------------
-# Infrastructure
-# ---------------------------------------------------------------------
-rule t1_hpc4_access:
-    output: "results/T1.done"
-    shell: "echo '[T1] HPC4 access application (mock)' && touch {output}"
-
-rule t2_github_repo:
-    output: "results/T2.done"
-    shell: "echo '[T2] GitHub repository (mock)' && touch {output}"
-
-rule t3_snakemake_slurm_scaffold:
-    input: "results/T2.done"
-    output: "results/T3.done"
-    shell: "echo '[T3] Snakemake + SLURM scaffold (mock)' && touch {output}"
-
-rule t4_conda_env:
-    input: "results/T1.done", "results/T3.done"
-    output: "results/T4.done"
-    shell: "echo '[T4] conda/mamba env deploy on HPC4 (mock)' && touch {output}"
-
-
 # ---------------------------------------------------------------------
 # Pre-tasks (learning + reusable code)
 # ---------------------------------------------------------------------
@@ -75,30 +52,36 @@ rule pt1_finetune_loop:
     output: "results/PT1.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[PT1] fine-tune loop on RegulonDB/DBTBS (mock GPU)' && touch {output}"
+    # real: python pre-tasks/PT1/prokbert_finetune.py
 
 rule pt2_ship_to_huggingface:
     input: "results/PT1.done"
     output: "results/PT2.done"
     shell: "echo '[PT2] ship ProkBERT to HuggingFace (mock)' && touch {output}"
+    # real: python pre-tasks/PT2/push_to_hub.py   (model.push_to_hub the checkpoint)
 
 rule pt3_metrics_cv_stack:
     output: "results/PT3.done"
     shell: "echo '[PT3] metrics + CV stack on dummy classifier (mock)' && touch {output}"
+    # real: python pre-tasks/PT3/metrics_cv.py
 
 rule pt4_calibration_fdr_harness:
     input: "results/PT3.done"
     output: "results/PT4.done"
     shell: "echo '[PT4] calibration + FDR harness (mock)' && touch {output}"
+    # real: python pre-tasks/PT4/calibration_fdr_harness.py   (reused by T26/T27)
 
 rule pt5_sliding_window_ecoli:
     output: "results/PT5.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[PT5] sliding-window inference on E. coli (mock GPU)' && touch {output}"
+    # real: python pre-tasks/PT5/sliding_window_ecoli.py   (sanity-check vs RegulonDB)
 
 rule pt6_validate_lock_schema:
     input: "results/PT5.done"
     output: "results/PT6.done"
     shell: "echo '[PT6] validate pipeline + lock output schema (mock)' && touch {output}"
+    # real: python pre-tasks/PT6/validate_lock_schema.py   (validate PT5; lock schema)
 
 
 # ---------------------------------------------------------------------
@@ -109,31 +92,37 @@ rule t11_housekeeping_set:
     input: ANNOTATIONS
     output: "results/T11.done"
     shell: "echo '[T11] housekeeping gene set (mock)' && touch {output}"
+    # real: python scripts/housekeeping_set.py {input} {output}   (core/constitutive genes)
 
 rule t12_operon_detection:
     input: ANNOTATIONS, "results/T11.done"
     output: "results/T12.done"
     shell: "echo '[T12] operon detection (mock)' && touch {output}"
+    # real: python scripts/operon_detection.py {input} {output}   (intergenic gap + strand; contig-end exclusion)
 
 rule t13_upstream_extraction:
     input: "results/T11.done", "results/T12.done"
     output: "results/T13.done"
     shell: "echo '[T13] upstream region extraction (mock)' && touch {output}"
+    # real: python scripts/extract_upstream.py {input} {output}   (100-300 bp upstream; gffutils + samtools faidx; drop contig-end-truncated)
 
 rule t14_negative_set:
     input: ANNOTATIONS, "results/T13.done"
     output: "results/T14.done"
     shell: "echo '[T14] four-class negatives incl. SRS (mock)' && touch {output}"
+    # real: python scripts/make_negatives.py {input} {output}   (CDS / intergenic / 3' + SRS via ushuffle)
 
 rule t15_cdhit_splits:
     input: REFDB, TSS_CALLS, "results/T13.done", "results/T14.done"
     output: "results/T15.done"
     shell: "echo '[T15] CD-HIT clustering + cluster-aware splits (mock)' && touch {output}"
+    # real: python scripts/cdhit_splits.py {input} {output}   (cd-hit clustering + StratifiedGroupKFold; 80/10/10)
 
 rule t16_tokenisation:
     input: "results/T15.done"
     output: "results/T16.done"
     shell: "echo '[T16] per-model tokenisation (mock)' && touch {output}"
+    # real: python scripts/tokenise.py {input} {output}   (ProkBERT k-mer / NT BPE / CNN one-hot)
 
 
 # ---------------------------------------------------------------------
@@ -143,30 +132,35 @@ rule t17_finetune_recipe:
     input: "results/PT2.done"
     output: "results/T17.done"
     shell: "echo '[T17] finalise fine-tuning recipe (mock)' && touch {output}"
+    # real: (decision) finalise fine-tuning recipe from PT2; config, not a command
 
 rule t18_prokbert_finetune:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T18.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T18] ProkBERT-mini-long fine-tune (mock GPU)' && touch {output}"
+    # real: sbatch model-training/T18/run_task18_template.sh
 
 rule t19_nt_lora_finetune:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T19.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T19] NT v2 250M LoRA fine-tune (mock GPU)' && touch {output}"
+    # real: sbatch model-training/T19/run_task19_template.sh
 
 rule t20_cnn_train:
     input: "results/T4.done", "results/T16.done", "results/T17.done"
     output: "results/T20.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T20] custom 1D CNN from scratch (mock GPU)' && touch {output}"
+    # real: python model-training/T20/train_cnn_template.py
 
 rule t21_hparam_sweep:
     input: "results/T18.done", "results/T19.done", "results/T20.done"
     output: "results/T21.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720
     shell: "echo '[T21] hyperparameter sweep (mock GPU)' && touch {output}"
+    # real: python model-training/T21/hyperparameter_sweep_template.py
 
 
 # ---------------------------------------------------------------------
@@ -177,33 +171,39 @@ rule t22_metrics_suite:
     input: "results/PT3.done", "results/T21.done"
     output: "results/T22.done"
     shell: "echo '[T22] metrics suite AUROC/AUPRC/MCC/F1 (mock)' && touch {output}"
+    # real: python pre-tasks/PT3/metrics_cv.py --pred results/<model>_preds.parquet   (per-model report)
 
 rule t23_cluster_cv:
     input: "results/T15.done", "results/T21.done"
     output: "results/T23.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720
     shell: "echo '[T23] cluster-level 5-fold CV (mock GPU)' && touch {output}"
+    # real: python evaluation-and-calibration/T23/cluster_cv_template.py
 
 rule t24_cross_species_holdout:
     input: LIT_PROM, "results/T21.done"
     output: "results/T24.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[T24] external cross-species holdout (mock GPU)' && touch {output}"
+    # real: python evaluation-and-calibration/T24/evaluate_external_template.py
 
 rule t25_sigma_stratified:
     input: TSS_CALLS, "results/T22.done"
     output: "results/T25.done"
     shell: "echo '[T25] sigma-factor-stratified evaluation (mock)' && touch {output}"
+    # real: python scripts/sigma_stratified.py {input} {output}   (per-sigma-factor metrics, from T10 calls)
 
 rule t26_calibration:
     input: "results/PT4.done", LIT_PROM, "results/T22.done"
     output: "results/T26.done"
     shell: "echo '[T26] calibration regressor with AT covariate (mock)' && touch {output}"
+    # real: python scripts/calibrate.py {input} {output}   (regressor with AT-content covariate; PT4 harness)
 
 rule t27_empirical_fdr:
     input: "results/PT4.done", "results/T14.done", "results/T26.done"
     output: "results/T27.done"
     shell: "echo '[T27] empirical FDR with SRS null (mock)' && touch {output}"
+    # real: python scripts/empirical_fdr.py {input} {output}   (SRS null -> q-value; PT4 harness)
 
 
 # ---------------------------------------------------------------------
@@ -214,23 +214,28 @@ rule t28_mining_inference:
     output: "results/T28.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T28] sliding-window inference on Clostridium (mock GPU)' && touch {output}"
+    # real: python mining-and-motif-annotation/T28/sliding_window_engine_template.py
 
 rule t29_ensemble_aggregation:
     input: "results/T28.done"
     output: "results/T29.done"
     shell: "echo '[T29] ensemble aggregation (mean rank-percentile) (mock)' && touch {output}"
+    # real: python scripts/ensemble.py {input} {output}   (mean rank-percentile across 3 models)
 
 rule t30_peak_calling:
     input: "results/T29.done"
     output: "results/T30.done"
     shell: "echo '[T30] locus-level peak calling (mock)' && touch {output}"
+    # real: python scripts/peak_calling.py {input} {output}   (scipy.signal on the score track)
 
 rule t31_motif_annotation:
     input: "results/T30.done"
     output: "results/T31.done"
     shell: "echo '[T31] motif annotation FIMO/MEME (mock)' && touch {output}"
+    # real: fimo <motif.meme> results/candidates.fasta   (MEME suite; -10/-35 + sigma)
 
 rule t32_final_output:
     input: "results/T26.done", "results/T27.done", "results/T30.done", "results/T31.done"
     output: "results/T32.done"
     shell: "echo '[T32] FINAL candidate output TSV/JSONL (mock)' && touch {output}"
+    # real: python scripts/assemble_final.py {input} {output}   (PT6-locked TSV/JSONL schema)
