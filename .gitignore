@@ -31,4 +31,8 @@ bakta_outputs/**/*.inference.tsv
 output_test_genome/
 
 pre-tasks/PT1/final_prokbert_promoter_model/
-pre-tasks/PT1/results/
+pre-tasks/PT1/results/sratoolkit.3.4.1-ubuntu64/
+sratoolkit.current-ubuntu64.tar.gz
+
+
+data-acquisition-and-curation/sratoolkit.3.4.1-ubuntu64/

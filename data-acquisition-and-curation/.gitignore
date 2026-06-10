@@ -1,0 +1,3 @@
+# Ignore sratoolkit in parent directory
+../sratoolkit.3.4.1-ubuntu64/
+../sratoolkit.current-ubuntu64.tar.gz
