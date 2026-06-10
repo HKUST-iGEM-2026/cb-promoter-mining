@@ -96,21 +96,16 @@ conda activate /project/igem2026/envs/promoter-mining-hpc4
 
 to your submit step / SBATCH preamble, alongside `module load cuda` (matching the pinned 12.1).
 
-**T3 profile gaps to fix (separate from this env, flagged for Swasti):**
-- Every SuperPOD job needs `--account=igem2026` — add `slurm_account: igem2026` to
-  `T3/snakemake_scaffold/profiles/slurm/config.yaml` (it's currently missing).
-- Drop `mem_mb=…` from the GPU rules — SuperPOD says don't set `--mem` for GPU jobs (RAM is
-  auto-allocated at 8 GB/thread × 28 threads per H800).
-- The T3 SBATCH templates `module load cuda/11.8` and use `--partition=gpu`; update them to
-  `cuda/12.1` and `--partition=preempt` to match this env and the locked preempt convention.
+**T3 profile — already reconciled to SuperPOD (done):** `slurm_account: igem2026` added, the
+GPU rules' `mem_mb` removed (SuperPOD auto-allocates RAM per H800), and the per-task SBATCH
+headers fixed to `cuda/12.1` + `--partition=preempt`. Those per-task scripts now live with
+their owners (`model-training/T18–T21`, `evaluation-and-calibration/T23–T24`,
+`mining-and-motif-annotation/T28`), not in T3.
 
 ## Open decisions / TODO
 - **CUDA pin** — set to `12.1` for the H800 (Hopper) GPUs; confirm SuperPOD's exact CUDA
   module with `module avail cuda` (§2) and repin if it differs.
 - **T10 aligner** — the env ships `segemehl` (READemption/TSSpredator standard). Confirm
   with Sine (T10 owner) before relying on it; swap for bowtie2/bwa if the team prefers.
-- **Old draft set aside** — the previous version is now `infrastructure/task 4 (not used)`
-  (broken CUDA pin, circuit-sim packages, Phase-A tools). Delete it once this lands so
-  there's one source of truth.
 - **torch cap** — pinned `<2.5` because the `pytorch-cuda` metapackage path ends there.
   For newer torch, install from conda-forge or pip wheels instead.
