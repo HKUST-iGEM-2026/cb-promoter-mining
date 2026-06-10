@@ -56,7 +56,7 @@ expected (no GPU on the login node). Test the GPU **inside a job**:
 ```bash
 # CPU smoke test (login node)
 python -c "import torch, transformers, snakemake; print('torch', torch.__version__)"
-which cd-hit meme fimo tsspredator snakemake
+which cd-hit meme fimo segemehl java snakemake   # TSSpredator itself is a separate JAR
 snakemake --version
 
 # GPU test (must run on a GPU node)
@@ -105,7 +105,8 @@ their owners (`model-training/T18–T21`, `evaluation-and-calibration/T23–T24`
 ## Open decisions / TODO
 - **CUDA pin** — set to `12.1` for the H800 (Hopper) GPUs; confirm SuperPOD's exact CUDA
   module with `module avail cuda` (§2) and repin if it differs.
-- **T10 aligner** — the env ships `segemehl` (READemption/TSSpredator standard). Confirm
-  with Sine (T10 owner) before relying on it; swap for bowtie2/bwa if the team prefers.
+- **T10 tooling** — the env ships `segemehl` (aligner — confirm with Sine, swap for bowtie2/bwa
+  if preferred) and `openjdk` for TSSpredator. **TSSpredator itself is a JAR, not a conda
+  package**: download it from the project site and run `java -jar TSSpredator.jar <config>`.
 - **torch cap** — pinned `<2.5` because the `pytorch-cuda` metapackage path ends there.
   For newer torch, install from conda-forge or pip wheels instead.

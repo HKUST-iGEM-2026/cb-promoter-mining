@@ -1,6 +1,6 @@
 # Promoter Mining — HPC4 conda/mamba environment (Task T4)
 #
-# Scope: everything that runs on HPC4
+# Scope: everything that runs on HPC4 — Phase B–E, T10 (TSSpredator), and the two GPU
 # pre-tasks on the cluster: PT1 (ProkBERT fine-tune) and PT5 (E. coli sliding-window
 # inference). PT1/PT5 use the same torch/ProkBERT stack as T18/T28, already included below.
 # Build / verify / lock steps: see DEPLOY.md (same folder).
@@ -36,7 +36,8 @@ dependencies:
   - samtools                 # faidx for upstream extraction (T13)
   - cd-hit>=4.8              # clustering for cluster-aware splits (T15)
   - meme>=5.5.0              # MEME suite — provides FIMO for -10/-35 motif scanning (T31)
-  - tsspredator              # empirical TSS calling on HPC4 (T10)
+  - openjdk>=11              # Java runtime for TSSpredator (T10): TSSpredator is a JAR, NOT a
+                             # conda package — download the JAR separately, run `java -jar … <config>`
   - sra-tools                # prefetch / fasterq-dump: pull dRNA-seq reads on the cluster (T10)
   - segemehl                 # T10 read aligner (READemption/TSSpredator standard).
                              # CONFIRM with Sine (T10 owner); swap for bowtie2/bwa if preferred.
