@@ -1,13 +1,15 @@
 # =====================================================================
 # Promoter Mining — HPC4 pipeline scaffold (Task T3), MOCK
 #
-# This pipeline starts at Phase B. Phase A (data acquisition + curation,
-# T5-T10) is done LOCALLY, one-shot, and its outputs are uploaded to HPC4
-# as the starting state (see context §3). Those outputs are consumed here
-# as the pre-staged files under inputs/ (defined below).
+# This pipeline starts at Phase B. Phase A is produced beforehand and uploaded
+# to HPC4 as the starting state (see context §3), consumed here as pre-staged
+# files under inputs/ (defined below):
+#   - T5-T9 run LOCALLY, one-shot     -> local_prep.smk
+#   - T10 (TSSpredator) runs on HPC4  -> tss_prep.smk  (CPU-heavy: ~36 GB reads + alignment)
 #
-# To produce the starting state locally for a mock run:
-#     snakemake -s local_prep.smk --cores 4      # creates inputs/
+# To produce the starting state for a mock run:
+#     snakemake -s local_prep.smk --cores 4                        # T5-T9 (local)
+#     snakemake -s tss_prep.smk --workflow-profile profiles/slurm  # T10 (HPC4)
 # Then run this pipeline:
 #     snakemake --cores 4                        # local wiring test
 #     snakemake --workflow-profile profiles/slurm  # on HPC4
@@ -24,10 +26,10 @@ GPU_EXTRA = "'--gpus-per-node=1 --requeue --signal=B:USR1@120'"
 # ---- Phase A starting state (produced locally, uploaded to HPC4) -----
 # These files must already exist before the pipeline runs. They are the
 # outputs of the local Phase A step; the cluster pipeline does not build them.
-ANNOTATIONS = "inputs/annotations.done"           # T6  — Bakta annotations
-REFDB       = "inputs/refdb_parquet.done"         # T8  — RegulonDB + DBTBS, normalised
-LIT_PROM    = "inputs/literature_promoters.tsv"   # T9  — curated synthetic promoters
-TSS_CALLS   = "inputs/tss_calls.done"             # T10 — TSSpredator empirical TSS
+ANNOTATIONS = "inputs/annotations.gff3"            # T6  — Bakta annotations (local_prep)
+REFDB       = "inputs/reference_promoters.parquet" # T8  — RegulonDB + DBTBS, normalised (local_prep)
+LIT_PROM    = "inputs/literature_promoters.tsv"    # T9  — curated synthetic promoters (local_prep)
+TSS_CALLS   = "inputs/tss_sites.gff3"              # T10 — TSSpredator empirical TSS (tss_prep, HPC4)
 
 # The only true graph leaves (evaluation reports + final deliverable).
 LEAVES = ["T23", "T24", "T25", "T32"]
@@ -43,7 +45,7 @@ rule all:
 # §3/§8 ("HPC4 for necessary tasks only"). The 9 NOT listed are the cluster
 # jobs: PT1, PT5, T18, T19, T20, T21, T23, T24, T28. To move a hybrid task
 # (e.g. T15, T22, T29) onto the cluster, just remove it from this list.
-localrules: all, t1_hpc4_access, t2_github_repo, t3_snakemake_slurm_scaffold, t4_conda_env, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
+localrules: all, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
 
 # ---------------------------------------------------------------------
 # Pre-tasks (learning + reusable code)
@@ -135,21 +137,21 @@ rule t17_finetune_recipe:
     # real: (decision) finalise fine-tuning recipe from PT2; config, not a command
 
 rule t18_prokbert_finetune:
-    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    input: "results/T16.done", "results/T17.done"
     output: "results/T18.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T18] ProkBERT-mini-long fine-tune (mock GPU)' && touch {output}"
     # real: sbatch model-training/T18/run_task18_template.sh
 
 rule t19_nt_lora_finetune:
-    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    input: "results/T16.done", "results/T17.done"
     output: "results/T19.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T19] NT v2 250M LoRA fine-tune (mock GPU)' && touch {output}"
     # real: sbatch model-training/T19/run_task19_template.sh
 
 rule t20_cnn_train:
-    input: "results/T4.done", "results/T16.done", "results/T17.done"
+    input: "results/T16.done", "results/T17.done"
     output: "results/T20.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell: "echo '[T20] custom 1D CNN from scratch (mock GPU)' && touch {output}"

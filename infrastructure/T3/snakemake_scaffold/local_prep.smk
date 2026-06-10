@@ -1,11 +1,13 @@
 # =====================================================================
-# Phase A — LOCAL one-shot prep (MOCK).  NOT an HPC4 job.
+# Phase A (LOCAL part) — T5-T9 one-shot prep (MOCK).  Run on your own machine.
 #
-# Run on your own machine. Produces the "starting state" under inputs/,
-# which you then upload to HPC4. The main Snakefile (Phase B onwards)
-# consumes these files; it does not build them. See context §3.
-# (T5 and T6 are already done for real — this mirrors the data flow so
-# the mock pipeline has its inputs.)
+# Produces the "starting state" under inputs/, which you then upload to HPC4.
+# The main Snakefile (Phase B onwards) consumes these files; it does not build them.
+#
+# NOTE: T10 (TSSpredator) is NOT here. It is CPU-heavy and runs on HPC4 (pulls
+# ~36 GB of reads onto the cluster + aligns), so it lives in tss_prep.smk and is
+# run with the SLURM profile. See context §3.
+# (T5/T6 are already done for real — this mirrors the data flow for the mock.)
 #
 #     snakemake -s local_prep.smk --cores 4
 #
@@ -15,10 +17,10 @@
 
 rule all:
     input:
-        "inputs/annotations.gff3",          # T6  -> main pipeline ANNOTATIONS
+        "inputs/annotations.gff3",             # T6  -> ANNOTATIONS (also input to T10 on HPC4)
+        "inputs/drnaseq_accessions.csv",       # T7  -> input to T10 on HPC4 (tss_prep.smk)
         "inputs/reference_promoters.parquet",  # T8  -> REFDB
-        "inputs/literature_promoters.tsv",  # T9  -> LIT_PROM
-        "inputs/tss_sites.gff3",            # T10 -> TSS_CALLS
+        "inputs/literature_promoters.tsv",     # T9  -> LIT_PROM
 
 rule t5_download_genomes:
     output: "inputs/genomes.fna"
@@ -47,10 +49,3 @@ rule t9_curate_synthetic_promoters:
     output: "inputs/literature_promoters.tsv"
     shell: "echo '[T9] curate synthetic promoters (mock, manual)' && touch {output}"
     # real: (manual) curate known Clostridium synthetic promoters from the literature into {output}
-
-rule t10_tsspredator:
-    input: "inputs/annotations.gff3", "inputs/drnaseq_accessions.csv"
-    output: "inputs/tss_sites.gff3"
-    shell: "echo '[T10] re-process dRNA-seq with TSSpredator (mock)' && touch {output}"
-    # real: TSSpredator config.ini   (needs genome FASTA + {input[0]} GFF + wiggle files from
-    #       aligning the {input[1]} reads against the Bakta .fna; then export TSS to {output})

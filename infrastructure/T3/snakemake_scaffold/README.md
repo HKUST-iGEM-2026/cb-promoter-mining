@@ -26,9 +26,10 @@ deployed and active, and the Phase A starting state is uploaded to `inputs/`.
 
 ## Two stages (see context §3)
 
-- **Phase A — done locally, one-shot.** Data acquisition + curation (T5–T10). Run on
-  your own machine; its outputs are uploaded to HPC4 as the *starting state*. Lives in
-  `local_prep.smk`, NOT in the HPC4 pipeline.
+- **Phase A — produced beforehand, uploaded as the `inputs/` starting state.**
+  - **T5–T9 (local, one-shot)** — `local_prep.smk`, run on your own machine.
+  - **T10 (TSSpredator) on HPC4** — `tss_prep.smk`, run with the SLURM profile; it is
+    CPU-heavy (pulls ~36 GB of reads onto the cluster + aligns), so it does NOT run locally.
 - **Phase B onwards — runs on HPC4.** The main `Snakefile` starts at Phase B and
   consumes the Phase A outputs as pre-staged files under `inputs/`.
 
@@ -37,19 +38,21 @@ deployed and active, and the Phase A starting state is uploaded to `inputs/`.
 ```
 snakemake_scaffold/
 ├── Snakefile                  # HPC4 pipeline: Phase B–E (consumes inputs/)
-├── local_prep.smk             # Phase A mock: run locally, produces inputs/
+├── local_prep.smk             # Phase A (T5–T9) mock: run locally, produces inputs/
+├── tss_prep.smk               # Phase A (T10/TSSpredator) mock: runs on HPC4 (SLURM profile)
 ├── config/config.yaml         # placeholder paths/params
 └── profiles/slurm/config.yaml # SLURM submission profile (one place for cluster settings)
 ```
 
 ## Run it
 
-1. Produce the Phase A starting state locally (for real, this is the uploaded
-   genomes/annotations/curated DBs — here it's mocked):
+1. Produce the Phase A starting state (mocked here):
 
 ```bash
 cd snakemake_scaffold
-snakemake -s local_prep.smk --cores 4    # creates inputs/
+snakemake -s local_prep.smk --cores 4                        # T5–T9 (local)
+# upload inputs/ to HPC4, then on the cluster:
+snakemake -s tss_prep.smk --workflow-profile profiles/slurm  # T10 (HPC4, TSSpredator)
 ```
 
 2. Run the HPC4 pipeline. Locally to test the wiring:
