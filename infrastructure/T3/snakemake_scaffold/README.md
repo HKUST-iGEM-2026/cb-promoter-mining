@@ -1,25 +1,27 @@
 # T3 — Snakemake + SLURM scaffold (mock pipeline)
 
 A runnable, end-to-end **mock** of the promoter-mining pipeline. Every task is a
-placeholder rule that prints a message and `touch`es its (real-named) output file.
+placeholder rule that prints a message and `touch`es a `results/<task>.done` sentinel.
 The point is to prove the dependency graph wires up and submits to SLURM correctly
 **before** any real code exists. Teammates later replace the `shell:` line of their
 own rule with the real command.
 
 ## What's in here (and what isn't)
 
-This Snakefile is the **data pipeline only**: Phase B (dataset construction) → C
-(training) → D (evaluation) → E (mining). These are the steps where files flow from
-one rule's output into the next.
+This `Snakefile` is the **data pipeline**: Phase B (dataset construction) → C
+(training) → D (evaluation) → E (mining), plus the **pre-task** rules (PT1–PT6) those
+phases depend on. Files flow from one rule's output into the next.
 
-Deliberately *not* modelled as rules — they're real project tasks, but not
-data-pipeline steps, so they live in the project plan, not this automation:
+**Not** in this `Snakefile` — real project tasks, but not data-pipeline steps:
 
 - **Infrastructure T1–T4** (HPC4 access, repo, this scaffold, conda env) — one-time
-  setup / preconditions.
-- **Pre-tasks PT1–PT6** — learning + reusable code (metrics, calibration harness,
-  schema). Downstream rules *import* this code; they don't read it as a pipeline file.
-- **Phase A T5–T10** — acquisition + curation, done locally one-shot (`local_prep.smk`).
+  setup / preconditions; tracked in the project plan, not this automation.
+- **Phase A T5–T10** — acquisition + curation, produced beforehand and consumed as
+  pre-staged `inputs/`: T5–T9 locally (`local_prep.smk`), T10/TSSpredator on HPC4
+  (`tss_prep.smk`).
+
+(PT1–PT6 are conceptually reusable code that downstream rules *import*, but they're kept
+here as mock rules anyway, to show the cross-phase dependencies — PT1/PT5 run on GPU.)
 
 **Preconditions** before running on HPC4: the conda/mamba env (the work of T4) is
 deployed and active, and the Phase A starting state is uploaded to `inputs/`.
@@ -89,37 +91,41 @@ hand-writes `sbatch` scripts:
   (whole-node = 8× cost).
 
 A rule only needs a `resources:` block when it differs from the defaults. GPU rules
-(T18–T21, T23, T24, T28) set `slurm_extra=GPU_EXTRA`; everything else inherits the
-CPU defaults from the profile.
+(PT1, PT5, T18–T21, T23, T24, T28) set `slurm_extra=GPU_EXTRA`; everything else
+inherits the CPU defaults from the profile.
 
-**HPC4 for necessary tasks only.** Even with the SLURM profile active, only the 7
-GPU tasks are submitted as cluster jobs. The other 15 (light tasks) are declared in
-the `localrules:` line of the `Snakefile` and run locally on the login/submit node —
+**HPC4 for necessary tasks only.** Even with the SLURM profile active, only the 9
+GPU/cluster tasks are submitted as SLURM jobs. The other 19 (light tasks) are declared
+in the `localrules:` line of the `Snakefile` and run locally on the login/submit node —
 they never hit the queue. To move a hybrid task (e.g. T15, T22, T29) onto the
 cluster, remove it from that `localrules:` list.
 
 ## Filling in a real task
 
-Find your rule in the `Snakefile`. The output filenames are already realistic — keep
-them so the next rule's input still matches — and just replace the placeholder
-`shell:` line with the real command (the `# real:` comment under each rule shows an
-example). E.g. T13:
+Find your rule in the `Snakefile`. The mock wires the DAG with `results/<task>.done`
+sentinels, and the placeholder `shell:` just `touch`es them. To implement, replace the
+`shell:` with the `# real:` command shown under the rule. For a rule that passes real
+data downstream, also give it a real `output` filename and point the next rule's
+`input` at it. E.g. T13:
 
 ```python
 rule t13_upstream_extraction:
-    input:  "results/housekeeping_genes.tsv", "results/operons.tsv"
-    output: "results/upstream_regions.fasta"
+    input:  "results/T11.done", "results/T12.done"
+    output: "results/T13.done"
     shell:  "echo '[T13] upstream region extraction (mock)' && touch {output}"
+    # real: python scripts/extract_upstream.py {input} {output}   (100-300 bp upstream; gffutils + samtools faidx)
 ```
 
 becomes:
 
 ```python
 rule t13_upstream_extraction:
-    input:  housekeeping="results/housekeeping_genes.tsv", operons="results/operons.tsv"
+    input:  "results/T11.done", "results/T12.done"
     output: "results/upstream_regions.fasta"
-    shell:  "python scripts/extract_upstream.py {input.housekeeping} {input.operons} {output}"
+    shell:  "python scripts/extract_upstream.py {input} {output}"
 ```
 
-Keep your inputs pointing at the upstream rule's real outputs (or, for Phase B rules
-that need Phase A data, the `inputs/` files) so the DAG stays connected.
+(then update the rules that read T13 — e.g. T14, T15 — to consume
+`results/upstream_regions.fasta`.) Keep each rule's inputs pointing at its upstream
+rule's output (or, for Phase B rules that need Phase A data, the `inputs/` files) so
+the DAG stays connected.
