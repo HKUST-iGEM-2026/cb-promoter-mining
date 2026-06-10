@@ -246,7 +246,7 @@ rebalance, so confirm current owners with Oak.
 - T5 Download Clostridium genomes — Salimah — ✅ 166 RefSeq genomes (taxon 1485)
 - T6 Re-annotate with Bakta — Leo — ✅ 166/166, Bakta 1.11.4 + DB v6.0 **light** (in `bakta_outputs/`)
 - T7 dRNA-seq literature search — Salimah — ✅ (see §8; 20 dRNA-seq vs 27 published TSS)
-- T8 Normalise RegulonDB+DBTBS → Parquet — Leo — 🟡 **has a real bug** (see §9) `data-acquisition-and-curation/T8/`
+- T8 Normalise RegulonDB+DBTBS → Parquet — Leo — 🟡 RegulonDB parse fixed (~3,963); DBTBS half pending (see §9) `data-acquisition-and-curation/T8/`
 - T9 Curate synthetic promoters → `literature_promoters.tsv` — Salimah — ⬜ (used by T24/T26)
 - T10 Re-process dRNA-seq w/ TSSpredator — Sine — ⬜ runs on HPC4 (`tss_prep.smk`; dep T6,T7)
 
@@ -333,10 +333,14 @@ select by **product description**, not the gene-symbol field.
   `openjdk`, download the JAR separately.
 - **`pytorch-cuda`** only has versions **11.8 / 12.1 / 12.4** and lives on the **`pytorch`**
   channel (not conda-forge). H800 wants 12.x → we pin `12.1`.
-- **T8 bug (open):** `data-acquisition-and-curation/T8/run_t8_pipeline.py` reads the wrong
-  RegulonDB columns (`sigma`=strand, `seq`=pmids) so it silently falls back to a 2-row
-  placeholder instead of ~4,055 promoters. Columns are: (3) strand, (5) sigmaFactor,
-  (6) pmSequence. Fix before relying on its parquet.
+- **T8 RegulonDB parse — FIXED:** `run_t8_pipeline.py` now reads the right columns
+  (5=sigmaFactor, 6=pmSequence), loads the committed local `PromoterS_Set.txt`, skips the
+  header row, drops sequenceless "None" rows, and keeps `confidence_level` → **~3,963**
+  E. coli promoters (was a 2-row placeholder). Re-run the script to regenerate the parquet. **Still open — DBTBS:** the
+  `promoter.dat.gz` bulk file in `parse_dbtbs()` does **not exist** (no web record; Wayback has
+  no snapshot) and its flat-file format was guessed; DBTBS only offers sequence-search +
+  browsing. Pick a real B. subtilis source (scrape DBTBS pages, the Sierro 2008 NAR supplement,
+  or Nicolas 2012 genome-wide TSS) and rewrite `parse_dbtbs()` to match.
 - **PT1 (open):** fine-tuning reportedly took ~6 h on ~9.5k examples → almost certainly ran on
   **CPU**. Confirm `torch.cuda.is_available()`, `nvidia-smi`, and `--gpus-per-node=1`.
 - **No secrets in code.** A HuggingFace token was once hard-coded in `prokbert_finetune.py`

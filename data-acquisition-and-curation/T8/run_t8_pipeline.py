@@ -15,11 +15,21 @@ def download_file(url):
     return response.content
 
 def parse_regulondb():
+    # Prefer the committed local file (this folder); fall back to the download if it's gone.
+    # Columns are TAB-separated: (1) pmId (2) pmName (3) strand (4) posTSS (5) sigmaFactor
+    # (6) pmSequence (7) firstGeneName (8) distToFirstGene (9) pmEvidence (10) addEvidence
+    # (11) confidenceLevel (12) pmids
+    local = os.path.join(OUTPUT_DIR, "PromoterS_Set.txt")
     url = "https://regulondb.ccg.unam.mx/menu/download/datasets/files/PromoterS_Set.txt"
     try:
-        content = download_file(url).decode('utf-8')
+        if os.path.exists(local):
+            print(f"Reading local RegulonDB file: {local}")
+            with open(local, encoding="utf-8") as fh:
+                content = fh.read()
+        else:
+            content = download_file(url).decode('utf-8')
     except Exception as e:
-        print(f"RegulonDB download failed ({e}). Using local fallback placeholder layout.")
+        print(f"RegulonDB load failed ({e}).")
         return pd.DataFrame()
 
     promoter_data = []
@@ -27,19 +37,24 @@ def parse_regulondb():
         if line.startswith('#') or not line.strip():
             continue
         parts = line.split('\t')
-        if len(parts) >= 4:
-            p_id = parts[0]
-            name = parts[1]
-            sigma = parts[2] if parts[2] else 'Unknown'
-            seq = parts[-1].replace('[', '').replace(']', '').strip() 
-            if re.match(r'^[A-Za-z\-]+$', seq):
-                promoter_data.append({
-                    'species': 'Escherichia coli',
-                    'promoter_id': f"EC_{p_id}_{name}",
-                    'sequence': seq.upper(),
-                    'sigma_factor': sigma,
-                    'source_db': 'RegulonDB'
-                })
+        if len(parts) < 6:                  # need at least through pmSequence (col 6)
+            continue
+        p_id, name = parts[0], parts[1]
+        if p_id.startswith('1)'):           # skip the "1)pmId  2)pmName ..." column-header row
+            continue
+        sigma = parts[4] if parts[4] else 'Unknown'         # (5) sigmaFactor
+        seq = parts[5].strip()                               # (6) pmSequence
+        confidence = parts[10] if len(parts) > 10 else ''    # (11) confidenceLevel (W/S/C)
+        if not re.match(r'^[ACGTN]+$', seq, re.IGNORECASE):  # real DNA only (rejects "None"/blank)
+            continue
+        promoter_data.append({
+            'species': 'Escherichia coli',
+            'promoter_id': f"EC_{p_id}_{name}",
+            'sequence': seq.upper(),
+            'sigma_factor': sigma,
+            'confidence_level': confidence,
+            'source_db': 'RegulonDB',
+        })
     return pd.DataFrame(promoter_data)
 
 def parse_dbtbs():
