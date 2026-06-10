@@ -1,0 +1,11 @@
+# Ignore all .fastq.gz files
+*.fastq.gz
+
+# Ignore all SRR directories (including those with and without underscores)
+SRR*/
+
+# Ignore sratoolkit files
+../sratoolkit*/
+sratoolkit*/
+../sratoolkit*.tar.gz
+sratoolkit*.tar.gz
