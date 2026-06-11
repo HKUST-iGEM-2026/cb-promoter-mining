@@ -239,7 +239,7 @@ rebalance, so confirm current owners with Oak.
 - PT2 Ship ProkBERT to HuggingFace — Sine — ⬜ (dep PT1)
 - PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
 - PT4 Calibration + FDR harness — Seonyu — ⬜ (dep PT3; reused by T26/T27)
-- PT5 Sliding-window inference on E. coli — Ishi — ⬜ (can run locally; reused by T28)
+- PT5 Sliding-window inference on E. coli — Ishi — 🟡 code fixed (batch-scoring bug); **stale CSV needs a clean re-run** (can run locally; reused by T28)
 - PT6 Validate pipeline + lock output schema — Swasti — ⬜ (dep PT5; locks T32 schema)
 
 **Phase A — data acquisition & curation**
@@ -345,6 +345,12 @@ select by **product description**, not the gene-symbol field.
   **CPU**. Confirm `torch.cuda.is_available()`, `nvidia-smi`, and `--gpus-per-node=1`.
 - **No secrets in code.** A HuggingFace token was once hard-coded in `prokbert_finetune.py`
   (`neuralbioinfo/prokbert-mini` is public — no token needed). Never commit tokens/keys.
+- **PT5 batch-scoring bug — FIXED:** `predict_batch` reassigned `inputs` inside a `for` loop, so
+  only the **last** window of each batch was tokenised, then scored as a fake batch-of-1 — emitting
+  **one row per 64-window batch** with the score attached to the **wrong** window (exactly 29,010 of
+  ~1.86M windows). Now tokenises/stacks/scores the whole batch in one pass (window also 80→81 bp to
+  match the model's TSS-at-+61 framing). The committed `mg1655_promoter_predictions.csv` predates the
+  fix — **regenerate it** (needs `prokbert` + GPU) before trusting any numbers.
 
 ---
 

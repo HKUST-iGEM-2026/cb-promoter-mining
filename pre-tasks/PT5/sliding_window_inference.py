@@ -1,4 +1,3 @@
-import Bio
 from Bio import SeqIO
 from Bio.Seq import Seq
 import pandas as pd
@@ -11,7 +10,7 @@ fasta_path = "MG1655.fna"
 model_name = "neuralbioinfo/prokbert-mini-long-promoter"
 
 #defining params
-window_size = 80
+window_size = 81          # matches the model's training window (RegulonDB promoter = 81 bp, +1 at pos 61)
 step_size = 5
 batch_size = 64
 
@@ -40,21 +39,17 @@ chromosome = record.id
 results = []
 
 def predict_batch(batch_rows):
-    for row in batch_rows: 
-        sequences = [row["sequence"]]
-        inputs = tokenizer.encode_plus(row["sequence"])
-
-    inputs = {
-        key: torch.tensor(value).unsqueeze(0).long()
-    for key, value in inputs.items()
-    }
-    inputs = {key: value.to(device) for key, value in inputs.items()}
+    # tokenize the WHOLE batch and score it in one forward pass.
+    # every window is the same length, so the token sequences line up with no padding.
+    encoded = [tokenizer.encode_plus(r["sequence"]) for r in batch_rows]
+    inputs = {key: torch.tensor([e[key] for e in encoded]).long().to(device)
+              for key in encoded[0]}
 
     with torch.no_grad():
         outputs = model(**inputs)
-        probs = torch.softmax(outputs.logits, dim=1)[:, 1]
+        probs = torch.softmax(outputs.logits, dim=1)[:, 1].cpu().tolist()
 
-    for row, prob in zip(batch_rows, probs.cpu().tolist()):
+    for row, prob in zip(batch_rows, probs):
         row["promoter_score"] = prob
         results.append(row)
 
