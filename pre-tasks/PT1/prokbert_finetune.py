@@ -3,21 +3,64 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 from datasets import Dataset
 
-# 1. Create a tiny mock dataset so we can verify the code runs perfectly
-data = {
-    "sequence": [
-        "ATCGATCGATCGATCGATCGATCGATCGATCGATCGATCG",  # Mock Promoter (Label 1)
-        "TTTTGGCCAAAATTTTGGCCAAAATTTTGGCCAAAATTTT",  # Mock Promoter (Label 1)
-        "GCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTAGCTA",  # Mock Non-Promoter (Label 0)
-        "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"   # Mock Non-Promoter (Label 0)
-    ],
-    "label": [1, 1, 0, 0]
-}
-df = pd.DataFrame(data)
-dataset = Dataset.from_pandas(df)
+def load_fasta_sequences(file_path):
+    """Parses a FASTA-style file, skipping headers and returning only clean sequences."""
+    sequences = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            # If the line starts with '>', it's a header line—skip it completely!
+            if line.startswith('>') or not line:
+                continue
+            # Otherwise, it's a sequence row. Force it to uppercase for consistency.
+            sequences.append(line.upper())
+    return sequences
 
-# Split into 50% training and 50% validation
-dataset = dataset.train_test_split(test_size=0.5)
+# 1. LOAD, BALANCE, AND MERGE REAL EXPERIMENTAL CSV DATASETS
+print("Loading and compiling all genomic datasets...")
+
+# Load RegulonDB CSV data
+df_regulon_pos = pd.read_csv("promoters_with_labels.csv")
+df_regulon_neg = pd.read_csv("nonprom_with_labels.csv")
+
+df_regulon_pos.columns = ['sequence', 'label']
+df_regulon_neg.columns = ['sequence', 'label']
+
+# Load FASTA data and convert to DataFrame
+dbtbs_pos_seqs = load_fasta_sequences("DBTBS_prom.fa")
+dbtbs_neg_seqs = load_fasta_sequences("DBTBS_non_prom.fa")
+
+df_dbtbs_pos = pd.DataFrame({'sequence': dbtbs_pos_seqs, 'label': 1})
+df_dbtbs_neg = pd.DataFrame({'sequence': dbtbs_neg_seqs, 'label': 0})
+
+# Merge all data
+df_all_pos = pd.concat([df_regulon_pos, df_dbtbs_pos], axis=0,ignore_index=True)
+df_all_neg = pd.concat([df_regulon_neg, df_dbtbs_neg], axis=0,ignore_index=True)
+
+# Clean out any rogue empty/NaN values and enforce uppercase strings
+df_all_pos = df_all_pos.dropna(subset=['sequence'])
+df_all_neg = df_all_neg.dropna(subset=['sequence'])
+
+df_all_pos['sequence'] = df_all_pos['sequence'].astype(str).str.upper()
+df_all_neg['sequence'] = df_all_neg['sequence'].astype(str).str.upper()
+
+# Balance dataset classes so the model isn't biased
+min_samples = min(len(df_all_pos), len(df_all_neg))
+print(f"Balancing dataset: Selecting {min_samples} samples from each class.")
+
+df_pos_balanced = df_all_pos.sample(n=min_samples, random_state=42)
+df_neg_balanced = df_all_neg.sample(n=min_samples, random_state=42)
+
+# Merge them together and shuffle the whole deck
+df_combined = pd.concat([df_pos_balanced, df_neg_balanced], axis=0, ignore_index=True)
+df_combined = df_combined.sample(frac=1, random_state=42).reset_index(drop=True)
+
+# Convert your Pandas DataFrame straight into a Hugging Face Dataset object
+dataset = Dataset.from_pandas(df_combined)
+
+# Split into 80% training and 20% validation (better split for real datasets)
+dataset = dataset.train_test_split(test_size=0.2, seed=42)
+print(f"Dataset Split complete! Train size: {len(dataset['train'])} | Validation size: {len(dataset['test'])}")
 
 # 2. Load the official ProkBERT Tokenizer
 # ProkBERT doesn't read text; it uses an overlapping k-mer method to tokenize microbial DNA
