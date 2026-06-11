@@ -47,7 +47,7 @@ dependencies:
 
   # ---- Deep learning (T18, T19, T20, T21, T23, T24, T28) ----
   - pytorch>=2.1,<2.5        # <2.5: last torch line carrying the pytorch-cuda metapackage
-  - pytorch-cuda=12.1        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
+  - pytorch-cuda=12.2        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
                              # VERIFY exact value against `module avail cuda` on SuperPOD and
                              # repin if needed (only 11.8 / 12.1 / 12.4 are valid metapackages).
   - scikit-optimize          # hyperparameter sweeps (T21) — see DEPLOY.md note re: scikit-learn>=1.3
