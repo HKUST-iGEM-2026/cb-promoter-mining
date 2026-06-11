@@ -157,7 +157,8 @@ cb-promoter-mining/
 │   └── T28/sliding_window_engine_template.py
 └── pre-tasks/
     ├── PT1/prokbert_finetune.py, regulonDB_treating.py
-    └── PT3/metrics_cv.py
+    ├── PT3/metrics_cv.py
+    └── PT5/sliding_window_inference.py  # E. coli (MG1655) sliding-window inference; reused by T28
 ```
 
 T6 (Bakta annotations, ~8.9 GB) lives in a **separate** repo/folder `bakta_outputs/`, not here
@@ -239,7 +240,7 @@ rebalance, so confirm current owners with Oak.
 - PT2 Ship ProkBERT to HuggingFace — Sine — ⬜ (dep PT1)
 - PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
 - PT4 Calibration + FDR harness — Seonyu — ⬜ (dep PT3; reused by T26/T27)
-- PT5 Sliding-window inference on E. coli — Ishi — 🟡 code fixed (batch-scoring bug); **stale CSV needs a clean re-run** (can run locally; reused by T28)
+- PT5 Sliding-window inference on E. coli — Ishi — 🟡 code fixed (batch-scoring bug); **stale CSV — Ishi re-runs the script 2026-06-13 to regenerate it** (can run locally; reused by T28)
 - PT6 Validate pipeline + lock output schema — Swasti — ⬜ (dep PT5; locks T32 schema)
 
 **Phase A — data acquisition & curation**
