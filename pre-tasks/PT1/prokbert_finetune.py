@@ -3,30 +3,56 @@ import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 from datasets import Dataset
 
-# 1. LOAD, BALANCE, AND MERGE YOUR REAL EXPERIMENTAL CSV DATASETS
-print("Loading experimental CSV datasets...")
+def load_fasta_sequences(file_path):
+    """Parses a FASTA-style file, skipping headers and returning only clean sequences."""
+    sequences = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            # If the line starts with '>', it's a header line—skip it completely!
+            if line.startswith('>') or not line:
+                continue
+            # Otherwise, it's a sequence row. Force it to uppercase for consistency.
+            sequences.append(line.upper())
+    return sequences
 
-# Load positive and negative data frames
-df_pos = pd.read_csv("promoters_with_labels.csv")  # True promoters (Label 1)
-df_neg = pd.read_csv("nonprom_with_labels.csv")    # Non-promoters (Label 0)
+# 1. LOAD, BALANCE, AND MERGE REAL EXPERIMENTAL CSV DATASETS
+print("Loading and compiling all genomic datasets...")
 
-# Standardize the column names so they match perfectly before combining
-df_pos.columns = ['sequence', 'label']
-df_neg.columns = ['sequence', 'label']
+# Load RegulonDB CSV data
+df_regulon_pos = pd.read_csv("promoters_with_labels.csv")
+df_regulon_neg = pd.read_csv("nonprom_with_labels.csv")
 
-# Convert all sequences to uppercase to ensure consistency
-df_pos['sequence'] = df_pos['sequence'].str.upper()
-df_neg['sequence'] = df_neg['sequence'].str.upper()
+df_regulon_pos.columns = ['sequence', 'label']
+df_regulon_neg.columns = ['sequence', 'label']
 
-# ML Best Practice: Balance dataset classes so the model isn't biased
-min_samples = min(len(df_pos), len(df_neg))
+# Load FASTA data and convert to DataFrame
+dbtbs_pos_seqs = load_fasta_sequences("DBTBS_prom.fa")
+dbtbs_neg_seqs = load_fasta_sequences("DBTBS_non_prom.fa")
+
+df_dbtbs_pos = pd.DataFrame({'sequence': dbtbs_pos_seqs, 'label': 1})
+df_dbtbs_neg = pd.DataFrame({'sequence': dbtbs_neg_seqs, 'label': 0})
+
+# Merge all data
+df_all_pos = pd.concat([df_regulon_pos, df_dbtbs_pos], axis=0,ignore_index=True)
+df_all_neg = pd.concat([df_regulon_neg, df_dbtbs_neg], axis=0,ignore_index=True)
+
+# Clean out any rogue empty/NaN values and enforce uppercase strings
+df_all_pos = df_all_pos.dropna(subset=['sequence'])
+df_all_neg = df_all_neg.dropna(subset=['sequence'])
+
+df_all_pos['sequence'] = df_all_pos['sequence'].astype(str).str.upper()
+df_all_neg['sequence'] = df_all_neg['sequence'].astype(str).str.upper()
+
+# Balance dataset classes so the model isn't biased
+min_samples = min(len(df_all_pos), len(df_all_neg))
 print(f"Balancing dataset: Selecting {min_samples} samples from each class.")
 
-df_pos_balanced = df_pos.sample(n=min_samples, random_state=42)
-df_neg_balanced = df_neg.sample(n=min_samples, random_state=42)
+df_pos_balanced = df_all_pos.sample(n=min_samples, random_state=42)
+df_neg_balanced = df_all_neg.sample(n=min_samples, random_state=42)
 
 # Merge them together and shuffle the whole deck
-df_combined = pd.concat([df_pos_balanced, df_neg_balanced], axis=0)
+df_combined = pd.concat([df_pos_balanced, df_neg_balanced], axis=0, ignore_index=True)
 df_combined = df_combined.sample(frac=1, random_state=42).reset_index(drop=True)
 
 # Convert your Pandas DataFrame straight into a Hugging Face Dataset object
