@@ -102,6 +102,29 @@ headers fixed to `cuda/12.1` + `--partition=preempt`. Those per-task scripts now
 their owners (`model-training/T18–T21`, `evaluation-and-calibration/T23–T24`,
 `mining-and-motif-annotation/T28`), not in T3.
 
+## 7. Pre-stage the model weights (offline compute nodes)
+SuperPOD compute nodes usually have **no internet**, but ProkBERT and Nucleotide Transformer
+pull their checkpoints from HuggingFace at run time — so a GPU job will hang or fail trying to
+download mid-run. Fetch them once on the **login node** (which has internet) into a shared
+cache, then run jobs offline:
+
+```bash
+# once, on the login node (use the exact model IDs your scripts reference):
+export HF_HOME=/project/igem2026/hf_cache
+huggingface-cli download neuralbioinfo/prokbert-mini-long                     # base for T18 (PT5 uses …-long-promoter)
+huggingface-cli download InstaDeepAI/nucleotide-transformer-v2-250m-multi-species   # base for T19
+```
+
+Then in every SBATCH preamble:
+```bash
+export HF_HOME=/project/igem2026/hf_cache
+export HF_HUB_OFFLINE=1     # fail fast instead of hanging if a file is missing from the cache
+```
+
+The custom **CNN has nothing to download** — it's trained from scratch on the cluster. Save the
+fine-tuned ProkBERT/NT checkpoints (T18/T19) and the trained CNN (T20) to `/project/igem2026`
+too, so every node can read them.
+
 ## Open decisions / TODO
 - **CUDA pin** — set to `12.1` for the H800 (Hopper) GPUs; confirm SuperPOD's exact CUDA
   module with `module avail cuda` (§2) and repin if it differs.
