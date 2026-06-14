@@ -26,6 +26,9 @@ dependencies:
   - scikit-learn>=1.3.0      # StratifiedGroupKFold (T15/T23), metrics (T22), calibration (T26)
   - matplotlib
   - seaborn
+  - statsmodels              # BH multipletests for PT4 / T27 empirical FDR (was only present transitively)
+  - requests                 # T8 RegulonDB/DBTBS HTTP fetch (Phase A; harmless to keep here)
+  - pyyaml                   # T21 reads its sweep config as YAML (also a snakemake dependency)
   - ipykernel
   - jupyterlab               # interactive work on the login node (optional)
 
@@ -34,6 +37,7 @@ dependencies:
   - biopython
   - bedtools                 # interval ops (T12 / T13)
   - samtools                 # faidx for upstream extraction (T13)
+  - pybigwig                 # T28 writes bigWig score tracks for the genome-mining output
   - cd-hit>=4.8              # clustering for cluster-aware splits (T15)
   - meme>=5.5.0              # MEME suite — provides FIMO for -10/-35 motif scanning (T31)
   - openjdk>=11              # Java runtime for TSSpredator (T10): TSSpredator is a JAR, NOT a
@@ -50,7 +54,7 @@ dependencies:
   - pytorch-cuda=12.1        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
                              # VERIFY exact value against `module avail cuda` on SuperPOD and
                              # repin if needed (only 11.8 / 12.1 / 12.4 are valid metapackages).
-  - scikit-optimize          # hyperparameter sweeps (T21) — see DEPLOY.md note re: scikit-learn>=1.3
+  - optuna                   # HPO / hyperparameter sweeps actually used by T18-T21 (replaces unused scikit-optimize)
 
   # ---- pip-only ----
   - pip
