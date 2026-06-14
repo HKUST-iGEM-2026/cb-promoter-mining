@@ -58,35 +58,58 @@ def parse_regulondb():
     return pd.DataFrame(promoter_data)
 
 def parse_dbtbs():
-    url = "https://dbtbs.hgc.jp/download/promoter.dat.gz"
-    try:
-        compressed_content = download_file(url)
-        content = gzip.decompress(compressed_content).decode('utf-8')
-    except Exception as e:
-        print(f"DBTBS download failed ({e}). Generating high-quality B. subtilis positive matrix.")
+    # Look for the positive promoter FASTA file in your path
+    local_dbtbs = os.path.join(OUTPUT_DIR, "DBTBS_prom.fa")
+    
+    if os.path.exists(local_dbtbs):
+        print(f"Reading local FASTA DBTBS file: {local_dbtbs}")
+        with open(local_dbtbs, encoding="utf-8") as fh:
+            content = fh.read()
+    else:
+        print(f"⚠️ Local DBTBS file '{local_dbtbs}' not found. Please move 'DBTBS_prom.fa' into {OUTPUT_DIR}")
         return pd.DataFrame()
 
     promoter_data = []
-    current_entry = {}
+    current_id = None
+    current_seq = []
+
     for line in content.splitlines():
-        if line.startswith("ID"):
-            current_entry['id'] = line.split()[1]
-        elif line.startswith("SU"):
-            current_entry['sigma'] = line.replace("SU", "").strip()
-        elif line.startswith("SQ"):
-            current_entry['seq'] = ""
-        elif line.startswith("  ") and 'seq' in current_entry:
-            current_entry['seq'] += line.strip().replace(" ", "")
-        elif line.startswith("//"):
-            if 'seq' in current_entry and len(current_entry['seq']) > 0:
-                promoter_data.append({
-                    'species': 'Bacillus subtilis',
-                    'promoter_id': f"BS_{current_entry.get('id', 'unknown')}",
-                    'sequence': current_entry['seq'].upper(),
-                    'sigma_factor': current_entry.get('sigma', 'SigmaA'),
-                    'source_db': 'DBTBS'
-                })
-            current_entry = {}
+        line = line.strip()
+        if not line:
+            continue
+            
+        if line.startswith(">"):
+            # If we already have a gathered entry before hitting this new header, save it
+            if current_id and current_seq:
+                seq_str = "".join(current_seq).upper()
+                cleaned_seq = re.sub(r'[^ACGTN]', '', seq_str)
+                if cleaned_seq:
+                    promoter_data.append({
+                        'species': 'Bacillus subtilis',
+                        'promoter_id': f"BS_{current_id}",
+                        'sequence': cleaned_seq,
+                        'sigma_factor': 'SigmaA',  # Default fallback for B. subtilis main housekeepers
+                        'source_db': 'DBTBS'
+                    })
+            # Reset trackers for the next sequence block
+            current_id = line.replace(">", "").strip()
+            current_seq = []
+        else:
+            current_seq.append(line)
+
+    # Catch the very last sequence block at the bottom of the file
+    if current_id and current_seq:
+        seq_str = "".join(current_seq).upper()
+        cleaned_seq = re.sub(r'[^ACGTN]', '', seq_str)
+        if cleaned_seq:
+            promoter_data.append({
+                'species': 'Bacillus subtilis',
+                'promoter_id': f"BS_{current_id}",
+                'sequence': cleaned_seq,
+                'sigma_factor': 'SigmaA',
+                'source_db': 'DBTBS'
+            })
+
     return pd.DataFrame(promoter_data)
 
 def build_pipeline():
