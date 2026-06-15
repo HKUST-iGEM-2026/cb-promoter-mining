@@ -352,6 +352,12 @@ select by **product description**, not the gene-symbol field.
   ~1.86M windows). Now tokenises/stacks/scores the whole batch in one pass (window also 80→81 bp to
   match the model's TSS-at-+61 framing). The committed `mg1655_promoter_predictions.csv` predates the
   fix — **regenerate it** (needs `prokbert` + GPU) before trusting any numbers.
+- **torch/CUDA env drift — gotcha (2026-06-15):** a loose `pytorch` pin + a stray `pip install` pulled
+  **torch 2.12 with CUDA-13 wheels** (and `torchvision`), which needs a newer driver than the H800 nodes
+  have → silent **CPU fallback**. T4 now pins `pytorch=2.4.1` + `transformers>=4.35,<4.46`; build from
+  `environment.yml` (NOT the committed `environment.lock.yml`, which is the polluted 12.1/13.x mix and must
+  be regenerated), never `pip install torch/torchvision`, and verify `torch.version.cuda=='12.1'` +
+  `torch.cuda.is_available()` **inside a GPU job**. We use no torchvision.
 
 ---
 

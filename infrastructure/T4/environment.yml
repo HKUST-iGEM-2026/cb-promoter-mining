@@ -50,7 +50,9 @@ dependencies:
   - snakemake>=8.0
 
   # ---- Deep learning (T18, T19, T20, T21, T23, T24, T28) ----
-  - pytorch>=2.1,<2.5        # <2.5: last torch line carrying the pytorch-cuda metapackage
+  - pytorch=2.4.1            # EXACT pin: validated on H800 + cu121. A loose range let a stray pip
+                             # install drift torch to 2.12/cu13 (needs a newer driver than the nodes
+                             # have -> silent CPU fallback). Keep torch coming from conda only.
   - pytorch-cuda=12.1        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
                              # VERIFY exact value against `module avail cuda` on SuperPOD and
                              # repin if needed (only 11.8 / 12.1 / 12.4 are valid metapackages).
@@ -59,10 +61,12 @@ dependencies:
   # ---- pip-only ----
   - pip
   - pip:
-    - git+https://github.com/nbrg-ppcu/prokbert.git   # ProkBERT-mini-long (T18)
+    - git+https://github.com/nbrg-ppcu/prokbert.git   # ProkBERT-mini-long (T18). If reinstalling by hand
+                                                      # use `pip install --no-deps ...` so it can't bump torch.
+                                                      # Do NOT install torchvision (unused; it drags torch up).
 
     # HuggingFace ecosystem (T18 / T19 / T28)
-    - transformers>=4.35
+    - transformers>=4.35,<4.46   # upper bound: avoids pulling a torch-2.6+ build and the eval_strategy rename
     - datasets
     - peft                   # LoRA for Nucleotide Transformer v2 250M (T19)
     - accelerate             # mixed-precision training

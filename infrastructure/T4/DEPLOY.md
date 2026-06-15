@@ -44,6 +44,10 @@ ENV=/project/igem2026/envs/promoter-mining-hpc4
 mamba env create -f environment.yml -p "$ENV"
 chmod -R g+rX "$ENV"                # let the whole igem2026 group read/execute it
 conda activate "$ENV"
+# Guard: torch must stay the conda cu121 build. After this point do NOT `pip install torch` /
+# `torchvision` or `pip install --upgrade transformers` — that pulls a CUDA-13 torch the H800
+# driver can't use (silent CPU fallback). Verify before going further:
+python -c "import torch; assert torch.version.cuda=='12.1', torch.version.cuda; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
 ```
 
 `-p <prefix>` puts the env in the shared project path; the `name:` field is ignored when
@@ -75,6 +79,12 @@ snakemake -n --workflow-profile profiles/slurm
 ```
 
 ## 5. Lock it for reproducibility (the whole point of T4)
+
+> ⚠️ **The currently committed `environment.lock.yml` is INVALID — do not install from it.** It mixes a
+> CUDA 12.1 conda stack with CUDA-13 pip wheels (`nvidia-*-cu13`, `cuda-toolkit==13.0.2`) plus
+> `torch 2.12` / `torchvision 0.27`. That torch needs a newer driver than the H800 nodes have, so it
+> silently falls back to CPU. Build from `environment.yml`, then regenerate this lock from the clean env.
+
 Once it solves cleanly, freeze exact versions so every teammate gets an identical env,
 and commit the lock:
 
