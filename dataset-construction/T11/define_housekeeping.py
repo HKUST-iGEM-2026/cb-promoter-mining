@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
 T11 - Housekeeping gene set definition.
+Owner: Seonyu
+Due: 12 Jun
 
 Selects reliably/constitutively expressed genes from the Bakta (T6) annotations
 so their upstream regions can serve as dependable constitutive-promoter examples
