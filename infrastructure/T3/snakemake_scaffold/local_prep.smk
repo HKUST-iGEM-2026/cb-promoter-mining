@@ -18,7 +18,7 @@
 rule all:
     input:
         "inputs/annotations.gff3",             # T6  -> ANNOTATIONS (also input to T10 on HPC4)
-        "inputs/drnaseq_accessions.csv",       # T7  -> input to T10 on HPC4 (tss_prep.smk)
+        "inputs/SRR_dRNAseq_for_TSSpredator.txt",  # T7  -> input to T10 on HPC4 (tss_prep.smk)
         "inputs/reference_promoters.parquet",  # T8  -> REFDB
         "inputs/literature_promoters.tsv",     # T9  -> LIT_PROM
 
@@ -36,7 +36,7 @@ rule t6_bakta_annotation:
     #       (collect the per-genome .gff3 into {output})
 
 rule t7_drnaseq_lit_search:
-    output: "inputs/drnaseq_accessions.csv"
+    output: "inputs/SRR_dRNAseq_for_TSSpredator.txt"
     shell: "echo '[T7] dRNA-seq literature search (mock, manual)' && touch {output}"
     # real: (manual) compile published Clostridium dRNA-seq SRA/ENA accessions + citations into {output}
 

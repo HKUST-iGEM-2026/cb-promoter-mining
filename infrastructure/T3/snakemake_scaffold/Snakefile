@@ -71,13 +71,13 @@ rule pt4_calibration_fdr_harness:
     input: "results/PT3.done"
     output: "results/PT4.done"
     shell: "echo '[PT4] calibration + FDR harness (mock)' && touch {output}"
-    # real: python pre-tasks/PT4/calibration_fdr_harness.py   (reused by T26/T27)
+    # real: python pre-tasks/PT4/calibration_fdr.py   (reused by T26/T27)
 
 rule pt5_sliding_window_ecoli:
     output: "results/PT5.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
     shell: "echo '[PT5] sliding-window inference on E. coli (mock GPU)' && touch {output}"
-    # real: python pre-tasks/PT5/sliding_window_ecoli.py   (sanity-check vs RegulonDB)
+    # real: python pre-tasks/PT5/sliding_window_inference.py   (sanity-check vs RegulonDB)
 
 rule pt6_validate_lock_schema:
     input: "results/PT5.done"

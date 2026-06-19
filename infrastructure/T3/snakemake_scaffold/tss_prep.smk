@@ -20,7 +20,7 @@ rule all:
 rule t10_tsspredator:
     input:
         annotations="inputs/annotations.gff3",       # from T6 (local_prep, uploaded)
-        accessions="inputs/drnaseq_accessions.csv",  # from T7 (local_prep, uploaded)
+        accessions="inputs/SRR_dRNAseq_for_TSSpredator.txt",  # from T7 (local_prep, uploaded)
     output: "inputs/tss_sites.gff3"
     resources: cpus_per_task=8, runtime=240
     shell: "echo '[T10] re-process dRNA-seq with TSSpredator on HPC4 (mock)' && touch {output}"

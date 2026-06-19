@@ -39,7 +39,8 @@ data-acquisition-and-curation/sratoolkit.3.4.1-ubuntu64/
 
 # Python
 __pycache__/
-*.pyc
+*.pyc.DS_Store
+
 
 alignment/
 path_a_reads/
