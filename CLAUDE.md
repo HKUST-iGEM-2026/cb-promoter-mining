@@ -240,8 +240,8 @@ rebalance, so confirm current owners with Oak.
 - PT2 Ship ProkBERT to HuggingFace — Sine — ⬜ (dep PT1)
 - PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
 - PT4 Calibration + FDR harness — Seonyu — ⬜ (dep PT3; reused by T26/T27)
-- PT5 Sliding-window inference on E. coli — Ishi — 🟡 code fixed (batch-scoring bug); **stale CSV — Ishi re-runs the script 2026-06-13 to regenerate it** (can run locally; reused by T28)
-- PT6 Validate pipeline + lock output schema — Swasti — ⬜ (dep PT5; locks T32 schema)
+- PT5 Sliding-window inference on E. coli — Ishi — ✅ code fixed (batch-scoring); CSV regenerated → `mg1655_promoter_scores.csv` (242 MB, Git-LFS via the `pre-tasks/PT5/*.csv` rule; script now writes that exact name). Reused by T28.
+- PT6 Validate pipeline + lock output schema — Swasti — 🟡 implemented `pre-tasks/PT6/validate_promoters.py` (coord logic incl. reverse strand verified — matched dist median 4 bp, signed median 0; locks the candidate-table schema for T32). Baseline finding: off-the-shelf `prokbert-mini-long-promoter` is weak genome-wide (recall 0.37, precision 0.036, ~2× enrichment over random) but 4 bp-accurate when it hits — the bar to beat after fine-tuning. (dep PT5)
 
 **Phase A — data acquisition & curation**
 - T5 Download Clostridium genomes — Salimah — ✅ 166 RefSeq genomes (taxon 1485)

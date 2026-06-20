@@ -94,4 +94,4 @@ scan_sequence(rev_genome, "-")
 df = pd.DataFrame(results)
 df = df.sort_values("promoter_score", ascending=False)
 
-df.to_csv("mg1655_promoter_predictions.csv", index=False)
+df.to_csv("mg1655_promoter_scores.csv", index=False)   # name matches the committed LFS file + PT6 --pred + the pre-tasks/PT5/*.csv LFS rule

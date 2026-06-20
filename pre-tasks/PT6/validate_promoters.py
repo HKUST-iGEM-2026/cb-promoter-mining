@@ -30,7 +30,7 @@ forward coordinate (end-1); the TSS is 60 nt into the 3' direction -> end-1-60.
 Usage
 -----
 python validate_promoters.py \
-    --pred mg1655_promoter_predictions.csv \
+    --pred mg1655_promoter_scores.csv \
     --regulondb regulondb_tss.tsv \
     --genome MG1655.fna \
     --threshold 0.9 --tolerance 20 \
