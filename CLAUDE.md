@@ -352,12 +352,14 @@ select by **product description**, not the gene-symbol field.
   ~1.86M windows). Now tokenises/stacks/scores the whole batch in one pass (window also 80→81 bp to
   match the model's TSS-at-+61 framing). The committed `mg1655_promoter_predictions.csv` predates the
   fix — **regenerate it** (needs `prokbert` + GPU) before trusting any numbers.
-- **torch/CUDA env drift — gotcha (2026-06-15):** a loose `pytorch` pin + a stray `pip install` pulled
-  **torch 2.12 with CUDA-13 wheels** (and `torchvision`), which needs a newer driver than the H800 nodes
-  have → silent **CPU fallback**. T4 now pins `pytorch=2.4.1` + `transformers>=4.35,<4.46`; build from
-  `environment.yml` (NOT the committed `environment.lock.yml`, which is the polluted 12.1/13.x mix and must
-  be regenerated), never `pip install torch/torchvision`, and verify `torch.version.cuda=='12.1'` +
-  `torch.cuda.is_available()` **inside a GPU job**. We use no torchvision.
+- **torch/CUDA — RESOLVED (2026-06-19):** the SuperPOD H800 driver maxes at **CUDA 12.8** (not 12.1 as first
+  assumed), and prokbert needs `transformers>=4.56` which needs a newer torch than conda ships. Default PyPI
+  torch is a **CUDA-13** build the 12.8 driver can't run → silent **CPU fallback**. Fix: T4 installs
+  **torch==2.11.0+cu128 / torchvision==0.26.0+cu128 via pip** from `download.pytorch.org/whl/cu128` (exact
+  `+cu128` pins, listed before prokbert/transformers); the conda `pytorch`/`pytorch-cuda` pins and the
+  `pytorch`/`nvidia` channels are gone. GPU env builds from `environment.yml`; the CPU bio CLI
+  (meme/sra-tools/segemehl) from `environment-bio.yml`. Verify `torch.cuda.is_available()` +
+  `torch.version.cuda=='12.8'` **inside a GPU job**. Never run a bare `pip install torch` — it pulls the cu13 build.
 
 ---
 

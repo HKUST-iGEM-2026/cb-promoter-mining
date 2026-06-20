@@ -44,10 +44,10 @@ ENV=/project/igem2026/envs/promoter-mining-hpc4
 mamba env create -f environment.yml -p "$ENV"
 chmod -R g+rX "$ENV"                # let the whole igem2026 group read/execute it
 conda activate "$ENV"
-# Guard: torch must stay the conda cu121 build. After this point do NOT `pip install torch` /
-# `torchvision` or `pip install --upgrade transformers` — that pulls a CUDA-13 torch the H800
-# driver can't use (silent CPU fallback). Verify before going further:
-python -c "import torch; assert torch.version.cuda=='12.1', torch.version.cuda; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
+# Guard: confirm torch is the cu128 build (CUDA 12.8 = the H800 driver max). The pip section installs
+# it; do NOT later run a bare `pip install torch` — PyPI's default is a CUDA-13 build the driver can't
+# use (silent CPU fallback). Verify before going further:
+python -c "import torch; assert torch.version.cuda=='12.8', torch.version.cuda; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
 ```
 
 `-p <prefix>` puts the env in the shared project path; the `name:` field is ignored when

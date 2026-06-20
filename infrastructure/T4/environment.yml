@@ -8,10 +8,9 @@
 name: promoter-mining-hpc4
 
 channels:
-  - pytorch          # pytorch-cuda metapackage + CUDA torch builds
-  - nvidia           # CUDA runtime that pytorch-cuda pins against
   - conda-forge
   - bioconda
+  # torch is no longer a conda package (see the pip section) — the pytorch/nvidia channels are gone.
   # 'defaults' intentionally omitted: bioconda recommends conda-forge > bioconda,
   # and this avoids the Anaconda 'defaults' ToS. Prefer: conda config --set channel_priority strict
 
@@ -46,21 +45,22 @@ dependencies:
   # ---- Pipeline orchestration (matches the T3 SLURM scaffold) ----
   - snakemake>=8.0
 
-  # ---- Deep learning (T18, T19, T20, T21, T23, T24, T28) ----
-  - pytorch=2.4.1            # EXACT pin: validated on H800 + cu121. A loose range let a stray pip
-                             # install drift torch to 2.12/cu13 (needs a newer driver than the nodes
-                             # have -> silent CPU fallback). Keep torch coming from conda only.
-  - pytorch-cuda=12.1        # HPC4 = HKUST SuperPOD, H800 (Hopper) GPUs → CUDA 12.x.
-                             # VERIFY exact value against `module avail cuda` on SuperPOD and
-                             # repin if needed (only 11.8 / 12.1 / 12.4 are valid metapackages).
-  - optuna                   # HPO / hyperparameter sweeps actually used by T18-T21 (replaces unused scikit-optimize)
+  # ---- Deep learning (T18-T28) ----
+  # torch + torchvision are installed via PIP from the CUDA-12.8 index (see the pip section), NOT
+  # conda: the SuperPOD H800 driver maxes at CUDA 12.8, and prokbert needs transformers>=4.56 which
+  # needs a newer torch than the conda channel ships — and conda torch kept getting overridden by pip.
+  - optuna                   # HPO / hyperparameter sweeps used by T18-T21 (replaces unused scikit-optimize)
 
   # ---- pip-only ----
   - pip
   - pip:
-    - git+https://github.com/nbrg-ppcu/prokbert.git   # ProkBERT-mini-long (T18). If reinstalling by hand
-                                                      # use `pip install --no-deps ...` so it can't bump torch.
-                                                      # Do NOT install torchvision (unused; it drags torch up).
+    # torch + torchvision from the CUDA-12.8 build index (the H800 driver maxes at 12.8). The exact
+    # +cu128 local versions force pip onto the cu128 builds — PyPI's default torch is a CUDA-13 build
+    # the driver can't run (silent CPU fallback). Keep these listed FIRST so the rest see torch satisfied.
+    - --extra-index-url https://download.pytorch.org/whl/cu128
+    - torch==2.11.0+cu128
+    - torchvision==0.26.0+cu128                       # required by prokbert; matches torch's cu128 build
+    - git+https://github.com/nbrg-ppcu/prokbert.git   # ProkBERT-mini-long (T18)
 
     # HuggingFace ecosystem (T18 / T19 / T28)
     - transformers>=4.56,<=5.3.0   # REQUIRED by prokbert 0.0.50; torch stays pinned by conda (transformers doesn't bump it). NOTE: T18/T19 templates must use eval_strategy, not evaluation_strategy, at this version (PT1 already does).
@@ -82,5 +82,8 @@ dependencies:
     - pyBigWig               # T28 bigWig score tracks (pip wheel; the conda build conflicts on libcurl)
     - tqdm
 
-    # Negative-set construction
-    - ushuffle               # dinucleotide-preserving shuffle for SRS (T14 / T27)
+    # Negative-set construction — ushuffle (SRS shuffle, T14/T27) is intentionally NOT installed
+    # here: its sdist has a fragile C build (stale Cython output -> longintrepr.h error on py3.11).
+    # Install it when T14 is actually implemented:  pip install cython
+    #   then  pip install --no-build-isolation ushuffle   (or use a bioconda build / pure-python
+    #   dinucleotide shuffle). Deferring it keeps the env build from failing for everyone.
