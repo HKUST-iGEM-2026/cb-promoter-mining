@@ -63,7 +63,7 @@ dependencies:
                                                       # Do NOT install torchvision (unused; it drags torch up).
 
     # HuggingFace ecosystem (T18 / T19 / T28)
-    - transformers>=4.35,<4.46   # upper bound: avoids pulling a torch-2.6+ build and the eval_strategy rename
+    - transformers>=4.56,<=5.3.0   # REQUIRED by prokbert 0.0.50; torch stays pinned by conda (transformers doesn't bump it). NOTE: T18/T19 templates must use eval_strategy, not evaluation_strategy, at this version (PT1 already does).
     - datasets
     - peft                   # LoRA for Nucleotide Transformer v2 250M (T19)
     - accelerate             # mixed-precision training
