@@ -24,7 +24,7 @@ dependencies:
   - pandas
   - scipy
   - scikit-learn>=1.3.0      # StratifiedGroupKFold (T15/T23), metrics (T22), calibration (T26)
-  - matplotlib
+  - matplotlib-base          # headless (no Qt/pyqt GUI) — the full matplotlib drags in a Qt stack that conflicts on the cluster
   - seaborn
   - statsmodels              # BH multipletests for PT4 / T27 empirical FDR (was only present transitively)
   - requests                 # T8 RegulonDB/DBTBS HTTP fetch (Phase A; harmless to keep here)
@@ -32,19 +32,16 @@ dependencies:
   - ipykernel
   - jupyterlab               # interactive work on the login node (optional)
 
-  # ---- Bioinformatics CLI (Phase B, Phase E, T10) ----
+  # ---- Bioinformatics CLI (light, low-conflict; Phase B) ----
   - seqkit                   # FASTA wrangling
   - biopython
   - bedtools                 # interval ops (T12 / T13)
   - samtools                 # faidx for upstream extraction (T13)
-  - pybigwig                 # T28 writes bigWig score tracks for the genome-mining output
   - cd-hit>=4.8              # clustering for cluster-aware splits (T15)
-  - meme>=5.5.0              # MEME suite — provides FIMO for -10/-35 motif scanning (T31)
-  - openjdk>=11              # Java runtime for TSSpredator (T10): TSSpredator is a JAR, NOT a
-                             # conda package — download the JAR separately, run `java -jar … <config>`
-  - sra-tools                # prefetch / fasterq-dump: pull dRNA-seq reads on the cluster (T10)
-  - segemehl                 # T10 read aligner (READemption/TSSpredator standard).
-                             # CONFIRM with Sine (T10 owner); swap for bowtie2/bwa if preferred.
+  # meme / sra-tools / segemehl / openjdk now live in environment-bio.yml — the MEME suite needs an
+  # older icu/libcurl than this env's modern conda-forge base, so the heavy T10/T31 CLI tools can't
+  # co-solve with the PyTorch stack. Build that companion env only if you own T10 (Sine) or T31 (Leo).
+  # pybigwig moved to the pip section below (its conda build also conflicts on libcurl).
 
   # ---- Pipeline orchestration (matches the T3 SLURM scaffold) ----
   - snakemake>=8.0
@@ -82,6 +79,7 @@ dependencies:
     # Parsing / IO
     - gffutils               # GFF parsing for upstream extraction (T13)
     - pyarrow                # parquet input (T8) and parquet/JSONL output (T32)
+    - pyBigWig               # T28 bigWig score tracks (pip wheel; the conda build conflicts on libcurl)
     - tqdm
 
     # Negative-set construction
