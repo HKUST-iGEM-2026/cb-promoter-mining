@@ -2,27 +2,23 @@ from Bio import SeqIO
 from Bio.Seq import Seq
 import pandas as pd
 import torch 
-from prokbert.prokbert_tokenizer import ProkBERTTokenizer
-from prokbert.models import ProkBertForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
 #defining the model & the FASTA file / genome that needs to be used
 fasta_path = "MG1655.fna"
-model_name = "neuralbioinfo/prokbert-mini-long-promoter"
+model_name = "neuralbioinfo/prokbert-mini-promoter"
 
 #defining params
-window_size = 81          # matches the model's training window (RegulonDB promoter = 81 bp, +1 at pos 61)
+window_size = 81      # matches the model's training window (RegulonDB promoter = 81 bp, +1 at pos 61)
 step_size = 5
 batch_size = 64
 
-#model params 
-kmer = 6
-shift = 2
-
-tokenizer = ProkBERTTokenizer(
-    tokenization_params={"kmer":kmer, "shift": shift}
+tokenizer = AutoTokenizer.from_pretrained(
+    model_name,
+    trust_remote_code=True
 )
 
-model = ProkBertForSequenceClassification.from_pretrained(
+model = AutoModelForSequenceClassification.from_pretrained(
         model_name,
         trust_remote_code=True
 )
@@ -41,9 +37,7 @@ results = []
 def predict_batch(batch_rows):
     # tokenize the WHOLE batch and score it in one forward pass.
     # every window is the same length, so the token sequences line up with no padding.
-    encoded = [tokenizer.encode_plus(r["sequence"]) for r in batch_rows]
-    inputs = {key: torch.tensor([e[key] for e in encoded]).long().to(device)
-              for key in encoded[0]}
+    inputs = tokenizer([r["sequence"] for r in batch_rows], return_tensors="pt").to(device)
 
     with torch.no_grad():
         outputs = model(**inputs)
@@ -94,4 +88,4 @@ scan_sequence(rev_genome, "-")
 df = pd.DataFrame(results)
 df = df.sort_values("promoter_score", ascending=False)
 
-df.to_csv("mg1655_promoter_predictions.csv", index=False)
+df.to_csv("mg1655_promoter_scores.csv", index=False)
