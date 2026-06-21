@@ -30,6 +30,7 @@ ANNOTATIONS = "inputs/annotations.gff3"            # T6  — Bakta annotations (
 REFDB       = "inputs/reference_promoters.parquet" # T8  — RegulonDB + DBTBS, normalised (local_prep)
 LIT_PROM    = "inputs/literature_promoters.tsv"    # T9  — curated synthetic promoters (local_prep)
 TSS_CALLS   = "inputs/tss_sites.gff3"              # T10 — TSSpredator empirical TSS (tss_prep, HPC4)
+PUBLISHED_TSS = "inputs/published_tss_promoters.parquet"  # T7b — in-genus published TSS positives (local_prep) → T15
 
 # The only true graph leaves (evaluation reports + final deliverable).
 LEAVES = ["T23", "T24", "T25", "T32"]
@@ -115,7 +116,9 @@ rule t14_negative_set:
     # real: python scripts/make_negatives.py {input} {output}   (CDS / intergenic / 3' + SRS via ushuffle)
 
 rule t15_cdhit_splits:
-    input: REFDB, TSS_CALLS, "results/T13.done", "results/T14.done"
+    input: REFDB, TSS_CALLS, PUBLISHED_TSS, "results/T13.done", "results/T14.done"
+    # positives pooled for the splits: REFDB (T8 cross-species) + PUBLISHED_TSS (T7b in-genus) + T13;
+    # negatives from T14. cdhit_splits.py concatenates the positive tables (same schema) before clustering.
     output: "results/T15.done"
     shell: "echo '[T15] CD-HIT clustering + cluster-aware splits (mock)' && touch {output}"
     # real: python scripts/cdhit_splits.py {input} {output}   (cd-hit clustering + StratifiedGroupKFold; 80/10/10)

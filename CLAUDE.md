@@ -252,10 +252,11 @@ rebalance, so confirm current owners with Oak.
 - T10 Re-process dRNA-seq w/ TSSpredator — Sine — ⬜ runs on HPC4 (`tss_prep.smk`; dep T6,T7)
 
 **Phase B — dataset construction** (land in `dataset-construction/`)
-- T11 Housekeeping gene set — Sine — ⬜ (dep T6; **select by product, not gene symbol** — §9)
-- T12 Operon detection (+ contig-end exclusion) — Seonyu — ⬜ (dep T6,T11)
-- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ⬜ (dep T11,T12; reused by T28)
-- T14 Four-class negatives incl. SRS — Seonyu — ⬜ (dep T6,T13)
+- T11 Housekeeping gene set — Sine — 🟡 implemented (`dataset-construction/T11/define_housekeeping.py` + outputs `housekeeping_genes.tsv`, per-genome counts); selects by product per §9. (dep T6)
+- T12 Operon detection (+ contig-end exclusion) — Seonyu — 🟡 script present (`dataset-construction/T12/operon_detection.py`), unrun/unverified (dep T6,T11)
+- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — 🟡 script present (`dataset-construction/T13/upstream_extraction.py`); reused by T28. **Its windows are INFERRED positives — see the §7 open decision.** (dep T11,T12)
+- T14 Four-class negatives incl. SRS — Seonyu — 🟡 script present (`dataset-construction/T14/negative_set_generation.py`), unrun/unverified (dep T6,T13)
+  *(NB: §6's T11–T14 were marked ⬜ but scripts/outputs exist; §3 "dataset-construction = README only" is likewise stale. T15/T16 still have no code.)*
 - T15 CD-HIT clustering + cluster-aware 80/10/10 splits — Sine — ⬜ (dep T8,T10,T13,T14)
 - T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ⬜ (dep T15)
 
@@ -284,6 +285,24 @@ rebalance, so confirm current owners with Oak.
 ---
 
 ## 7. Conventions & decisions locked
+
+> ⚠️ **OPEN DECISION — resolve BEFORE building T15/T16 (raised 2026-06-19, council-verified).** As
+> currently wired, the training split (T15 ← T8, T10, T13, T14) contains **no _verified_ in-genus
+> _Clostridium_ promoter positive.** T8 is cross-species (_E. coli_/_B. subtilis_); T10's TSSpredator
+> data is _Clostridioides difficile_ (out of taxon 1485) and is unbuilt; T13's housekeeping upstreams
+> are **inferred** regions, not confirmed promoters; and T9 (the ~93 real _C. acetobutylicum/
+> phytofermentans_ promoters) is held **out** to T24/T26. So the fine-tune would learn promoter grammar
+> only from foreign genera while its one in-genus "positive" class is AT-rich upstream windows scored
+> against shuffles of themselves — the exact AT-rich false-positive trap in §1. Decide, explicitly:
+> 1. **T13 label semantics** — are housekeeping upstreams positives at all? If yes, treat them as
+>    **weak/silver** labels (down-weight; do not mix with verified positives at equal weight).
+> 2. **Get verified in-genus positives into training** — (a) ingest the in-genus _published_ TSS
+>    (Hocq 2022 _C. acetobutylicum_, Al-Bassam 2018 _C. ljungdahlii_; identified in T7 but currently
+>    unused) via `data-acquisition-and-curation/T7/extract_published_tss_template.py` → feed into T15;
+>    and/or (b) **split T9** (train on some, hold out the rest) instead of 100% holdout, so the fine-tune
+>    sees ≥ some verified in-genus −10/−35.
+> 3. **T10 scope** — _C. difficile_ TSS are cross-species-adjacent (out of genus); the in-genus empirical
+>    signal is the published-table path, not TSSpredator.
 
 - **Phase A is prep, uploaded as `inputs/`.** The HPC4 pipeline starts at Phase B. T1–T4
   (infra) and PT1–PT6 (learning) are not real data-pipeline steps.
