@@ -23,18 +23,18 @@ this env.
   silently break the env. `/home` (200 GB/user) works but isn't shared, so each person would
   rebuild their own copy.
 
-## 2. Verify the CUDA pin *before* building
-SuperPOD's GPUs are **H800 (Hopper)**, which want **CUDA 12.x**, so `environment.yml` pins
-`pytorch-cuda=12.1`. Confirm SuperPOD actually offers a matching CUDA module:
+## 2. Verify the CUDA build *before* building
+SuperPOD's GPUs are **H800 (Hopper)**; the driver maxes at **CUDA 12.8** (confirmed via `nvidia-smi`).
+torch is installed **via pip from the `cu128` index** (`environment.yml` pins `torch==2.11.0+cu128` /
+`torchvision==0.26.0+cu128`) — there is **no conda `pytorch-cuda` pin** any more. Confirm the driver first:
 
 ```bash
-module avail cuda      # which CUDA modules exist
-nvidia-smi             # driver's max supported CUDA (run inside a GPU job — see §4)
+nvidia-smi             # driver's max CUDA (run inside a GPU job — see §4). Must be >= 12.8 for cu128.
+module avail cuda      # informational only; torch ships its own CUDA runtime, the system module need not match
 ```
 
-Repin if needed — only 11.8 / 12.1 / 12.4 exist as `pytorch-cuda` versions (the old `12.3`
-did not). 11.8 runs on H800 but isn't optimal for Hopper; prefer the highest 12.x SuperPOD
-provides.
+If the driver maxes below 12.8, repin to a lower index (cu126/cu124) — but **never** install the default
+PyPI torch, which is a CUDA-13 build the driver can't run (silent CPU fallback). See CLAUDE.md §9.
 
 ## 3. Build (shared `/project` location)
 ```bash
@@ -104,11 +104,11 @@ The T3 scaffold assumes the env is already **active** before
 conda activate /project/igem2026/envs/promoter-mining-hpc4
 ```
 
-to your submit step / SBATCH preamble, alongside `module load cuda` (matching the pinned 12.1).
+to your submit step / SBATCH preamble. (torch ships its own cu128 runtime, so a matching `module load cuda` is optional.)
 
 **T3 profile — already reconciled to SuperPOD (done):** `slurm_account: igem2026` added, the
 GPU rules' `mem_mb` removed (SuperPOD auto-allocates RAM per H800), and the per-task SBATCH
-headers fixed to `cuda/12.1` + `--partition=preempt`. Those per-task scripts now live with
+headers fixed to `cuda/12.8` + `--partition=preempt`. Those per-task scripts now live with
 their owners (`model-training/T18–T21`, `evaluation-and-calibration/T23–T24`,
 `mining-and-motif-annotation/T28`), not in T3.
 
@@ -136,10 +136,10 @@ fine-tuned ProkBERT/NT checkpoints (T18/T19) and the trained CNN (T20) to `/proj
 too, so every node can read them.
 
 ## Open decisions / TODO
-- **CUDA pin** — set to `12.1` for the H800 (Hopper) GPUs; confirm SuperPOD's exact CUDA
-  module with `module avail cuda` (§2) and repin if it differs.
-- **T10 tooling** — the env ships `segemehl` (aligner — confirm with Sine, swap for bowtie2/bwa
-  if preferred) and `openjdk` for TSSpredator. **TSSpredator itself is a JAR, not a conda
-  package**: download it from the project site and run `java -jar TSSpredator.jar <config>`.
-- **torch cap** — pinned `<2.5` because the `pytorch-cuda` metapackage path ends there.
-  For newer torch, install from conda-forge or pip wheels instead.
+- **CUDA build** — torch is `2.11.0+cu128` (pip, cu128 index) for the H800 driver (max CUDA 12.8);
+  no conda `pytorch-cuda`. Confirm the driver with `nvidia-smi` (§2); drop to cu126/cu124 only if it's lower.
+- **T10 tooling** — `segemehl` / `sra-tools` / `meme` moved to the companion `environment-bio.yml`
+  (they conflict with the ML stack on icu/libcurl). **TSSpredator is a JAR, not a conda package**:
+  download it and run `java -jar TSSpredator.jar <config>` (the bio env ships `openjdk`).
+- **Regenerate the lock** — `environment.lock.yml` is a placeholder; build on-cluster from
+  `environment.yml`, then `conda env export --no-builds > environment.lock.yml` to capture the real lock.

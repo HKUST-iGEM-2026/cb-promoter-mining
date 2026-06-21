@@ -49,7 +49,8 @@ rule t8_normalise_refdbs:
 rule t9_curate_synthetic_promoters:
     output: "inputs/literature_promoters.tsv"
     shell: "echo '[T9] curate synthetic promoters (mock, manual)' && touch {output}"
-    # real: (manual) curate known Clostridium synthetic promoters from the literature into {output}
+    # real: python <repo>/data-acquisition-and-curation/T9/build_literature_promoters.py
+    #       (merges the 3 curated study TSVs -> cleaned literature_promoters.tsv; copy to {output})
 
 rule t7b_published_tss:
     # In-genus VERIFIED promoter positives from published TSS tables (Hocq 2022 C. acetobutylicum,

@@ -248,7 +248,7 @@ rebalance, so confirm current owners with Oak.
 - T6 Re-annotate with Bakta — Leo — ✅ 166/166, Bakta 1.11.4 + DB v6.0 **light** (in `bakta_outputs/`)
 - T7 dRNA-seq literature search — Salimah — ✅ (see §8; 20 dRNA-seq vs 27 published TSS)
 - T8 Normalise RegulonDB+DBTBS → Parquet — Leo — 🟡 RegulonDB parse fixed (~3,963); DBTBS half pending (see §9) `data-acquisition-and-curation/T8/`
-- T9 Curate synthetic promoters → `literature_promoters.tsv` — Salimah — 🟡 ~93 promoters curated (C. acetobutylicum, C. phytofermentans) but split across 3 TSVs (not merged into one `literature_promoters.tsv`); C. acetobutylicum seqs carry a constant ~120 bp RBS/cloning tail to trim to the ~51 bp promoter (used by T24/T26)
+- T9 Curate synthetic promoters → `literature_promoters.tsv` — Salimah — ✅ 93 promoters merged + cleaned into one `literature_promoters.tsv` via re-runnable `build_literature_promoters.py`: C. acetobutylicum 120 bp cloning scaffold trimmed → ~50 bp promoter, 7 alignment-gap hyphens stripped → clean ACGT, strengths kept verbatim with `strength_unit`, `original_sequence` retained lossless. Verified 93/93 clean ACGT, reconstruction exact. NB C. phytofermentans (25) is out-of-genus (→ *Lachnoclostridium*), flagged `in_genus=False`. Held out → eval T24/T26.
 - T10 Re-process dRNA-seq w/ TSSpredator — Sine — ⬜ runs on HPC4 (`tss_prep.smk`; dep T6,T7)
 
 **Phase B — dataset construction** (land in `dataset-construction/`)
