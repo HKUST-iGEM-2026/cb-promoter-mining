@@ -119,10 +119,13 @@ def main():
     class_counts = {'CDS': 0, 'Intergenic_NonPromoter': 0, 'Downstream_3Prime': 0}
 
     for genome in genomes:
-        fna_path = os.path.join(args.bakta_dir, f"{genome}.fna")
-        gff_path = os.path.join(args.bakta_dir, f"{genome}.gff3")
-        
+        # Bakta writes a nested per-genome dir: <bakta-dir>/<genome>_genomic_output/<genome>_genomic.{fna,gff3}
+        gdir = f"{genome}_genomic_output"
+        fna_path = os.path.join(args.bakta_dir, gdir, f"{genome}_genomic.fna")
+        gff_path = os.path.join(args.bakta_dir, gdir, f"{genome}_genomic.gff3")
+
         if not (os.path.exists(fna_path) and os.path.exists(gff_path)):
+            print(f"Warning: Bakta outputs not found for {genome} at {gdir}/. Skipping.")
             continue
             
         contig_dict = {rec.id: str(rec.seq) for rec in SeqIO.parse(fna_path, "fasta")}
@@ -191,7 +194,7 @@ def main():
 
     # Output assembly
     out_df = pd.DataFrame(negative_records)
-    os.makedirs(os.path.dirname(args.out_tsv), exist_ok=True)
+    os.makedirs(os.path.dirname(args.out_tsv) or '.', exist_ok=True)
     out_df.to_csv(args.out_tsv, sep='\t', index=False)
     
     print("\n--- Generation Summary ---")

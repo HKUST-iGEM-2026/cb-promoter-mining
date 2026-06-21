@@ -74,8 +74,10 @@ def main():
 
     # 2. Process genome by genome to avoid loading all FASTAs into RAM at once
     for genome, group in df.groupby('genome'):
-        fasta_path = os.path.join(args.bakta_dir, f"{genome}.fna")
-        
+        # Bakta writes a nested per-genome dir: <bakta-dir>/<genome>_genomic_output/<genome>_genomic.fna
+        fasta_path = os.path.join(args.bakta_dir, f"{genome}_genomic_output",
+                                  f"{genome}_genomic.fna")
+
         if not os.path.exists(fasta_path):
             print(f"Warning: FASTA not found for {genome} at {fasta_path}. Skipping.")
             continue

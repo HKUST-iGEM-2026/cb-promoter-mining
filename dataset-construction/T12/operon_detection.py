@@ -9,9 +9,11 @@ Implements a contig-end exclusion filter to prevent extracting truncated or empt
 upstream regions from genes sitting near assembly boundaries.
 
 Design:
-  * Operon Collapsing: Groups loci by genome, contig, and strand. Consecutive 
-    genes within a defined distance (default 100 bp) are collapsed, and only 
-    the first gene (the leader) is retained.
+  * Operon Collapsing: Groups loci by genome, contig, and strand. Consecutive
+    genes within a defined distance (default 100 bp) are collapsed, and only
+    the most-upstream gene (the leader) is retained — strand-aware: the lowest-
+    coordinate gene on '+' and the HIGHEST-coordinate gene on '-' (transcription
+    runs high->low on the minus strand, so its leader is the max-coordinate gene).
   * Contig-End Exclusion: Because target assemblies are often incomplete, operon 
     leaders whose upstream window (default 300 bp) spills over the start (+ strand) 
     or end (- strand) of a contig are dropped.
@@ -60,58 +62,52 @@ def main():
     # 1. Load the housekeeping gene set
     df = pd.read_csv(args.hk_tsv, sep='\t')
     
-    # 2. Group by genome, contig, and strand, then sort by start coordinate
-    df = df.sort_values(by=['genome', 'contig', 'strand', 'start']).reset_index(drop=True)
-    
     leaders = []
-    
-    # 3. Process each genome individually to handle operon collapsing and contig lengths
+
+    # 2. Process each genome individually to handle operon collapsing and contig lengths
     for genome, group in df.groupby('genome'):
-        # Parse contig lengths for this specific genome
-        gff_path = os.path.join(args.bakta_dir, f"{genome}.gff3")
+        # Parse contig lengths for this specific genome. Bakta writes a nested
+        # per-genome dir: <bakta-dir>/<genome>_genomic_output/<genome>_genomic.gff3
+        gff_path = os.path.join(args.bakta_dir, f"{genome}_genomic_output",
+                                f"{genome}_genomic.gff3")
         contig_lengths = get_contig_lengths(gff_path)
-        
-        # Operon collapsing logic
-        prev_contig = None
-        prev_strand = None
-        prev_stop = -1
-        
-        for _, row in group.iterrows():
-            is_leader = False
-            
-            # If contig or strand changes, or distance from previous gene is too large, it's a new operon
-            if row['contig'] != prev_contig or row['strand'] != prev_strand:
-                is_leader = True
-            else:
-                dist = row['start'] - prev_stop
-                if dist > args.max_dist:
-                    is_leader = True
-            
-            # Update tracking variables
-            prev_contig = row['contig']
-            prev_strand = row['strand']
-            prev_stop = row['stop']
-            
-            if not is_leader:
-                continue # Skip internal operon genes
-                
-            # 4. Contig-end exclusion filter
-            contig_len = contig_lengths.get(row['contig'], 0)
-            
-            if row['strand'] == '+':
-                # + strand: promoter is 5', before 'start'
-                if row['start'] <= args.window:
-                    continue
-            else:
-                # - strand: promoter is 3', after 'stop'
-                if contig_len > 0 and (row['stop'] + args.window) > contig_len:
-                    continue
-                    
-            leaders.append(row)
+        if not contig_lengths:
+            print(f"Warning: no contig lengths for {genome} at {gff_path}; "
+                  f"minus-strand contig-end exclusion will be skipped for it.")
+
+        # 3. Build operon clusters within each (contig, strand), then keep the
+        #    most-upstream gene per cluster. Genes are clustered by genomic gap
+        #    (strand-independent); the LEADER is strand-aware:
+        #      '+' -> lowest-coordinate gene (min start)
+        #      '-' -> highest-coordinate gene (max stop), since transcription runs high->low
+        for (contig, strand), sub in group.groupby(['contig', 'strand'], sort=False):
+            sub = sub.sort_values('start').reset_index(drop=True)
+            clusters, cluster, prev_stop = [], [], None
+            for _, row in sub.iterrows():
+                if prev_stop is not None and (row['start'] - prev_stop) > args.max_dist:
+                    clusters.append(cluster)
+                    cluster = []
+                cluster.append(row)
+                prev_stop = row['stop']
+            if cluster:
+                clusters.append(cluster)
+
+            # 4. Pick the leader per cluster + contig-end exclusion filter
+            for cl in clusters:
+                if strand == '+':
+                    leader = min(cl, key=lambda r: r['start'])   # 5' end = lowest start
+                    if leader['start'] <= args.window:           # not enough upstream room
+                        continue
+                else:
+                    leader = max(cl, key=lambda r: r['stop'])    # 5' end = highest stop
+                    contig_len = contig_lengths.get(contig, 0)
+                    if contig_len > 0 and (leader['stop'] + args.window) > contig_len:
+                        continue
+                leaders.append(leader)
 
     # 5. Save the output
     out_df = pd.DataFrame(leaders)
-    os.makedirs(os.path.dirname(args.out_tsv), exist_ok=True)
+    os.makedirs(os.path.dirname(args.out_tsv) or '.', exist_ok=True)
     out_df.to_csv(args.out_tsv, sep='\t', index=False)
     
     print(f"Original loci: {len(df)}")
