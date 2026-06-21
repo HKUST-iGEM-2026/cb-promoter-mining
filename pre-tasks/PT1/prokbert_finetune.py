@@ -65,7 +65,7 @@ print(f"Dataset Split complete! Train size: {len(dataset['train'])} | Validation
 # 2. Load the official ProkBERT Tokenizer
 # ProkBERT doesn't read text; it uses an overlapping k-mer method to tokenize microbial DNA
 print("Loading ProkBERT Tokenizer...")
-tokenizer = AutoTokenizer.from_pretrained("neuralbioinfo/prokbert-mini", trust_remote_code=True, token="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")
+tokenizer = AutoTokenizer.from_pretrained("neuralbioinfo/prokbert-mini", trust_remote_code=True)
 
 # Tokenize our DNA sequences
 def tokenize_function(examples):
@@ -78,8 +78,7 @@ print("Loading ProkBERT-mini Model...")
 model = AutoModelForSequenceClassification.from_pretrained(
     "neuralbioinfo/prokbert-mini", 
     num_labels=2, 
-    trust_remote_code=True,
-    token="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"
+    trust_remote_code=True
 )
 
 # 4. Define Training parameters
