@@ -232,7 +232,7 @@ rebalance, so confirm current owners with Oak.
 **Infrastructure**
 - T1 HPC4 access — Oak — ✅
 - T2 GitHub repo — Oak — ✅
-- T3 Snakemake scaffold + SLURM — Swasti — ✅ (`infrastructure/T3/snakemake_scaffold/`)
+- T3 Snakemake scaffold + SLURM — Swasti — ✅ (`infrastructure/T3/snakemake_scaffold/`). **Rewired 2026-06**: Phase B (`collect_bakta_tsv`, T11–T14) now runs FOR REAL (config-driven `bakta_dir`, real `.tsv` outputs; T11 fed by a flat-`.tsv` staging rule that symlinks the nested Bakta dirs); T15–T32 + pre-tasks stay mock but every `# real:` now names the actual script + exact args (fixed the bogus `scripts/*.py {input} {output}` refs, the PT6 `validate_lock_schema.py`→`validate_promoters.py` name, PT5 `cd`, T18/T19 `.sh` filename bug). Validated by AI council: `snakemake -n` builds the full 30-job DAG; real run produced T11 (22,760 rows/166 genomes) → T12 (14,659 leaders). `config.yaml` now has real paths/params. **Real-shell pass (2026-06)**: `bakta_dir` may be a `.zip` (HPC4: `all_bakta_output.zip`) → new `extract_bakta` rule unzips it (collect symlinks made absolute). Phase A now carries REAL shell too: T5 (unzip genomes), T6 (bakta loop, opt-in regen — needs a bakta env + DB), T7/T8/T9 (cp/run+cp; T8 re-run gives the real 3,963 RegulonDB rows), T7b still a stub (its published-TSS tables aren't staged). T10 mock→ real 6-stage `data-acquisition-and-curation/T10/run_tss_pipeline.sh` (datasets→prefetch/fasterq-dump→segemehl→bedtools 5′-wiggle→TSSpredator×2→merge; 8 open decisions D1–D8 in its header). Council-validated: 31-job DAG builds; T5/T8/T9 + Phase-B-from-zip run for real; all T10 stage CLIs audited correct.
 - T4 Conda env + deploy — Swasti — 🟡 spec ✅, deploy on HPC4 pending (`infrastructure/T4/`)
 
 **Pre-tasks (learning + reusable code)**
@@ -297,10 +297,12 @@ rebalance, so confirm current owners with Oak.
 > 1. **T13 label semantics** — are housekeeping upstreams positives at all? If yes, treat them as
 >    **weak/silver** labels (down-weight; do not mix with verified positives at equal weight).
 > 2. **Get verified in-genus positives into training** — (a) ingest the in-genus _published_ TSS
->    (Hocq 2022 _C. acetobutylicum_, Al-Bassam 2018 _C. ljungdahlii_; identified in T7 but currently
->    unused) via `data-acquisition-and-curation/T7/extract_published_tss_template.py` → feed into T15;
->    and/or (b) **split T9** (train on some, hold out the rest) instead of 100% holdout, so the fine-tune
->    sees ≥ some verified in-genus −10/−35.
+>    (Hocq 2022 _C. acetobutylicum_ PMC9045289, Al-Bassam 2018 _C. ljungdahlii_ PMC6203783) via the
+>    now-production `data-acquisition-and-curation/T7/extract_published_tss.py` + `build_published_tss.sh`
+>    (wired into local_prep T7b; the C. ljungdahlii ref auto-stages from the T5 zip). **Only the TSS
+>    tables themselves still need a manual download** — they're binary journal supplements (see
+>    `T7/PUBLISHED_TSS_README.md`). → feed into T15; and/or (b) **split T9** (train on some, hold out the
+>    rest — 68 verified in-genus _C. acetobutylicum_ promoters already in the repo, needs NO download).
 > 3. **T10 scope** — _C. difficile_ TSS are cross-species-adjacent (out of genus); the in-genus empirical
 >    signal is the published-table path, not TSSpredator.
 

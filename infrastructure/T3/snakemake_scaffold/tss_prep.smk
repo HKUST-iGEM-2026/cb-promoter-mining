@@ -1,17 +1,25 @@
 # =====================================================================
-# Phase A (HPC4 part) — T10 TSSpredator (MOCK).  Runs ON HPC4, not locally.
+# Phase A (HPC4 part) — T10 TSSpredator.  Runs ON HPC4, not locally.
 #
-# T10 is CPU-heavy: it pulls ~36 GB of dRNA-seq reads straight onto the cluster,
-# aligns them, then runs TSSpredator. Only the small TSS table flows downstream,
-# so its output is pre-staged like a Phase A input. Its inputs come from
-# local_prep.smk (T6 annotations, T7 accessions), uploaded to HPC4 first.
+# REAL pipeline now: the rule calls data-acquisition-and-curation/T10/run_tss_pipeline.sh
+# (6 stages: reference -> SRA download -> segemehl align -> 5' wiggle -> TSSpredator x2
+# -> merge to inputs/tss_sites.gff3). See that script's header for the tool list and the
+# 8 open decisions (D1-D8) the team must lock before a real run.
 #
 #     # on HPC4, after uploading the local_prep outputs into inputs/:
+#     #  1) on the LOGIN node (internet): stages 1-2 + fetch the TSSpredator JAR
+#     bash <repo>/data-acquisition-and-curation/T10/run_tss_pipeline.sh 1   # reference
+#     bash <repo>/data-acquisition-and-curation/T10/run_tss_pipeline.sh 2   # download reads
+#     #  2) then submit the compute stages (3-6) via the profile:
 #     snakemake -s tss_prep.smk --workflow-profile profiles/slurm
 #
 # CPU job on the preempt partition (no GPU). The main Snakefile then consumes
 # inputs/tss_sites.gff3 as its TSS_CALLS.
 # =====================================================================
+
+import os
+configfile: "config/config.yaml"   # consistency with the main Snakefile (safe under --config overrides)
+REPO = os.path.abspath(os.path.join(workflow.basedir, "..", "..", ".."))
 
 rule all:
     input:
@@ -19,12 +27,15 @@ rule all:
 
 rule t10_tsspredator:
     input:
-        annotations="inputs/annotations.gff3",       # from T6 (local_prep, uploaded)
-        accessions="inputs/SRR_dRNAseq_for_TSSpredator.txt",  # from T7 (local_prep, uploaded)
+        accessions="inputs/SRR_dRNAseq_for_TSSpredator.txt",   # from T7 (local_prep, uploaded)
     output: "inputs/tss_sites.gff3"
-    resources: cpus_per_task=8, runtime=240
-    shell: "echo '[T10] re-process dRNA-seq with TSSpredator on HPC4 (mock)' && touch {output}"
-    # real (HPC4): prefetch --option-file <repo>/data-acquisition-and-curation/T7/SRR_dRNAseq_for_TSSpredator.txt -O reads/
-    #              fasterq-dump --split-3 reads/*/*.sra -O reads/
-    #              <align reads/ to the Bakta .fna -> TEX+/TEX- wiggle tracks; aligner TBC with Sine> (to be changed later)
-    #              TSSpredator <config>    # -> {output}
+    resources: cpus_per_task=28, runtime=720
+    shell:
+        # The script writes {output} (OUT_GFF). REPO lets it find the .conf files + SRR list.
+        # NB: stages 1-2 need login-node internet — run them first (see header); --all assumes
+        # a node with internet + CPUs, which on SuperPOD is usually NOT the case, so prefer the
+        # split invocation. C. difficile = Clostridioides (out of genus 1485): cross-species-adjacent.
+        "OUT_GFF=$(pwd)/{output} REPO={REPO} "
+        "bash {REPO}/data-acquisition-and-curation/T10/run_tss_pipeline.sh --all"
+    # real (regenerate the cdiff genome + wig tracks the .conf files reference, then run both
+    #       fixed configs fuchs_config_hpc.conf + soutourina_tap_config.conf — see CONFIG_FIX_README.md)
