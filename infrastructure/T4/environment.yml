@@ -21,6 +21,7 @@ dependencies:
   # ---- Core scientific / evaluation stack (T15, T22, T23, T25, T26, T29, T30) ----
   - numpy
   - pandas
+  - openpyxl                 # .xlsx engine for pandas.read_excel — T7b reads the Hocq published-TSS supplement
   - scipy
   - scikit-learn>=1.3.0      # StratifiedGroupKFold (T15/T23), metrics (T22), calibration (T26)
   - matplotlib-base          # headless (no Qt/pyqt GUI) — the full matplotlib drags in a Qt stack that conflicts on the cluster
