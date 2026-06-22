@@ -1,0 +1,4 @@
+Drop downloaded published TSS tables here (see ../PUBLISHED_TSS_README.md):
+  albassam2018_clj_tss.xls   (Al-Bassam 2018, Supplementary Data 2)
+  hocq2022_cac_tss.xlsx      (Hocq 2022, Table S1)
+build_published_tss.sh ingests any *.tsv/.xls/.xlsx found here.

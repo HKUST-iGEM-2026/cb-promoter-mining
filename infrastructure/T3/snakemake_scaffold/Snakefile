@@ -1,24 +1,23 @@
 # =====================================================================
-# Promoter Mining — HPC4 pipeline (Task T3)
+# Promoter Mining — HPC4 pipeline (Task T3).  REAL commands.
 #
-# This pipeline starts at Phase B. Phase A is produced beforehand and uploaded
-# to HPC4 as the starting state (see context §3), consumed here as pre-staged
-# files under inputs/:
-#   - T5-T9 run LOCALLY, one-shot     -> local_prep.smk
-#   - T10 (TSSpredator) runs on HPC4  -> tss_prep.smk
+# Every rule runs its REAL command (no echo/touch mocks). Phase A is produced by
+# local_prep.smk (+ tss_prep.smk for T10) and consumed here as pre-staged inputs/.
 #
-# REAL vs MOCK (2026-06): the dataset-construction steps with verified scripts
-# run for REAL and produce real files:
-#       collect_bakta_tsv, T11, T12, T13, T14
-# Everything downstream of T14 (T15-T32) and the pre-tasks are still MOCK
-# (echo + touch results/<task>.done); each carries an accurate `# real:` command
-# pointing at the actual script + arguments to drop in when implemented.
+# EXECUTION STATUS (2026-06) — what runs today vs what needs its script/data first:
+#   LIVE (verified):  extract_bakta, collect_bakta_tsv, T11, T12, T13, T14,
+#                     PT3, PT4, PT5(GPU), PT6(needs a RegulonDB TSS table)
+#   TEMPLATE w/ known defects (fix before running): PT1, T18, T19, T20, T21, T23, T24, T28
+#   SCRIPT NOT YET WRITTEN (rule will fail until implemented): PT2, T15, T16, T22, T25, T26, T27, T29, T30, T31, T32
+# Rules below keep a `results/<task>.done` sentinel as the snakemake output (so the DAG
+# order is preserved); the real command writes its real data under results/<task>/ and
+# then touches the sentinel. T11-T14 instead declare their real .tsv as the output.
 #
 # Run:
-#     snakemake -s local_prep.smk --cores 4                        # stage Phase A inputs/ first
-#     snakemake -n                                                 # DRY-RUN: validate the whole DAG
-#     snakemake --cores 4 --config bakta_dir=/path/to/bakta_outputs  # run real Phase B locally
-#     snakemake --workflow-profile profiles/slurm                  # on HPC4
+#     snakemake -s local_prep.smk --cores 4                          # stage Phase A inputs/ first
+#     snakemake -n --config bakta_dir=/path/to/bakta(.zip|dir)       # DRY-RUN: validate the whole DAG (the wiring test)
+#     snakemake --cores 4 --config bakta_dir=/path/to/bakta          # run locally (executes real commands; stops at the first unwritten script)
+#     snakemake --workflow-profile profiles/slurm                    # on HPC4 (GPU rules submit as SLURM jobs)
 # =====================================================================
 
 import os
@@ -28,11 +27,11 @@ configfile: "config/config.yaml"
 # Repo root, resolved from the Snakefile location (portable local <-> HPC4).
 REPO = os.path.abspath(os.path.join(workflow.basedir, "..", "..", ".."))
 
-# T6 Bakta outputs. config[bakta_dir] is either:
-#   - a .zip (HPC4: all_bakta_output/<genome>_genomic_output/<genome>_genomic.{gff3,fna,tsv}), or
-#   - an already-extracted directory (local dev) whose children are <genome>_genomic_output/.
+# T6 Bakta outputs. config[bakta_dir] is either a .zip (HPC4) or an already-extracted dir.
 # Normalise to BAKTA = the root dir that directly contains the <genome>_genomic_output/ subdirs.
 BAKTA_SRC = config["bakta_dir"]
+if not os.path.isabs(BAKTA_SRC):
+    BAKTA_SRC = os.path.join(REPO, BAKTA_SRC)  # repo-relative -> absolute (portable across clone locations)
 if str(BAKTA_SRC).endswith(".zip"):
     BAKTA = "results/bakta/all_bakta_output"   # produced by rule extract_bakta
 else:
@@ -41,14 +40,12 @@ else:
 # GPU jobs add per-GPU billing on top of the profile's preempt hygiene.
 GPU_EXTRA = "'--gpus-per-node=1 --requeue --signal=B:USR1@120'"
 
-# ---- Phase A starting state (produced locally / on HPC4, pre-staged) --------
-# Small files uploaded before this pipeline runs; the cluster pipeline does not
-# build them. (The bulky Bakta outputs are NOT staged this way — they are read
-# directly from BAKTA above.)
-REFDB         = "inputs/reference_promoters.parquet"      # T8  — RegulonDB (+DBTBS) normalised (local_prep)
-LIT_PROM      = "inputs/literature_promoters.tsv"         # T9  — curated synthetic promoters (local_prep)
-TSS_CALLS     = "inputs/tss_sites.gff3"                   # T10 — TSSpredator empirical TSS (tss_prep, HPC4)
-PUBLISHED_TSS = "inputs/published_tss_promoters.parquet"  # T7b — in-genus published TSS positives (local_prep) -> T15
+# ---- Phase A starting state (produced by local_prep.smk / tss_prep.smk, pre-staged) ----
+REFDB         = "inputs/reference_promoters.parquet"      # T8  — RegulonDB (+DBTBS) normalised
+LIT_PROM      = "inputs/literature_promoters.tsv"         # T9  — curated synthetic promoters
+TSS_CALLS     = "inputs/tss_sites.gff3"                   # T10 — TSSpredator empirical TSS (HPC4)
+PUBLISHED_TSS = "inputs/published_tss_promoters.parquet"  # T7b — in-genus published TSS positives -> T15
+LIT_TRAIN     = "inputs/literature_promoters_train.parquet"  # T9-split (§7 b) — in-genus training positives -> T15
 
 # The only true graph leaves (evaluation reports + final deliverable).
 LEAVES = ["T23", "T24", "T25", "T32"]
@@ -59,9 +56,7 @@ rule all:
         expand("results/{t}.done", t=LEAVES),
 
 
-# Only the GPU-heavy tasks are submitted as SLURM jobs. Everything listed here
-# runs locally on the login/submit node instead (CPU/light). The cluster jobs
-# (NOT listed) are: PT1, PT5, T18, T19, T20, T21, T23, T24, T28.
+# GPU-heavy tasks submit as SLURM jobs; everything listed here runs on the login/submit node.
 localrules: all, extract_bakta, collect_bakta_tsv, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
 
 # ---------------------------------------------------------------------
@@ -70,55 +65,56 @@ localrules: all, extract_bakta, collect_bakta_tsv, pt2_ship_to_huggingface, pt3_
 rule pt1_finetune_loop:
     output: "results/PT1.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
-    shell: "echo '[PT1] fine-tune loop on RegulonDB/DBTBS (mock GPU)' && touch {output}"
-    # real: python {REPO}/pre-tasks/PT1/prokbert_finetune.py   (GPU; confirm torch.cuda.is_available())
+    shell:
+        "python {REPO}/pre-tasks/PT1/prokbert_finetune.py && touch {output}"
+    # GPU. Confirm torch.cuda.is_available(); PT1 reportedly ran on CPU (~6h) before — verify.
 
 rule pt2_ship_to_huggingface:
     input: "results/PT1.done"
     output: "results/PT2.done"
-    shell: "echo '[PT2] ship ProkBERT to HuggingFace (mock)' && touch {output}"
-    # real: python {REPO}/pre-tasks/PT2/push_to_hub.py   (model.push_to_hub the checkpoint — script not yet written)
+    shell:
+        "python {REPO}/pre-tasks/PT2/push_to_hub.py && touch {output}"
+    # SCRIPT NOT YET WRITTEN (push_to_hub the fine-tuned checkpoint).
 
 rule pt3_metrics_cv_stack:
     output: "results/PT3.done"
-    shell: "echo '[PT3] metrics + CV stack on dummy classifier (mock)' && touch {output}"
-    # real: python {REPO}/pre-tasks/PT3/metrics_cv.py   (no args; writes results/pt3_metrics/pt3_cv_results.csv)
+    shell:
+        "python {REPO}/pre-tasks/PT3/metrics_cv.py && touch {output}"
+    # LIVE (no args; writes results/pt3_metrics/pt3_cv_results.csv). Needs scikit-learn.
 
 rule pt4_calibration_fdr_harness:
     input: "results/PT3.done"
     output: "results/PT4.done"
-    shell: "echo '[PT4] calibration + FDR harness (mock)' && touch {output}"
-    # real: python {REPO}/pre-tasks/PT4/calibration_fdr.py   (no args; reused by T26/T27)
+    shell:
+        "python {REPO}/pre-tasks/PT4/calibration_fdr.py && touch {output}"
+    # LIVE (no args; Brier + Benjamini-Hochberg on dummy data; reused by T26/T27).
 
 rule pt5_sliding_window_ecoli:
     output: "results/PT5.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
-    shell: "echo '[PT5] sliding-window inference on E. coli (mock GPU)' && touch {output}"
-    # real (GPU): cd {REPO}/pre-tasks/PT5 && python sliding_window_inference.py
-    #             (no args; MG1655.fna path is cwd-relative -> must run from the PT5 dir;
-    #              writes mg1655_promoter_scores.csv)
+    shell:
+        # MG1655.fna path is cwd-relative -> run from the PT5 dir; capture the sentinel path first.
+        "OUT=$(pwd)/{output} && cd {REPO}/pre-tasks/PT5 && "
+        "python sliding_window_inference.py && touch $OUT"
+    # GPU. Writes mg1655_promoter_scores.csv (reused by T28/PT6).
 
 rule pt6_validate_lock_schema:
     input: "results/PT5.done"
     output: "results/PT6.done"
-    shell: "echo '[PT6] validate pipeline + lock output schema (mock)' && touch {output}"
-    # real: python {REPO}/pre-tasks/PT6/validate_promoters.py \
-    #         --pred {REPO}/pre-tasks/PT5/mg1655_promoter_scores.csv \
-    #         --regulondb <regulondb_tss.tsv> --genome {REPO}/pre-tasks/PT5/MG1655.fna \
-    #         --outdir results/PT6
-    #       (the real script is validate_promoters.py — NOT validate_lock_schema.py — and REQUIRES
-    #        --pred and --regulondb; it locks the candidate-table schema for T32.)
+    shell:
+        "python {REPO}/pre-tasks/PT6/validate_promoters.py "
+        "--pred {REPO}/pre-tasks/PT5/mg1655_promoter_scores.csv "
+        "--regulondb {REPO}/pre-tasks/PT6/regulondb_tss.tsv "
+        "--genome {REPO}/pre-tasks/PT5/MG1655.fna --outdir results/PT6 && touch {output}"
+    # LIVE once a RegulonDB E. coli TSS table is staged at PT6/regulondb_tss.tsv. Locks the T32 schema.
 
 
 # ---------------------------------------------------------------------
-# Phase B — Dataset construction   *** WIRED FOR REAL (T11-T14) ***
-#   Reads the Bakta outputs directly from BAKTA (config[bakta_dir]).
+# Phase B — Dataset construction  (LIVE: reads Bakta from BAKTA = config[bakta_dir])
 # ---------------------------------------------------------------------
 rule extract_bakta:
-    # HPC4 ships the Bakta outputs as a zip whose top folder is all_bakta_output/
-    # (containing the 166 <genome>_genomic_output/ dirs; gff3/fna/tsv only, ~456 MB).
-    # Only runs when config[bakta_dir] is a .zip; with an already-extracted dir, BAKTA
-    # points straight at it and this rule is never requested. __MACOSX junk is excluded.
+    # HPC4 ships Bakta as a zip whose top folder is all_bakta_output/. Only runs when
+    # config[bakta_dir] is a .zip; with an extracted dir, BAKTA points straight at it.
     input: BAKTA_SRC
     output: directory("results/bakta/all_bakta_output")
     shell:
@@ -127,10 +123,7 @@ rule extract_bakta:
         "test -d {output}"
 
 rule collect_bakta_tsv:
-    # T11 wants a FLAT directory of Bakta *.tsv, but the real outputs are nested as
-    # <BAKTA>/<g>_genomic_output/<g>_genomic.tsv  -> symlink them flat first.
-    # Resolve BAKTA to an ABSOLUTE path so the symlinks are valid no matter where they
-    # are read from (BAKTA is relative in the zip-extract case: results/bakta/all_bakta_output).
+    # T11 wants a FLAT dir of Bakta *.tsv; symlink them flat with ABSOLUTE targets.
     input: BAKTA
     output: directory("results/bakta_tsv")
     shell:
@@ -149,7 +142,6 @@ rule t11_housekeeping_set:
     shell:
         "python {REPO}/dataset-construction/T11/define_housekeeping.py "
         "--tsv-dir {input} --out-dir results/T11"
-    # also writes housekeeping_summary.tsv + per_genome_counts.tsv into results/T11/
 
 rule t12_operon_detection:
     input:
@@ -165,7 +157,7 @@ rule t13_upstream_extraction:
     input:
         leaders="results/T12/operon_leaders.tsv",
         bakta=BAKTA,
-    output: "results/T13/upstream_regions.tsv"           # the POSITIVE windows (NB §7: inferred positives)
+    output: "results/T13/upstream_regions.tsv"           # POSITIVE windows (NB §7: inferred positives)
     shell:
         "python {REPO}/dataset-construction/T13/upstream_extraction.py "
         "--leaders-tsv {input.leaders} --bakta-dir {input.bakta} --out-tsv {output} "
@@ -175,33 +167,37 @@ rule t14_negative_set:
     input:
         upstream="results/T13/upstream_regions.tsv",
         bakta=BAKTA,
-    output: "results/T14/negative_set.tsv"               # four-class negatives incl. SRS
+    output: "results/T14/negative_set.tsv"               # four-class negatives incl. SRS (seeded)
     shell:
         "python {REPO}/dataset-construction/T14/negative_set_generation.py "
         "--upstream-tsv {input.upstream} --bakta-dir {input.bakta} --out-tsv {output} "
-        "--window {config[upstream_window_bp]}"
-    # NB: T14 has no --seed yet (unseeded random -> non-reproducible negatives); add one before locking (CLAUDE.md §6).
+        "--window {config[upstream_window_bp]} --seed {config[random_seed]}"
 
 rule t15_cdhit_splits:
     input:
         refdb=REFDB,                                     # T8 cross-species positives
-        published=PUBLISHED_TSS,                         # T7b in-genus positives
+        published=PUBLISHED_TSS,                         # T7b in-genus published-TSS positives
+        t9_train=LIT_TRAIN,                              # T9-split (§7 b) in-genus C. acetobutylicum positives
         tss=TSS_CALLS,                                   # T10 empirical TSS
         positives="results/T13/upstream_regions.tsv",    # T13 inferred positives
         negatives="results/T14/negative_set.tsv",        # T14 negatives
     output: "results/T15.done"
-    shell: "echo '[T15] CD-HIT clustering + cluster-aware splits (mock)' && touch {output}"
-    # real: python {REPO}/dataset-construction/T15/cdhit_splits.py \
-    #         --positives {input.refdb} {input.published} {input.positives} --negatives {input.negatives} \
-    #         --identity {config[cdhit_identity]} --seed {config[random_seed]} --out results/T15/
-    #       (cd-hit clustering + StratifiedGroupKFold, 80/10/10; concatenates the positive tables — they must
-    #        share a schema first. T15 script not yet written; resolve the §7 label-semantics decision before pooling.)
+    shell:
+        "python {REPO}/dataset-construction/T15/cdhit_splits.py "
+        "--positives {input.refdb} {input.published} {input.t9_train} {input.positives} "
+        "--negatives {input.negatives} --identity {config[cdhit_identity]} "
+        "--seed {config[random_seed]} --out results/T15/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (cd-hit + StratifiedGroupKFold, 80/10/10).
+    # ⚠️ SCHEMA HARMONIZATION FIRST: REFDB (T8) has confidence_level, NO in_genus/strand, variable-length;
+    #    t9_train + published (T7b) have in_genus/strand, NO confidence_level, fixed windows. Unify before
+    #    concatenating (in_genus=False + strand='.' for T8, drop confidence_level, re-window). §7 decision.
 
 rule t16_tokenisation:
     input: "results/T15.done"
     output: "results/T16.done"
-    shell: "echo '[T16] per-model tokenisation (mock)' && touch {output}"
-    # real: python {REPO}/dataset-construction/T16/tokenise.py results/T15/ results/T16/   (ProkBERT k-mer / NT BPE / CNN one-hot; not yet written)
+    shell:
+        "python {REPO}/dataset-construction/T16/tokenise.py results/T15/ results/T16/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (ProkBERT k-mer / NT BPE / CNN one-hot).
 
 
 # ---------------------------------------------------------------------
@@ -210,88 +206,92 @@ rule t16_tokenisation:
 rule t17_finetune_recipe:
     input: "results/PT2.done"
     output: "results/T17.done"
-    shell: "echo '[T17] finalise fine-tuning recipe (mock)' && touch {output}"
-    # real: (decision) finalise fine-tuning recipe from PT2 — a config, not a command
+    shell:
+        "mkdir -p results/T17 && touch {output}"
+    # DECISION GATE, not a command: finalise the fine-tuning recipe (a config) from PT2 -> T18/T19/T20.
 
 rule t18_prokbert_finetune:
     input: "results/T16.done", "results/T17.done"
     output: "results/T18.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
-    shell: "echo '[T18] ProkBERT-mini-long fine-tune (mock GPU)' && touch {output}"
-    # real: sbatch {REPO}/model-training/T18/run_task18_template.sh
-    #       (FIX FIRST: the .sh runs `python train_prokbert.py` but the file is train_prokbert_template.py;
-    #        and train_prokbert_template.py uses the wrong model id biomedia-ai -> neuralbioinfo. See audit.)
+    shell:
+        "python {REPO}/model-training/T18/train_prokbert_template.py && touch {output}"
+    # FIX FIRST: wrong model id biomedia-ai/ -> neuralbioinfo/ (L37); AUROC computed on argmax not probs (L131).
 
 rule t19_nt_lora_finetune:
     input: "results/T16.done", "results/T17.done"
     output: "results/T19.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
-    shell: "echo '[T19] NT v2 250M LoRA fine-tune (mock GPU)' && touch {output}"
-    # real: sbatch {REPO}/model-training/T19/run_task19_template.sh
-    #       (FIX FIRST: the .sh runs `python train_nt_lora.py` but the file is train_nt_lora_template.py,
-    #        and that .py has no `if __name__=='__main__'` guard so main() won't run. See audit.)
+    shell:
+        "python {REPO}/model-training/T19/train_nt_lora_template.py && touch {output}"
+    # FIX FIRST: no `if __name__=='__main__'` guard (main() never runs); AUROC on argmax (L143).
 
 rule t20_cnn_train:
     input: "results/T16.done", "results/T17.done"
     output: "results/T20.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
-    shell: "echo '[T20] custom 1D CNN from scratch (mock GPU)' && touch {output}"
-    # real: python {REPO}/model-training/T20/train_cnn_template.py   (reads data/train|val|test_promoters.parquet — cwd-relative)
+    shell:
+        "python {REPO}/model-training/T20/train_cnn_template.py && touch {output}"
+    # FIX: reads data/train|val|test_promoters.parquet (cwd-relative); final random_split is unseeded.
 
 rule t21_hparam_sweep:
     input: "results/T18.done", "results/T19.done", "results/T20.done"
     output: "results/T21.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720
-    shell: "echo '[T21] hyperparameter sweep (mock GPU)' && touch {output}"
-    # real: python {REPO}/model-training/T21/hyperparameter_sweep_template.py
-    #       (NB its SWEEP_CONFIG points at stale child-script paths task18_prokbert_finetune/... — fix to model-training/T18|T19.)
+    shell:
+        "python {REPO}/model-training/T21/hyperparameter_sweep_template.py && touch {output}"
+    # FIX: SWEEP_CONFIG points at stale child-script paths task18_prokbert_finetune/... -> model-training/T18|T19.
 
 
 # ---------------------------------------------------------------------
 # Phase D — Evaluation & calibration
-#   (T24/T26 consume LIT_PROM; T25 consumes TSS_CALLS)
 # ---------------------------------------------------------------------
 rule t22_metrics_suite:
     input: "results/PT3.done", "results/T21.done"
     output: "results/T22.done"
-    shell: "echo '[T22] metrics suite AUROC/AUPRC/MCC/F1 (mock)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T22/metrics_suite.py (reuse PT3 metrics_cv on each model's preds; not yet written —
-    #       NB PT3/metrics_cv.py currently has no --pred CLI, so add one or import it.)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T22/metrics_suite.py "
+        "--preds results/T21/ --out results/T22/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (reuse PT3 metrics_cv per model; PT3 needs a --pred CLI added).
 
 rule t23_cluster_cv:
     input: "results/T15.done", "results/T21.done"
     output: "results/T23.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720
-    shell: "echo '[T23] cluster-level 5-fold CV (mock GPU)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T23/cluster_cv_template.py
-    #       (FIX FIRST: its imports point at nonexistent task18_prokbert_finetune/ paths and import
-    #        LoRAPromoterPredictor from the wrong module. See audit.)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T23/cluster_cv_template.py && touch {output}"
+    # FIX FIRST: sys.path -> nonexistent task18_prokbert_finetune/ dirs; LoRAPromoterPredictor imported from
+    #            train_prokbert but it lives in train_nt_lora.
 
 rule t24_cross_species_holdout:
     input: LIT_PROM, "results/T21.done"
     output: "results/T24.done"
     resources: slurm_extra=GPU_EXTRA, runtime=240
-    shell: "echo '[T24] external cross-species holdout (mock GPU)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T24/evaluate_external_template.py
-    #       (NB the file has TWO main()/__main__ blocks — `python file` runs only the LAST (data-prep) one; split them.)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T24/evaluate_external_template.py && touch {output}"
+    # FIX FIRST: TWO main()/__main__ blocks (python runs only the LAST, a data-prep main); illusory hash() seed;
+    #            extract_promoters double-counts gene+CDS. Eval on the T9 holdout (literature_promoters_holdout.tsv).
 
 rule t25_sigma_stratified:
     input: TSS_CALLS, "results/T22.done"
     output: "results/T25.done"
-    shell: "echo '[T25] sigma-factor-stratified evaluation (mock)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T25/sigma_stratified.py {input} results/T25/   (per-sigma metrics from T10 calls; not yet written)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T25/sigma_stratified.py {input} results/T25/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (per-sigma-factor metrics from the T10 calls).
 
 rule t26_calibration:
     input: "results/PT4.done", LIT_PROM, "results/T22.done"
     output: "results/T26.done"
-    shell: "echo '[T26] calibration regressor with AT covariate (mock)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T26/calibrate.py {input} results/T26/   (regressor with AT-content covariate; reuses PT4 harness; not yet written)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T26/calibrate.py {input} results/T26/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (calibration regressor with AT-content covariate; reuses the PT4 harness).
 
 rule t27_empirical_fdr:
     input: "results/PT4.done", "results/T14/negative_set.tsv", "results/T26.done"
     output: "results/T27.done"
-    shell: "echo '[T27] empirical FDR with SRS null (mock)' && touch {output}"
-    # real: python {REPO}/evaluation-and-calibration/T27/empirical_fdr.py {input} results/T27/   (SRS class from T14 as null -> q-values; reuses PT4; not yet written)
+    shell:
+        "python {REPO}/evaluation-and-calibration/T27/empirical_fdr.py {input} results/T27/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (SRS class from T14 as the null -> q-values; reuses PT4).
 
 
 # ---------------------------------------------------------------------
@@ -301,30 +301,37 @@ rule t28_mining_inference:
     input: "results/PT6.done", "results/T13/upstream_regions.tsv", "results/T21.done"
     output: "results/T28.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
-    shell: "echo '[T28] sliding-window inference on Clostridium (mock GPU)' && touch {output}"
-    # real: python {REPO}/mining-and-motif-annotation/T28/sliding_window_engine_template.py
-    #       (NB two main()/__main__ blocks + hardcoded genome/model paths; reuses PT5 logic. See audit.)
+    shell:
+        "python {REPO}/mining-and-motif-annotation/T28/sliding_window_engine_template.py && touch {output}"
+    # FIX FIRST: same broken imports as T23; TWO main()/__main__ blocks; hardcoded genome/model paths. Reuses PT5 logic.
 
 rule t29_ensemble_aggregation:
     input: "results/T28.done"
     output: "results/T29.done"
-    shell: "echo '[T29] ensemble aggregation (mean rank-percentile) (mock)' && touch {output}"
-    # real: python {REPO}/mining-and-motif-annotation/T29/ensemble.py {input} results/T29/   (mean rank-percentile across 3 models; not yet written)
+    shell:
+        "python {REPO}/mining-and-motif-annotation/T29/ensemble.py results/T28/ results/T29/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (mean rank-percentile across the 3 models).
 
 rule t30_peak_calling:
     input: "results/T29.done"
     output: "results/T30.done"
-    shell: "echo '[T30] locus-level peak calling (mock)' && touch {output}"
-    # real: python {REPO}/mining-and-motif-annotation/T30/peak_calling.py {input} results/T30/   (scipy.signal on the score track; not yet written)
+    shell:
+        "python {REPO}/mining-and-motif-annotation/T30/peak_calling.py results/T29/ results/T30/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (scipy.signal peak calling on the ensemble score track; emits candidates.fasta).
 
 rule t31_motif_annotation:
     input: "results/T30.done"
     output: "results/T31.done"
-    shell: "echo '[T31] motif annotation FIMO/MEME (mock)' && touch {output}"
-    # real: fimo --oc results/T31 <motif.meme> results/T30/candidates.fasta   (MEME suite; -10/-35 + sigma; bio env)
+    shell:
+        # de-novo motifs with MEME, then scan with FIMO (MEME suite, bio env). Needs results/T30/candidates.fasta.
+        "meme results/T30/candidates.fasta -oc results/T31/meme -dna -mod zoops -nmotifs 5 -minw 6 -maxw 35 && "
+        "fimo --oc results/T31/fimo results/T31/meme/meme.txt results/T30/candidates.fasta && touch {output}"
+    # -10/-35 + sigma motif annotation. (FIMO alone against a known sigma-motif DB is the short-on-time fallback.)
 
 rule t32_final_output:
     input: "results/T26.done", "results/T27.done", "results/T30.done", "results/T31.done"
     output: "results/T32.done"
-    shell: "echo '[T32] FINAL candidate output TSV/JSONL (mock)' && touch {output}"
-    # real: python {REPO}/mining-and-motif-annotation/T32/assemble_final.py {input} results/T32/   (PT6-locked TSV/JSONL schema; not yet written)
+    shell:
+        "python {REPO}/mining-and-motif-annotation/T32/assemble_final.py "
+        "results/T26/ results/T27/ results/T30/ results/T31/ results/T32/ && touch {output}"
+    # SCRIPT NOT YET WRITTEN (FINAL candidate table TSV/JSONL in the PT6-locked schema).

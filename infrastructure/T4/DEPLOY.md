@@ -13,6 +13,17 @@ this env.
 ## 1. Prerequisites
 - HPC4 (= **HKUST SuperPOD**) account active (T1); Slurm account `igem2026`. Log in with
   `ssh <username>@superpod.ust.hk` (off-campus needs the HKUST VPN first).
+- **Get the repo + its LFS data.** The genome/Bakta zips, the PT5 CSV, the MasterTable, and the
+  published-TSS supplements are Git-LFS objects — a plain `git pull` only fetches ~130-byte pointers.
+  On HPC4 you MUST materialise them:
+  ```bash
+  git lfs version || module load git-lfs   # git-lfs must be available
+  cd /project/igem2026/cb-promoter-mining   # the repo clone
+  git pull
+  git lfs pull                              # turns LFS pointers into the real zips/csv/xlsx
+  ```
+  Without `git lfs pull`, `config[bakta_dir]` resolves to a 130-byte pointer and `extract_bakta` fails.
+  (`config[bakta_dir]` is repo-relative, so it resolves correctly wherever the repo is cloned.)
 - A conda/mamba front-end. The welcome email uses `source activate <env>`, so a conda base
   is available — check `module avail` for the exact module name (don't assume `miniforge3`).
   Containers (Enroot/Singularity) and Spack are the cluster-blessed alternatives if conda

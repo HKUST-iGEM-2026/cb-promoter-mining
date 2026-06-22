@@ -96,7 +96,11 @@ def main():
     parser.add_argument("--bakta-dir", required=True, help="Directory containing T6 outputs")
     parser.add_argument("--out-tsv", required=True, help="Path to save output negative_set.tsv")
     parser.add_argument("--window", type=int, default=300, help="Window size for sequence extraction")
+    parser.add_argument("--seed", type=int, default=42,
+                        help="RNG seed for reproducible negatives (SRS shuffle + CDS/intergenic sampling)")
     args = parser.parse_args()
+
+    random.seed(args.seed)   # make the negative set reproducible (was unseeded)
 
     # Load positive references
     pos_df = pd.read_csv(args.upstream_tsv, sep='\t')

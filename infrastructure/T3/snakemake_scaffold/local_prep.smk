@@ -29,7 +29,8 @@ rule all:
     input:
         "inputs/SRR_dRNAseq_for_TSSpredator.txt",  # T7  -> input to T10 (tss_prep.smk)
         "inputs/reference_promoters.parquet",      # T8  -> REFDB
-        "inputs/literature_promoters.tsv",         # T9  -> LIT_PROM (held out -> eval, T24/T26)
+        "inputs/literature_promoters.tsv",         # T9  -> LIT_PROM (full curated set)
+        "inputs/literature_promoters_train.parquet",  # T9-split (§7 b) -> in-genus training positives (T15)
         "inputs/published_tss_promoters.parquet",  # T7b -> in-genus positives -> training (T15)
 
 # --- T5 / T6 : genome + annotation regenerate path (real; not in `all`) ---------
@@ -77,7 +78,7 @@ rule t7_drnaseq_lit_search:
     output: "inputs/SRR_dRNAseq_for_TSSpredator.txt"
     shell:
         "mkdir -p inputs && "
-        "cp {REPO}/data-acquisition-and-curation/T7/SRR_dRNAseq_for_TSSpredator.txt {output}"
+        "cp {REPO}/{config[srr_list]} {output}"
     # 20 dRNA-seq runs for TSSpredator (the 27 Capp-Switch/5'-RNA-seq runs use published tables, not TSSpredator).
 
 rule t8_normalise_refdbs:
@@ -99,6 +100,20 @@ rule t9_curate_synthetic_promoters:
         "python {REPO}/data-acquisition-and-curation/T9/build_literature_promoters.py && "
         "mkdir -p inputs && "
         "cp {REPO}/data-acquisition-and-curation/T9/literature_promoters.tsv {output}"
+
+rule t9_split_train:
+    # §7 option b: split T9's VERIFIED in-genus C. acetobutylicum promoters into a TRAINING subset
+    # (-> T15) + an eval HOLDOUT (-> T24/T26). Family-aware + seeded (split_t9_for_training.py).
+    # Set config[t9_train_fraction]=0 to disable (T9 then stays 100% held out, the original behaviour).
+    # NB: when enabled, T24/T26 must eval on literature_promoters_holdout.tsv, NOT the full T9.
+    input: "inputs/literature_promoters.tsv"
+    output:
+        train="inputs/literature_promoters_train.parquet",
+        holdout="inputs/literature_promoters_holdout.tsv",
+    shell:
+        "python {REPO}/data-acquisition-and-curation/T9/split_t9_for_training.py "
+        "--in {input} --train-frac {config[t9_train_fraction]} --seed {config[random_seed]} "
+        "--train-out {output.train} --holdout-out {output.holdout}"
 
 rule t7b_published_tss:
     # In-genus VERIFIED positives from published TSS tables (Hocq 2022 C. acetobutylicum,

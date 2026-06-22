@@ -1,0 +1,9 @@
+# The published-TSS journal supplements in this folder are now COMMITTED via Git-LFS
+# (see the repo-root .gitattributes rule for published_tss/*.xls + *.xlsx) so they travel with the
+# repo to HPC4 (git pull && git lfs pull). They are PAPER DATA: `git add` them on a machine WITH
+# git-lfs installed so they store as LFS objects, not raw binaries.
+#   - albassam2018_clj_tss.xls   (Al-Bassam 2018, C. ljungdahlii — get the correct TSS supplement)
+#   - hocq2022_cac_tss.xlsx      (Hocq 2022, Table S1, C. acetobutylicum)
+# build_published_tss.sh ingests whatever .tsv/.xls/.xlsx is here.
+# COPYRIGHT NOTE: these are journal supplements — confirm redistribution is OK for your repo's
+# visibility, or instead scp them to HPC4 and keep them out of git.

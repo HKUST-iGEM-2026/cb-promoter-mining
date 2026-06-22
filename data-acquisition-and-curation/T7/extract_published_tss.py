@@ -75,17 +75,37 @@ def main():
     ap.add_argument("--species", required=True, help='e.g. "Clostridium ljungdahlii"')
     ap.add_argument("--source", required=True, help="citation tag, e.g. Hocq2022 / AlBassam2018")
     ap.add_argument("--sep", default="\t")
+    ap.add_argument("--sheet", default=0, help="sheet name or index for .xls/.xlsx (default: first sheet)")
     ap.add_argument("--pos-col", default="TSS_position")
     ap.add_argument("--strand-col", default="strand")
     ap.add_argument("--contig-col", default=None,
                     help="column naming the contig/replicon; REQUIRED if the genome has >1 record")
+    ap.add_argument("--contig-map", default=None,
+                    help='remap table contig labels to FASTA record ids, '
+                         'e.g. "Chromosome=NC_003030.1,pSOL=NC_001988.2"')
+    ap.add_argument("--filter-col", default=None, help="optional column to filter rows on (e.g. Class)")
+    ap.add_argument("--filter-vals", default=None,
+                    help="comma-separated values to KEEP for --filter-col (e.g. intergenic_sense)")
     ap.add_argument("--sigma-col", default=None, help="optional sigma-factor column")
     ap.add_argument("--out", required=True, help="output parquet")
     args = ap.parse_args()
 
-    tss = pd.read_csv(args.tss_table, sep=args.sep, comment="#")
+    # read the published table directly — supports the raw journal supplement (.xls/.xlsx)
+    # as well as CSV/TSV, so no manual conversion is needed.
+    if args.tss_table.lower().endswith((".xls", ".xlsx")):
+        try:
+            sheet = int(args.sheet)
+        except (ValueError, TypeError):
+            sheet = args.sheet
+        tss = pd.read_excel(args.tss_table, sheet_name=sheet)   # needs openpyxl (.xlsx) / xlrd (.xls)
+    else:
+        tss = pd.read_csv(args.tss_table, sep=args.sep, comment="#")
     genome = load_genome(args.genome)
     default_contig = next(iter(genome))
+    cmap = dict(kv.split("=", 1) for kv in args.contig_map.split(",")) if args.contig_map else {}
+    if args.filter_col:
+        keep = set(args.filter_vals.split(",")) if args.filter_vals else set()
+        tss = tss[tss[args.filter_col].astype(str).isin(keep)]
 
     # GUARD (fixes the silent multi-replicon bug): if the genome has >1 replicon, a contig column
     # is mandatory — otherwise every TSS would be sliced out of the first replicon only.
@@ -99,6 +119,7 @@ def main():
     rows, dropped = [], {"bad_pos": 0, "unmapped_contig": 0, "contig_end": 0, "bad_strand": 0, "non_acgt": 0}
     for _, r in tss.iterrows():
         contig = str(r[args.contig_col]) if args.contig_col else default_contig
+        contig = cmap.get(contig, contig)                # map table labels -> FASTA ids
         strand = norm_strand(r[args.strand_col])
         if strand not in {"+", "-"}:
             dropped["bad_strand"] += 1; continue
