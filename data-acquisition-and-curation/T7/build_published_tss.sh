@@ -3,8 +3,9 @@
 # T7b — build in-genus published-TSS promoter POSITIVES -> $OUT (parquet).
 #
 # Stages reference genome(s), runs extract_published_tss.py on the published TSS tables in
-# T7/published_tss/, and concatenates. If no usable table is present it writes an EMPTY but
-# schema-valid parquet so the pipeline still runs. See PUBLISHED_TSS_README.md for sources.
+# T7/published_tss/, and concatenates. If no usable table is present — including when the T5 zip or
+# the supplements are still Git-LFS pointers (no `git lfs pull`) — it writes an EMPTY but schema-valid
+# parquet so the pipeline still runs. See PUBLISHED_TSS_README.md for sources.
 #
 # Confirmed table layouts (inspected 2026-06):
 #   Hocq 2022  hocq2022_cac_tss.xlsx  -> sheet ATCC_824_25RPM, cols Genome_position/Strand/Locus,
@@ -26,35 +27,57 @@ mkdir -p "$REF_DIR" "$(dirname "$OUT")"
 ING="$T7/extract_published_tss.py"
 PARTS=()
 
+# A file is USABLE only if it exists, is non-empty, and is NOT an unmaterialised Git-LFS pointer
+# (a ~130-byte text stub whose first line is "version https://git-lfs..."). On a checkout without
+# `git lfs pull` the T5 zip and the TSS supplements are pointers — skip them gracefully, never crash.
+is_real() {
+  [ -s "$1" ] || return 1
+  local first=""; read -r first < "$1" 2>/dev/null || true
+  case "$first" in "version https://git-lfs"*) return 1 ;; *) return 0 ;; esac
+}
+
 # --- Al-Bassam 2018 — C. ljungdahlii (genome staged from the T5 zip; single replicon NC_014328.1) ---
 CLJ_FNA="$REF_DIR/GCF_000143685.1_ASM14368v1_genomic.fna"
-[ -f "$CLJ_FNA" ] || unzip -p "$GENOMES_ZIP" 'ncbi_dataset/data/GCF_000143685.1/*_genomic.fna' > "$CLJ_FNA"
+if [ ! -s "$CLJ_FNA" ]; then
+  if is_real "$GENOMES_ZIP"; then
+    unzip -p "$GENOMES_ZIP" 'ncbi_dataset/data/GCF_000143685.1/*_genomic.fna' > "$CLJ_FNA" \
+      || { echo "[T7b] could not extract C. ljungdahlii ref from $GENOMES_ZIP — skipping Al-Bassam."; rm -f "$CLJ_FNA"; }
+  else
+    echo "[T7b] T5 genomes zip is a Git-LFS pointer or missing ($GENOMES_ZIP) — run 'git lfs pull'. Skipping Al-Bassam."
+  fi
+fi
 ALB=$(ls "$TBL_DIR"/albassam2018_clj_tss.* 2>/dev/null | head -1 || true)
-if [ -n "$ALB" ]; then
+if [ -n "$ALB" ] && is_real "$ALB" && [ -s "$CLJ_FNA" ]; then
   python "$ING" --tss-table "$ALB" --sheet "${CLJ_SHEET:-0}" \
     --genome "$CLJ_FNA" --species "Clostridium ljungdahlii" --source AlBassam2018 \
     --pos-col "${CLJ_POS_COL:-TSS_position}" --strand-col "${CLJ_STRAND_COL:-strand}" \
     ${CLJ_CONTIG_COL:+--contig-col "$CLJ_CONTIG_COL"} ${CLJ_CONTIG_MAP:+--contig-map "$CLJ_CONTIG_MAP"} \
     ${CLJ_SIGMA_COL:+--sigma-col "$CLJ_SIGMA_COL"} --out "$REF_DIR/albassam.parquet" \
     && PARTS+=("$REF_DIR/albassam.parquet") || echo "[T7b] Al-Bassam ingest failed — check CLJ_* cols vs the table."
+elif [ -n "$ALB" ]; then
+  echo "[T7b] Al-Bassam: table present but unusable (Git-LFS pointer, or C. ljungdahlii genome not staged) — skipping."
 fi
 
 # --- Hocq 2022 — C. acetobutylicum ATCC 824 (VALIDATED config) ---
 HOCQ=$(ls "$TBL_DIR"/hocq2022_cac_tss.* 2>/dev/null | head -1 || true)
-if [ -n "$HOCQ" ]; then
+if [ -n "$HOCQ" ] && ! is_real "$HOCQ"; then
+  echo "[T7b] Hocq table is a Git-LFS pointer ($HOCQ) — run 'git lfs pull'. Skipping."
+elif [ -n "$HOCQ" ]; then
   # GCF_000008765.1 (NC_003030.1 chromosome + pSOL1 NC_001988.2) is NOT in the T5 zip -> auto-fetch.
   CAC_FNA="${CAC_FNA:-$REF_DIR/GCF_000008765.1.fna}"
-  if [ ! -f "$CAC_FNA" ] && command -v datasets >/dev/null 2>&1; then
+  if [ ! -s "$CAC_FNA" ] && command -v datasets >/dev/null 2>&1; then
     ( cd "$REF_DIR" && datasets download genome accession GCF_000008765.1 --include genome --filename cac.zip \
-      && unzip -o -q cac.zip -d cac && cat cac/ncbi_dataset/data/GCF_000008765.1/*_genomic.fna > "$CAC_FNA" )
+      && unzip -o -q cac.zip -d cac && cat cac/ncbi_dataset/data/GCF_000008765.1/*_genomic.fna > "$CAC_FNA" ) \
+      || echo "[T7b] Hocq genome auto-fetch failed — set CAC_FNA=<GCF_000008765.1 fasta> manually."
   fi
-  if [ -f "$CAC_FNA" ]; then
+  if [ -s "$CAC_FNA" ]; then
     python "$ING" --tss-table "$HOCQ" --sheet "${CAC_SHEET:-ATCC_824_25RPM}" \
       --genome "$CAC_FNA" --species "Clostridium acetobutylicum" --source Hocq2022 \
       --pos-col Genome_position --strand-col Strand --contig-col Locus \
       --contig-map "Chromosome=NC_003030.1,pSOL=NC_001988.2" \
       --filter-col Class --filter-vals "${CAC_CLASSES:-intergenic_sense}" \
-      --out "$REF_DIR/hocq.parquet" && PARTS+=("$REF_DIR/hocq.parquet")
+      --out "$REF_DIR/hocq.parquet" && PARTS+=("$REF_DIR/hocq.parquet") \
+      || echo "[T7b] Hocq ingest failed — check the sheet/cols vs the table."
   else
     echo "[T7b] Hocq: need the C. acetobutylicum genome — set CAC_FNA=<GCF_000008765.1 fasta> or install ncbi-datasets-cli."
   fi
