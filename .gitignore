@@ -48,3 +48,11 @@ path_a_reads/
 # Personal hand-off briefs (given to task owners directly, not committed).
 # Matches *_CLAUDE.md anywhere (T15_QC_CLAUDE.md, T16_BUILD_CLAUDE.md, …) but NOT the real CLAUDE.md.
 *_CLAUDE.md
+
+*.jar
+**/result_fuchs/
+**/result_tap/
+**/cdiff_630/
+data-acquisition-and-curation/T7/ref/
+slurm-*.out
+**/.snakemake/
