@@ -349,6 +349,18 @@ rebalance, so confirm current owners with Oak.
 - **Cluster-aware CV** (T23): `StratifiedGroupKFold` on CD-HIT cluster IDs, *not* plain
   StratifiedKFold — otherwise near-identical sequences leak across train/test and inflate scores.
 - **Splits ~50/50 positive/negative**, cluster-disjoint (T15).
+- **T15 split hyperparameters — sane defaults, NOT derived optima; sweepable by the T15 owner:**
+  - `cdhit_identity = 0.9` (config) — CD-HIT-est threshold; seqs ≥90% identical share a cluster and whole
+    clusters stay on one split side (the anti-leakage guard). 0.9 is the middle ground: ≥0.95 lets
+    90–95%-similar near-duplicates leak; ≤0.8 over-merges genuinely distinct promoters. Empirically modest
+    (~8% merged: 35,785 clusters from 38,944 seqs). Validate by sweeping 0.85–0.95 + checking CV stability.
+  - `silver_weight = 0.3` — T13 inferred positives weighted 0.3 vs 1.0 for verified. T13 is inferred through
+    3 stacked assumptions and the −10-crop check found ~⅓ of windows don't frame the promoter, so at full
+    weight the ~14k AT-rich windows would teach "AT-rich = promoter" (the §1 trap). 0.3 balances the
+    *effective* weight: 13,838 × 0.3 ≈ 4,150 silver vs 5,634 verified → verified ≈ 58% / silver ≈ 42%
+    (0 = drop T13; 1.0 = silver dominates at 71%). Set properly by sweeping {0,0.1,0.3,0.5,1.0} on validation AUPRC.
+  - ⚠️ the `weight` column is only *written* by T15 — it has **no effect unless T18–T20 training passes it
+    as a sample/loss weight**; otherwise T13 trains at full weight and this guard is inert.
 - **Contig-end exclusion** (T12/T13): the target assembly isn't a complete genome, so drop
   loci whose upstream region is truncated by a contig boundary.
 - **TSSpredator only fits the 20 dRNA-seq runs** (paired TEX±). The 27 Capp-Switch / 5′-RNA-seq
