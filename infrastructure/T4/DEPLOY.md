@@ -24,10 +24,18 @@ this env.
   ```
   Without `git lfs pull`, `config[bakta_dir]` resolves to a 130-byte pointer and `extract_bakta` fails.
   (`config[bakta_dir]` is repo-relative, so it resolves correctly wherever the repo is cloned.)
-- A conda/mamba front-end. The welcome email uses `source activate <env>`, so a conda base
-  is available — check `module avail` for the exact module name (don't assume `miniforge3`).
-  Containers (Enroot/Singularity) and Spack are the cluster-blessed alternatives if conda
-  is awkward.
+- A conda front-end. On SuperPOD the base is `/cm/shared/apps/Anaconda3/2023.09-0` (confirm with
+  `which conda` / `module avail`). **You must initialise conda in the shell before `conda activate`
+  will work** — otherwise it only sets the prompt and leaves `python`/`pip` pointing at the *base*
+  Anaconda. This is the #1 trap here: the prompt shows `(promoter-mining-hpc4)` but `which python`
+  is the base, so `import torch` → `ModuleNotFoundError` even though the env has torch.
+  ```bash
+  source /cm/shared/apps/Anaconda3/2023.09-0/etc/profile.d/conda.sh   # THEN `conda activate …` works
+  which python      # must be …/promoter-mining-hpc4/bin/python, not /cm/shared/apps/Anaconda3/…
+  ```
+  Put that `source` line in your `~/.bashrc` and at the top of every SBATCH preamble. Note **`mamba`
+  is not installed on the base Anaconda here** — use `conda env create` (§3) if `mamba: command not found`.
+  Containers (Enroot/Singularity) and Spack are the cluster-blessed alternatives if conda is awkward.
 - Put the env in **`/project/igem2026`** — the 5 TB group NFS share: persistent and shared
   by all team accounts, so you build once and everyone activates it. Do **NOT** use
   `/scratch` — it's Lustre scratch and **files inactive >30 days are deleted**, which would
@@ -49,15 +57,32 @@ PyPI torch, which is a CUDA-13 build the driver can't run (silent CPU fallback).
 
 ## 3. Build (shared `/project` location)
 ```bash
-module load <conda-module>          # exact name from `module avail` (e.g. miniforge3 / anaconda3)
+source /cm/shared/apps/Anaconda3/2023.09-0/etc/profile.d/conda.sh   # init conda (§1) — REQUIRED
 conda config --set channel_priority strict          # cleaner solve; retry 'flexible' if it conflicts
 ENV=/project/igem2026/envs/promoter-mining-hpc4
-mamba env create -f environment.yml -p "$ENV"
-chmod -R g+rX "$ENV"                # let the whole igem2026 group read/execute it
+# mamba isn't on the base Anaconda here -> use conda with the libmamba solver (fast). If you DO have
+# mamba, `mamba env create -f environment.yml -p "$ENV"` also works.
+conda env create --solver=libmamba -f environment.yml -p "$ENV"
+chmod -R g+rX "$ENV" 2>/dev/null || true   # group read/exec. The `2>/dev/null || true` is REQUIRED:
+                                           # conda hardlinks some files from whoever first populated the
+                                           # package cache, so "Permission denied" on those .pyc files is
+                                           # EXPECTED and harmless (they're already group-readable).
 conda activate "$ENV"
-# Guard: confirm torch is the cu128 build (CUDA 12.8 = the H800 driver max). The pip section installs
-# it; do NOT later run a bare `pip install torch` — PyPI's default is a CUDA-13 build the driver can't
-# use (silent CPU fallback). Verify before going further:
+
+# Post-build hygiene — bake two env vars in so EVERY activation (and SBATCH job) gets them. These are
+# NOT captured by the lock, so you MUST recreate this file after any rebuild:
+mkdir -p "$CONDA_PREFIX/etc/conda/activate.d"
+cat > "$CONDA_PREFIX/etc/conda/activate.d/zz_env_fixes.sh" <<'EOF'
+export PYTHONNOUSERSITE=1        # ignore ~/.local so a stray user-site torch/numpy can't shadow the env
+export MKL_THREADING_LAYER=GNU   # fixes "Intel oneMKL FATAL ERROR: Cannot load libtorch_cpu.so"
+                                 # (conda's MKL/Intel-OpenMP vs the pip-torch GNU-OpenMP clash on import)
+EOF
+conda deactivate && conda activate "$ENV"   # re-activate so the two vars take effect
+
+# Guard: confirm torch is the cu128 build (CUDA 12.8 = the H800 driver max) AND imports cleanly. The pip
+# section installs it; do NOT later run a bare `pip install torch` — PyPI's default is a CUDA-13 build the
+# driver can't use (silent CPU fallback). NB run `conda env create` (not pip) so torch lands in the ENV,
+# not ~/.local. Verify before going further:
 python -c "import torch; assert torch.version.cuda=='12.8', torch.version.cuda; print('torch', torch.__version__, 'cuda', torch.version.cuda)"
 ```
 
@@ -91,21 +116,28 @@ snakemake -n --workflow-profile profiles/slurm
 
 ## 5. Lock it for reproducibility (the whole point of T4)
 
-> ⚠️ **The currently committed `environment.lock.yml` is INVALID — do not install from it.** It mixes a
-> CUDA 12.1 conda stack with CUDA-13 pip wheels (`nvidia-*-cu13`, `cuda-toolkit==13.0.2`) plus
-> `torch 2.12` / `torchvision 0.27`. That torch needs a newer driver than the H800 nodes have, so it
-> silently falls back to CPU. Build from `environment.yml`, then regenerate this lock from the clean env.
+> ⚠️ **Always build from `environment.yml`, never install straight from `environment.lock.yml`.** A
+> `conda env export` lock is only a version *snapshot* — it silently **drops two pip sources** this env
+> needs, so a bare lock fails to rebuild. After exporting you MUST patch them back (sed below): the cu128
+> index (`torch==2.11.0+cu128` lives only there, not on PyPI) and the prokbert git URL. Regenerate the
+> lock only from a freshly built env that imports torch cleanly and shows `True 12.8` on a GPU node.
 
-Once it solves cleanly, freeze exact versions so every teammate gets an identical env,
-and commit the lock:
+Once it solves cleanly, freeze versions, patch the two dropped sources, and verify it's clean before committing:
 
 ```bash
-conda env export --no-builds > environment.lock.yml     # or: conda-lock -f environment.yml
+conda env export --no-builds > environment.lock.yml     # or: conda-lock -f environment.yml (handles pip sources properly)
+LOCK=environment.lock.yml
+# 1. re-add the cu128 index (else a rebuild can't find torch==2.11.0+cu128):
+grep -q extra-index "$LOCK" || sed -i '/- pip:/a\    - --extra-index-url https://download.pytorch.org/whl/cu128' "$LOCK"
+# 2. restore prokbert's git source (export records it as a bare ==0.0.50 that isn't on PyPI):
+sed -i 's#prokbert==0.0.50#prokbert @ git+https://github.com/nbrg-ppcu/prokbert.git#' "$LOCK"
+# 3. sanity: a clean lock has NO pytorch-cuda line (that = the old CUDA-12.1 frankenstein -> rebuild):
+grep -q pytorch-cuda "$LOCK" && echo "STILL DIRTY — rebuild from environment.yml" || echo "lock clean"
 git add environment.yml environment.lock.yml DEPLOY.md
 ```
 
 The committed `environment.yml` stays loosely pinned (readable); `environment.lock.yml`
-is the exact, reproducible resolve everyone installs from.
+is the version snapshot (with the two pip sources patched back in).
 
 ## 6. Wire into the pipeline
 The T3 scaffold assumes the env is already **active** before
@@ -152,5 +184,8 @@ too, so every node can read them.
 - **T10 tooling** — `segemehl` / `sra-tools` / `meme` moved to the companion `environment-bio.yml`
   (they conflict with the ML stack on icu/libcurl). **TSSpredator is a JAR, not a conda package**:
   download it and run `java -jar TSSpredator.jar <config>` (the bio env ships `openjdk`).
-- **Regenerate the lock** — `environment.lock.yml` is a placeholder; build on-cluster from
-  `environment.yml`, then `conda env export --no-builds > environment.lock.yml` to capture the real lock.
+- **Lock** — regenerate per §5 from a freshly built env (don't trust an old committed lock); always
+  re-apply the two pip-source patches (cu128 index + prokbert git URL) and confirm no `pytorch-cuda` line.
+- **Activate.d hygiene is not in the lock** — after any rebuild, recreate
+  `$CONDA_PREFIX/etc/conda/activate.d/zz_env_fixes.sh` (`PYTHONNOUSERSITE=1` + `MKL_THREADING_LAYER=GNU`, §3),
+  or torch will fail to import / `~/.local` can shadow the env.
