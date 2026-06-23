@@ -233,31 +233,68 @@ rebalance, so confirm current owners with Oak.
 - T1 HPC4 access — Oak — ✅
 - T2 GitHub repo — Oak — ✅
 - T3 Snakemake scaffold + SLURM — Swasti — ✅ (`infrastructure/T3/snakemake_scaffold/`). **Rewired 2026-06**: Phase B (`collect_bakta_tsv`, T11–T14) now runs FOR REAL (config-driven `bakta_dir`, real `.tsv` outputs; T11 fed by a flat-`.tsv` staging rule that symlinks the nested Bakta dirs); T15–T32 + pre-tasks stay mock but every `# real:` now names the actual script + exact args (fixed the bogus `scripts/*.py {input} {output}` refs, the PT6 `validate_lock_schema.py`→`validate_promoters.py` name, PT5 `cd`, T18/T19 `.sh` filename bug). Validated by AI council: `snakemake -n` builds the full 30-job DAG; real run produced T11 (22,760 rows/166 genomes) → T12 (14,659 leaders). `config.yaml` now has real paths/params. **Real-shell pass (2026-06)**: `bakta_dir` may be a `.zip` (HPC4: `all_bakta_output.zip`) → new `extract_bakta` rule unzips it (collect symlinks made absolute). Phase A now carries REAL shell too: T5 (unzip genomes), T6 (bakta loop, opt-in regen — needs a bakta env + DB), T7/T8/T9 (cp/run+cp; T8 re-run gives the real 3,963 RegulonDB rows), T7b still a stub (its published-TSS tables aren't staged). T10 mock→ real 6-stage `data-acquisition-and-curation/T10/run_tss_pipeline.sh` (datasets→prefetch/fasterq-dump→segemehl→bedtools 5′-wiggle→TSSpredator×2→merge; 8 open decisions D1–D8 in its header). Council-validated: 31-job DAG builds; T5/T8/T9 + Phase-B-from-zip run for real; all T10 stage CLIs audited correct. **Main Snakefile now carries REAL commands in EVERY rule** (echo/touch mocks removed; `results/<task>.done` sentinels kept so the DAG order holds, `&& touch {output}` appended). LIVE today: T11–T14 + PT3/PT4/PT5/PT6; TEMPLATE-with-defects: PT1/T18–T21/T23/T24/T28; SCRIPT-not-yet-written (rule fails until built): PT2/T15/T16/T22/T25–27/T29–32. Validated: dry-run 31 jobs + real PT3 (wrote pt3_cv_results.csv) + real T12 (14,659 leaders). NB `snakemake --cores 4` now executes real commands and stops at the first unwritten script; `snakemake -n` is the wiring test.
-- T4 Conda env + deploy — Swasti — 🟡 spec ✅, deploy on HPC4 pending (`infrastructure/T4/`)
+- T4 Conda env + deploy — Swasti — ✅ **deployed + GPU-verified on HPC4 (2026-06)**: built from
+  `environment.yml`; a GPU job confirms `torch.cuda.is_available()`=True + `torch.version.cuda`=12.8
+  (clean single **cu128** stack — the old 12.1-conda / cu13-pip frankenstein was rebuilt out).
+  `environment.lock.yml` regenerated (re-add the two pip sources `conda env export` drops: the cu128
+  `--extra-index-url` and `prokbert @ git+…`). The 6 env gotchas that cost us hours are in DEPLOY.md:
+  `source <base>/etc/profile.d/conda.sh` **before** activate; `conda env create` (no `mamba` on base);
+  `chmod -R g+rX … 2>/dev/null`; `PYTHONNOUSERSITE=1` + `MKL_THREADING_LAYER=GNU` baked into the env's
+  `activate.d`; the lock pip-sources. Lock + env edits commit from the Mac. (`infrastructure/T4/`)
 
 **Pre-tasks (learning + reusable code)**
 - PT1 Fine-tune loop on RegulonDB/DBTBS — Sine — 🟡 (check it runs on **GPU** not CPU)
 - PT2 Ship ProkBERT to HuggingFace — Sine — ⬜ (dep PT1)
 - PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
-- PT4 Calibration + FDR harness — Seonyu — ⬜ (dep PT3; reused by T26/T27)
-- PT5 Sliding-window inference on E. coli — Ishi — ✅ code fixed (batch-scoring); CSV regenerated → `mg1655_promoter_scores.csv` (242 MB, Git-LFS via the `pre-tasks/PT5/*.csv` rule; script now writes that exact name). Reused by T28.
+- PT4 Calibration + FDR harness — Seonyu — 🟡 implemented `pre-tasks/PT4/calibration_fdr.py` (Snakefile
+  marks it LIVE; not independently re-verified this session). (dep PT3; reused by T26/T27)
+- PT5 Sliding-window inference on E. coli — Ishi — ✅ code fixed (batch-scoring); CSV regenerated → `mg1655_promoter_scores.csv` (242 MB, Git-LFS via the `pre-tasks/PT5/*.csv` rule; script now writes that exact name). Reused by T28. **2026-06:** re-run on HPC4 (SLURM GPU). Model = `neuralbioinfo/prokbert-mini-promoter` — the promoter **classifier**, NOT base `prokbert-mini` and NOT `…-long-promoter` (DEPLOY §7 mis-states "-long-promoter"; cache the ID the code actually names). Input `MG1655.fna` (E. coli K-12, `GCF_000005845.2`/`U00096.3`) is **not committed** — stage it in `pre-tasks/PT5/` first or it `FileNotFoundError`s; script is cwd-relative (run from that dir). NB the HPC4 `sliding_window_inference.py` is currently modified/uncommitted — review the diff before committing.
 - PT6 Validate pipeline + lock output schema — Swasti — 🟡 implemented `pre-tasks/PT6/validate_promoters.py` (coord logic incl. reverse strand verified — matched dist median 4 bp, signed median 0; locks the candidate-table schema for T32). Baseline finding: off-the-shelf `prokbert-mini-long-promoter` is weak genome-wide (recall 0.37, precision 0.036, ~2× enrichment over random) but 4 bp-accurate when it hits — the bar to beat after fine-tuning. (dep PT5)
 
 **Phase A — data acquisition & curation**
 - T5 Download Clostridium genomes — Salimah — ✅ 166 RefSeq genomes (taxon 1485)
 - T6 Re-annotate with Bakta — Leo — ✅ 166/166, Bakta 1.11.4 + DB v6.0 **light** (in `bakta_outputs/`)
 - T7 dRNA-seq literature search — Salimah — ✅ (see §8; 20 dRNA-seq vs 27 published TSS)
-- T8 Normalise RegulonDB+DBTBS → Parquet — Leo — 🟡 RegulonDB parse fixed (~3,963); DBTBS half pending (see §9) `data-acquisition-and-curation/T8/`
+- T7b Published in-genus TSS → `published_tss_promoters.parquet` — Salimah/Leo — ✅ **1,434 verified in-genus
+  positives** (Hocq 2022 *C. acetobutylicum* `intergenic_sense` TSS, 81 bp), run on HPC4 via
+  `build_published_tss.sh` + `extract_published_tss.py`. Needs: the Hocq `.xlsx` (committed via Git-LFS),
+  the `GCF_000008765.1` genome (auto-fetched via `ncbi-datasets-cli`), and `openpyxl` (now pinned in
+  `environment.yml`). Runner now **skips Git-LFS pointers / missing inputs gracefully** (writes an
+  empty schema-valid parquet) instead of crashing `local_prep`. **This is the in-genus training-positive
+  source that resolves the §7 open decision.** Al-Bassam supplement still optional/undownloaded. (`data-acquisition-and-curation/T7/`)
+- T8 Normalise RegulonDB+DBTBS → Parquet — Leo — ✅ **4,336** (3,963 RegulonDB + 373 DBTBS), landed on
+  `main` (commit `82d9bbb`): `run_t8_pipeline.py` reads the committed `DBTBS_prom.fa` (Sine's 373 σA
+  set, 81 bp) + `PromoterS_Set.txt`, asserts both sources non-empty, and reproducibly regenerates
+  `curated_positive_promoters.parquet`. `data-acquisition-and-curation/T8/`
 - T9 Curate synthetic promoters → `literature_promoters.tsv` — Salimah — ✅ 93 promoters merged + cleaned into one `literature_promoters.tsv` via re-runnable `build_literature_promoters.py`: C. acetobutylicum 120 bp cloning scaffold trimmed → ~50 bp promoter, 7 alignment-gap hyphens stripped → clean ACGT, strengths kept verbatim with `strength_unit`, `original_sequence` retained lossless. Verified 93/93 clean ACGT, reconstruction exact. NB C. phytofermentans (25) is out-of-genus (→ *Lachnoclostridium*), flagged `in_genus=False`. Held out → eval T24/T26.
-- T10 Re-process dRNA-seq w/ TSSpredator — Sine — 🟡 was built but **over-called (170,766 TSS)**; config **fixed 2026-06**: split into `fuchs_config_hpc.conf` (3 conditions × 3 bioreps, `numReplicates=3`, `minNumRepMatches=2`) + `soutourina_tap_config.conf` (TAP, 1×1 — different enrichment, must be separate), `minNormalHeight 0→0.2`. Configs validated (all indexed keys present, 18 SRRs, TAP excluded). **Must be RE-RUN on HPC4** (`java -jar TSSpredator.jar`); `result_hpc/` is stale — see `CONFIG_FIX_README.md`. NB C. difficile = out-of-genus. (`tss_prep.smk`; dep T6,T7)
+- T10 Re-process dRNA-seq w/ TSSpredator — Sine — ✅ **re-run + verified on HPC4 (2026-06): over-call
+  fixed → 1,746 enriched primary TSS** (was 170,766; the merged `inputs/tss_sites.gff3`). Root cause was
+  the replicate filter, not thresholds: `fuchs_config_hpc.conf` (3×3, `numReplicates=3`/`minNumRepMatches=2`)
+  + `soutourina_tap_config.conf` (TAP 1×1), `minNormalHeight 0→0.2`. Verified by re-running TSSpredator off
+  the **committed `wig_chrom_only/` tracks** (no SRA re-map needed) → MasterTable 73,116 candidates → 1,746
+  filtered primary. Gotchas: stage-5 must `mkdir -p` the config output dirs; the configs hard-code
+  `/project/igem2026/xzhangjj/cdiff_tss` (repoint to the repo, or stage there); `cdiff_chrom_only.fna` must
+  be fetched. NB C. difficile = **out-of-genus** → cross-species-adjacent support, not the in-genus signal
+  (and not passed to T15's `--positives`). (`tss_prep.smk` / `run_tss_pipeline.sh`; dep T6,T7)
 
 **Phase B — dataset construction** (land in `dataset-construction/`)
-- T11 Housekeeping gene set — Sine — 🟡 implemented (`dataset-construction/T11/define_housekeeping.py` + outputs `housekeeping_genes.tsv`, per-genome counts); selects by product per §9. (dep T6)
+- T11 Housekeeping gene set — Sine — ✅ ran on HPC4 → **22,760** housekeeping genes / 166 genomes (`dataset-construction/T11/define_housekeeping.py`; selects by product per §9). (dep T6)
 - T12 Operon detection (+ contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: (a) nested Bakta path (`<genome>_genomic_output/<genome>_genomic.gff3`); (b) **reverse-strand leader bug** — now clusters then picks the most-upstream gene strand-aware (min-start on `+`, **max-stop on `−`**). Ran on 166 genomes → 22,760 loci → 14,659 leaders; `+` leaders 7064/7064 and `−` leaders independently verified correct (`dataset-construction/T12/operon_detection.py`). (dep T6,T11)
-- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna` path; ran end-to-end (236/236 windows, all 300 bp clean ACGT, ~72% AT). Reused by T28. **Still: its windows are INFERRED positives — §7 open decision stands.** (`dataset-construction/T13/upstream_extraction.py`) (dep T11,T12)
+- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna` path; ran end-to-end (236/236 windows, all 300 bp clean ACGT, ~72% AT). Reused by T28. Its windows are INFERRED positives → T15 treats them as **silver / down-weighted** (`--silver-weight 0.3`); §7 open decision now **resolved** (verified in-genus positives come from T7b). (`dataset-construction/T13/upstream_extraction.py`) (dep T11,T12)
 - T14 Four-class negatives incl. SRS — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna`/`.gff3` path; ran end-to-end → all four classes generate (SRS/CDS/Downstream/Intergenic). Minor: `random` is unseeded (non-reproducible negatives) — add a `--seed` before locking the dataset. (`dataset-construction/T14/negative_set_generation.py`) (dep T6,T13)
-  *(NB: §6's T11–T14 were marked ⬜ but scripts/outputs exist; §3 "dataset-construction = README only" is likewise stale. T15/T16 still have no code.)*
-- T15 CD-HIT clustering + cluster-aware 80/10/10 splits — Sine — ⬜ (dep T8,T10,T13,T14)
+- T15 CD-HIT clustering + cluster-aware 80/10/10 splits — Sine — 🟡 **script written + validated
+  (2026-06); first real run + Sine review pending.** `dataset-construction/T15/cdhit_splits.py`:
+  auto-detects + harmonises the 5 sources, re-windows everything to 81 bp (T13 → gene-PROXIMAL crop,
+  verified against T13's extraction; T14 SRS **regenerated** as 81 bp dinucleotide shuffles of the
+  re-windowed positives — a crop of the 300 bp SRS would be the wrong null), `cd-hit-est` clustering,
+  cluster-disjoint `StratifiedGroupKFold` 80/10/10 with a leakage `assert`. Decisions baked in:
+  window=81, T13 silver-weight 0.3, ~50/50 balance, **T9 held out** (`config t9_train_fraction=0`).
+  Smoke-tested end-to-end on synthetic data (leakage PASS). **T13 proximal-81 crop verified on real
+  data (own analysis + council cross-check, 2026-06):** the composition-controlled −10 signal peaks at
+  ~−24 to −40 bp (inside the crop), ~65–70% of the −10 enrichment mass is captured, the far-upstream
+  half is depleted; ~⅓ of signal sits upstream of −81 (long-5′UTR / operon promoters) — correctly
+  handled by the silver-weight (T13 windows carry real but approximate promoter signal). Still needs a
+  real HPC4 run. (dep T8,T7b,T13,T14)
 - T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ⬜ (dep T15)
 
 **Phase C — model training**
@@ -286,25 +323,21 @@ rebalance, so confirm current owners with Oak.
 
 ## 7. Conventions & decisions locked
 
-> ⚠️ **OPEN DECISION — resolve BEFORE building T15/T16 (raised 2026-06-19, council-verified).** As
-> currently wired, the training split (T15 ← T8, T10, T13, T14) contains **no _verified_ in-genus
-> _Clostridium_ promoter positive.** T8 is cross-species (_E. coli_/_B. subtilis_); T10's TSSpredator
-> data is _Clostridioides difficile_ (out of taxon 1485) and is unbuilt; T13's housekeeping upstreams
-> are **inferred** regions, not confirmed promoters; and T9 (the ~93 real _C. acetobutylicum/
-> phytofermentans_ promoters) is held **out** to T24/T26. So the fine-tune would learn promoter grammar
-> only from foreign genera while its one in-genus "positive" class is AT-rich upstream windows scored
-> against shuffles of themselves — the exact AT-rich false-positive trap in §1. Decide, explicitly:
-> 1. **T13 label semantics** — are housekeeping upstreams positives at all? If yes, treat them as
->    **weak/silver** labels (down-weight; do not mix with verified positives at equal weight).
-> 2. **Get verified in-genus positives into training** — (a) ingest the in-genus _published_ TSS
->    (Hocq 2022 _C. acetobutylicum_ PMC9045289, Al-Bassam 2018 _C. ljungdahlii_ PMC6203783) via the
->    now-production `data-acquisition-and-curation/T7/extract_published_tss.py` + `build_published_tss.sh`
->    (wired into local_prep T7b; the C. ljungdahlii ref auto-stages from the T5 zip). **Only the TSS
->    tables themselves still need a manual download** — they're binary journal supplements (see
->    `T7/PUBLISHED_TSS_README.md`). → feed into T15; and/or (b) **split T9** (train on some, hold out the
->    rest — 68 verified in-genus _C. acetobutylicum_ promoters already in the repo, needs NO download).
-> 3. **T10 scope** — _C. difficile_ TSS are cross-species-adjacent (out of genus); the in-genus empirical
->    signal is the published-table path, not TSSpredator.
+> ✅ **RESOLVED (2026-06).** The "no _verified_ in-genus positive in training" problem (raised
+> 2026-06-19) is fixed. The T15 positive set is now **T8 (cross-species, verified) + T7b (in-genus,
+> verified) + T13 (in-genus, _silver_)**, with T9 and T10 held out:
+> 1. **T7b now supplies ~1,434 verified in-genus positives** (Hocq 2022 _C. acetobutylicum_ empirical
+>    TSS) — built + run on HPC4, feeds T15 `--positives`. This was the missing piece (T7b was an empty
+>    stub when the alarm was raised; the `.xlsx` + genome + `openpyxl` are now in place).
+> 2. **T13 housekeeping upstreams = silver/weak labels** — T15 down-weights them (`--silver-weight 0.3`),
+>    never mixed at equal weight with verified positives; the SRS null is **regenerated per-positive at
+>    81 bp** (not a crop of the 300 bp shuffle).
+> 3. **T9 held fully out** for eval (`config t9_train_fraction=0`) — the "split T9 into training"
+>    workaround is no longer needed now that T7b exists, and T9's ~51 bp would need poor N-padding.
+> 4. **T10 (_C. difficile_) stays out-of-genus** — re-run + verified (1,746 TSS) but treated as
+>    cross-species-adjacent support, and **not** passed to T15's `--positives`.
+> Remaining (optional): the Al-Bassam 2018 _C. ljungdahlii_ supplement is still undownloaded — extra
+> in-genus positives if added, but not required.
 
 - **Phase A is prep, uploaded as `inputs/`.** The HPC4 pipeline starts at Phase B. T1–T4
   (infra) and PT1–PT6 (learning) are not real data-pipeline steps.
@@ -387,8 +420,15 @@ select by **product description**, not the gene-symbol field.
 
 ## 10. Status snapshot
 
-**Solid:** T1, T2, T3 scaffold, T4 env spec, T5, T6, T7, PT3.
-**Needs attention:** T4 deploy on HPC4 · T8 column bug · PT1 GPU check · most of Phase B–E
-(starter templates exist for T18–T21, T23, T24, T28; everything else is unimplemented).
+**Solid (done + run/verified on HPC4, 2026-06):** T1, T2, T3, **T4 (env built + GPU-verified + locked)**,
+T5, T6, T7, **T7b (1,434 in-genus)**, **T8 (4,336)**, T9, **T10 (re-run, 1,746 TSS, over-call fixed)**,
+T11–T14 (Phase B ran: 22,760 → 14,659 → ~14.6k → ~53k), PT3, PT5 (re-run). The §7 in-genus-positive
+decision is **resolved**.
+**Frontier:** **T15 — script written + validated, first real run pending** (run it: stage `inputs/`,
+`snakemake --cores 4 results/T15.done`). Then **T16 (tokenisation) is the next unwritten blocker.**
+**Needs attention (not blocking T15):** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS
+table · PT5 `sliding_window_inference.py` modified-uncommitted on HPC4 (review diff) · DEPLOY §7 HF
+model IDs (T18 wrong org; PT5 is `prokbert-mini-promoter` not `-long-promoter`) · the env lock + this
+session's edits still to be committed from the Mac.
 **When in doubt:** confirm owners/decisions with Oak; verify tool usage and accessions against
 the literature; keep changes surgical and within your task.

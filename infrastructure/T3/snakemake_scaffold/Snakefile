@@ -5,10 +5,11 @@
 # local_prep.smk (+ tss_prep.smk for T10) and consumed here as pre-staged inputs/.
 #
 # EXECUTION STATUS (2026-06) — what runs today vs what needs its script/data first:
-#   LIVE (verified):  extract_bakta, collect_bakta_tsv, T11, T12, T13, T14,
+#   LIVE (verified):  extract_bakta, collect_bakta_tsv, T7b(1,434 in-genus), T11, T12, T13, T14,
+#                     T15(written 2026-06, validated on synthetic; first real run pending),
 #                     PT3, PT4, PT5(GPU), PT6(needs a RegulonDB TSS table)
 #   TEMPLATE w/ known defects (fix before running): PT1, T18, T19, T20, T21, T23, T24, T28
-#   SCRIPT NOT YET WRITTEN (rule will fail until implemented): PT2, T15, T16, T22, T25, T26, T27, T29, T30, T31, T32
+#   SCRIPT NOT YET WRITTEN (rule will fail until implemented): PT2, T16, T22, T25, T26, T27, T29, T30, T31, T32
 # Rules below keep a `results/<task>.done` sentinel as the snakemake output (so the DAG
 # order is preserved); the real command writes its real data under results/<task>/ and
 # then touches the sentinel. T11-T14 instead declare their real .tsv as the output.

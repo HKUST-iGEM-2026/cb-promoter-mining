@@ -29,5 +29,7 @@ upstream_window_bp: 300     # T12 contig-end window + T13 extraction window (bp)
 operon_max_dist_bp: 100     # T12 max intra-operon gene gap (bp)
 cdhit_identity: 0.9         # T15 CD-HIT clustering identity threshold
 random_seed: 42             # T15 split seed (NB: T14 has no --seed yet — see CLAUDE.md §6)
-t9_train_fraction: 0.5      # §7 option b: fraction of T9 in-genus C. acetobutylicum promoters -> training
-                            # (T15). 0 = hold out all of T9 for eval (original behaviour).
+t9_train_fraction: 0.0      # Hold ALL of T9 out for eval (T24/T26). The §7 "option b" of splitting T9
+                            # into training was a workaround for when T7b was empty; T7b now supplies
+                            # ~1,434 verified in-genus positives, so T9 (only ~51bp, would need N-padding)
+                            # stays fully held out. Set >0 only to put padded T9 back into the T15 train split.
