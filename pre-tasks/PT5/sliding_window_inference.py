@@ -31,7 +31,6 @@ record = next(SeqIO.parse(fasta_path,"fasta"))
 
 genome = str(record.seq).upper()
 chromosome = record.id
-
 results = []
 
 def predict_batch(batch_rows):
@@ -88,4 +87,4 @@ scan_sequence(rev_genome, "-")
 df = pd.DataFrame(results)
 df = df.sort_values("promoter_score", ascending=False)
 
-df.to_csv("mg1655_promoter_scores.csv", index=False)
+df.to_csv("mg1655_promoter_scores1.csv", index=False)
