@@ -93,7 +93,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
   that switches a gene on; finding them by hand is slow, so we train models to spot them.
 - **Approach:** an **ensemble of 3 DNA models** scores every position, then we combine their
   votes (agreement = confidence) and run statistical/experimental checks:
-  - **ProkBERT-mini-long** (fine-tuned) — `github.com/nbrg-ppcu/prokbert`
+  - **ProkBERT-mini** (fine-tuned) — `github.com/nbrg-ppcu/prokbert`
   - **Nucleotide Transformer v2 250M multispecies** (fine-tuned with **LoRA**)
   - **custom 1D CNN** (trained from scratch — the control)
   - combined via **mean rank-percentile**.
@@ -146,8 +146,8 @@ cb-promoter-mining/
 │   └── T8/                         # RegulonDB+DBTBS -> Parquet (run_t8_pipeline.py)
 ├── dataset-construction/           # T11–T16 land here (currently README only)
 ├── model-training/
-│   ├── T18/train_prokbert_template.py  + run_task18_template.sh
-│   ├── T19/train_nt_lora_template.py   + run_task19_template.sh
+│   ├── T18/                            (template removed 2026-06 — owner writes fresh)
+│   ├── T19/                            (template removed 2026-06 — owner writes fresh)
 │   ├── T20/train_cnn_template.py
 │   └── T21/hyperparameter_sweep_template.py
 ├── evaluation-and-calibration/
@@ -299,8 +299,8 @@ rebalance, so confirm current owners with Oak.
 
 **Phase C — model training**
 - T17 Finalise fine-tuning recipe — Swasti+Oak — ⬜ (dep PT2)
-- T18 ProkBERT-mini-long fine-tune — Sanaa+Oak — 📄 `model-training/T18/` (dep T4,T16,T17)
-- T19 NT v2 250M LoRA fine-tune — Sanaa — 📄 `model-training/T19/` (dep T4,T16,T17)
+- T18 ProkBERT-mini fine-tune — Sanaa+Oak — ⬜ template removed 2026-06 (was inaccurate); write fresh from T16 tokens (dep T4,T16,T17)
+- T19 NT v2 250M LoRA fine-tune — Sanaa — ⬜ template removed 2026-06 (was inaccurate); write fresh from T16 tokens (dep T4,T16,T17)
 - T20 Custom 1D CNN from scratch — Yany — 📄 `model-training/T20/` (dep T4,T16,T17)
 - T21 Hyperparameter sweep — Sanaa+Oak — 📄 `model-training/T21/` (dep T18,T19,T20)
 
@@ -339,6 +339,12 @@ rebalance, so confirm current owners with Oak.
 > Remaining (optional): the Al-Bassam 2018 _C. ljungdahlii_ supplement is still undownloaded — extra
 > in-genus positives if added, but not required.
 
+- **ProkBERT base = `neuralbioinfo/prokbert-mini` (NOT `-mini-long`)** — decided 2026-06: the ensemble's
+  ProkBERT member (T18) fine-tunes plain **prokbert-mini**. The 81 bp T15 windows are short, so the
+  long-context `-mini-long` variant buys nothing — mini is the right size; T16 tokenises with mini's
+  tokenizer to match. *Fine-tune base only* — the off-the-shelf **baselines keep their own IDs** (PT5 =
+  `prokbert-mini-promoter`, PT6 = `prokbert-mini-long-promoter`); don't rename those. ⚠️ The T18 template
+  still hard-codes `max_length=300` (leftover from the old 300 bp windows) — set it to the 81 bp T15 window.
 - **Phase A is prep, uploaded as `inputs/`.** The HPC4 pipeline starts at Phase B. T1–T4
   (infra) and PT1–PT6 (learning) are not real data-pipeline steps.
 - **SLURM hygiene in one place** (the profile): `--account=igem2026`, `--partition=preempt`,

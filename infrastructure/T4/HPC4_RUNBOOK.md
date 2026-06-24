@@ -93,8 +93,9 @@ Then every GPU job preamble sets `export HF_HOME=/project/igem2026/hf_cache` and
 `export HF_HUB_OFFLINE=1` (fail-fast instead of hanging on a cache miss).
 
 > **Flag — reconcile model IDs before you cache for training.** The training templates and the
-> docs disagree: `T18` currently hard-codes `biomedia-ai/prokbert-mini-long` (**wrong org** — should
-> be `neuralbioinfo/prokbert-mini-long`). Fix the script's ID and cache the correct one when you get
+> docs disagree: `T18` should fine-tune plain `neuralbioinfo/prokbert-mini` (decided 2026-06 — the 81 bp
+> windows don't need `-mini-long`); the old template default `biomedia-ai/prokbert-mini-long` is wrong on
+> org **and** variant and has been corrected. Cache `neuralbioinfo/prokbert-mini` when you get
 > to T18; otherwise the offline job will miss the cache and fail.
 
 ## 4. Stage the Phase A `inputs/` (they're 0-byte placeholders in git, by design)

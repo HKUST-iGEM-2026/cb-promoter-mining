@@ -164,7 +164,7 @@ cache, then run jobs offline:
 ```bash
 # once, on the login node (use the exact model IDs your scripts reference):
 export HF_HOME=/project/igem2026/hf_cache
-huggingface-cli download neuralbioinfo/prokbert-mini-long                     # base for T18 (PT5 uses …-long-promoter)
+huggingface-cli download neuralbioinfo/prokbert-mini                     # base for T18 (PT5 uses prokbert-mini-promoter)
 huggingface-cli download InstaDeepAI/nucleotide-transformer-v2-250m-multi-species   # base for T19
 ```
 

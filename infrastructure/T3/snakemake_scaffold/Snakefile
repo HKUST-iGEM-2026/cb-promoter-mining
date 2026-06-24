@@ -216,16 +216,16 @@ rule t18_prokbert_finetune:
     output: "results/T18.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell:
-        "python {REPO}/model-training/T18/train_prokbert_template.py && touch {output}"
-    # FIX FIRST: wrong model id biomedia-ai/ -> neuralbioinfo/ (L37); AUROC computed on argmax not probs (L131).
+        "python {REPO}/model-training/T18/train_prokbert.py && touch {output}"
+    # WRITE FRESH: the _template was deleted 2026-06 (inaccurate: 300 bp window, AUROC-on-argmax). Owner (Sanaa) writes model-training/T18/train_prokbert.py — consumes results/T16/prokbert/ tokens, base neuralbioinfo/prokbert-mini, 81 bp. Old template in git history.
 
 rule t19_nt_lora_finetune:
     input: "results/T16.done", "results/T17.done"
     output: "results/T19.done"
     resources: slurm_extra=GPU_EXTRA, runtime=480
     shell:
-        "python {REPO}/model-training/T19/train_nt_lora_template.py && touch {output}"
-    # FIX FIRST: no `if __name__=='__main__'` guard (main() never runs); AUROC on argmax (L143).
+        "python {REPO}/model-training/T19/train_nt_lora.py && touch {output}"
+    # WRITE FRESH: the _template was deleted 2026-06 (inaccurate: no __main__ guard, AUROC-on-argmax). Owner (Sanaa) writes model-training/T19/train_nt_lora.py — consumes results/T16/nt/ tokens, NT v2 250M + LoRA, 81 bp. Old template in git history.
 
 rule t20_cnn_train:
     input: "results/T16.done", "results/T17.done"
