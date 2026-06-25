@@ -102,7 +102,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Why it's hard (the core biological problem):** *Clostridium* genomes are **AT-rich**
   (GC ~28–32%), and promoter motifs (−10/−35) are *also* AT-rich, so naive models produce
   **false positives**. We counter this with AT-rich cross-species training data (B. subtilis),
-  shuffled-sequence negatives (SRS), AT-content-aware calibration, and empirical FDR.
+  shuffled-sequence negatives (SRS), AT-content-aware calibration, and empirical FDR. **Why this
+  approach is sound (published best practice), the base-rate ceiling, and the "enriched candidate list,
+  not a precise map" framing: see `WORKFLOW_RATIONALE.md`.**
 
 ---
 
@@ -318,6 +320,7 @@ rebalance, so confirm current owners with Oak.
 - T30 Locus-level peak calling — Ishi — ⬜ (dep T29)
 - T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ⬜ (dep T30; FIMO alone if short on time)
 - T32 FINAL candidate output (TSV/JSONL, PT6 schema) — Ishi+Oak — ⬜ (dep T26,T27,T30,T31)
+- T33 Iterative hard-negative mining (v2 refinement) — Oak+? — ⬜ collect T28's top genomic false-positives → add as a 5th T14 negative class → regenerate T15/T16 → retrain T18–T20. Strongest FP-reduction lever (DeePromoter-style iterative negatives); a 2nd pass, not a new DAG rule. See `WORKFLOW_RATIONALE.md`. (dep T28)
 
 ---
 
@@ -365,8 +368,14 @@ rebalance, so confirm current owners with Oak.
     weight the ~14k AT-rich windows would teach "AT-rich = promoter" (the §1 trap). 0.3 balances the
     *effective* weight: 13,838 × 0.3 ≈ 4,150 silver vs 5,634 verified → verified ≈ 58% / silver ≈ 42%
     (0 = drop T13; 1.0 = silver dominates at 71%). Set properly by sweeping {0,0.1,0.3,0.5,1.0} on validation AUPRC.
-  - ⚠️ the `weight` column is only *written* by T15 — it has **no effect unless T18–T20 training passes it
-    as a sample/loss weight**; otherwise T13 trains at full weight and this guard is inert.
+  - **`weight` now also class-balances TRAIN to effective 50/50** (cdhit_splits.py step 6b rescales train
+    negative weights so pos-mass == neg-mass; down-weighting silver alone had skewed train to ~36% positive).
+    So `weight` = label-confidence (silver 0.3) × class-balance; val/test left at natural prevalence.
+  - ⚠️ **CONFIRMED INERT in current code (2026-06):** no trainer applies it. T18/T19 are unwritten; **T20's
+    template (L538–544) builds a `WeightedRandomSampler` from inverse class-frequency — it ignores AND
+    conflicts with the T15 weight** (re-balances by class but leaves silver at ~75% of positives → the
+    AT-trap). Trainers MUST apply `weight` as a per-sample loss weight (T20 fix: `model-training/T20/T20_WEIGHT_FIX_CLAUDE.md`);
+    until then T13 trains at full weight and training is negative-skewed.
 - **Contig-end exclusion** (T12/T13): the target assembly isn't a complete genome, so drop
   loci whose upstream region is truncated by a contig boundary.
 - **TSSpredator only fits the 20 dRNA-seq runs** (paired TEX±). The 27 Capp-Switch / 5′-RNA-seq

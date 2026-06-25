@@ -11,6 +11,10 @@ Combines the labelled positive + negative DNA windows, removes near-duplicate *l
 clustering with CD-HIT-EST, and writes cluster-disjoint 80/10/10 train/val/test splits so that
 no near-identical sequence ever straddles two splits (otherwise CV scores inflate — CLAUDE.md §7).
 
+**Eval is VERIFIED-only:** T13 silver (inferred) positives are pinned to TRAIN, so val/test never hold
+inferred labels — they measure performance on verified promoters, not the "AT-rich upstream = promoter"
+assumption that would reward the §1 AT-trap during model selection.
+
 Wired in the T3 Snakefile (rule t15_cdhit_splits) as:
 
   python cdhit_splits.py --positives <T8> <T7b> <T9train> <T13> \
@@ -33,6 +37,10 @@ The three DECISIONS (all exposed as CLI flags so you can sweep them):
   2. --silver-weight 0.3  T13 is INFERRED (not experimentally confirmed). Down-weight it so the model
                         learns the -10/-35 motif from VERIFIED data, not "AT-rich upstream = promoter"
                         (the §1 AT-rich false-positive trap). 1.0 = trust it fully; 0.0 = drop it.
+                        NB down-weighting silver alone skews TRAIN negative-heavy, so step 6b rescales
+                        TRAIN negative weights to a ~50/50 effective prior. The `weight` column =
+                        label-confidence x class-balance; trainers MUST apply it as a per-sample loss
+                        weight (else it is inert and T13 trains at full weight — the AT-trap).
   3. --neg-per-pos 1.0  negatives per positive (~50/50 per §7). 0 = keep all and balance via class
                         weights at train time instead.
 
@@ -265,12 +273,34 @@ def main():
     print(f"\ncd-hit-est: {len(df)} seqs @ identity={args.identity} (-n {word}) ...", file=sys.stderr)
     df["cluster_id"] = cdhit_clusters(df["sequence"].tolist(), args.identity, word, args.threads, args.out)
 
-    # 6. cluster-disjoint, label-stratified 80/10/10 ---------------------------------
+    # 6. cluster-disjoint, label-stratified 80/10/10 — EVAL (val/test) is VERIFIED-ONLY -----
+    #    T13 silver positives carry INFERRED labels (the "AT-rich upstream = promoter" assumption);
+    #    selecting / early-stopping on them would reward the AT-trap (§1). So any CLUSTER holding a
+    #    silver positive is pinned to TRAIN, and only verified-positive + negative clusters are eligible
+    #    for val/test. Splitting at the cluster level keeps the leakage guarantee intact.
+    silver_clusters = set(df.loc[(df.label == 1) & (df.source == "T13_inferred"), "cluster_id"])
+    df["split"] = "train"
+    elig = df[~df["cluster_id"].isin(silver_clusters)]
     sgkf = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=args.seed)
-    fold = np.empty(len(df), dtype=int)
-    for k, (_, te) in enumerate(sgkf.split(df, df["label"], groups=df["cluster_id"])):
+    fold = np.full(len(elig), -1, dtype=int)
+    for k, (_, te) in enumerate(sgkf.split(elig, elig["label"], groups=elig["cluster_id"])):
         fold[te] = k
-    df["split"] = np.where(fold <= 7, "train", np.where(fold == 8, "val", "test"))
+    df.loc[elig.index[fold == 8], "split"] = "val"      # eligible folds 0-7 stay train; 8->val, 9->test
+    df.loc[elig.index[fold == 9], "split"] = "test"
+
+    # 6b. CLASS-BALANCE the TRAIN weights so training is EFFECTIVELY 50/50 ---------------
+    #     Down-weighting silver positives to 0.3 cuts positive *mass* below the negative count, skewing
+    #     the effective TRAIN prior toward negatives (raw 50/50 -> effective ~36% positive). Fix: scale
+    #     TRAIN's negative weights so sum(neg weights) == sum(pos weights). The `weight` column now carries
+    #     BOTH label confidence (silver 0.3 vs verified 1.0) AND the class-balance factor, so a trainer
+    #     applying it as a per-sample loss weight gets a ~50/50 prior for free. val/test weights are left
+    #     at natural prevalence (eval honesty) — apply them only if you want a balanced eval metric.
+    #     (Reweighting must preserve class balance: Constrained Reweighting, Google Research 2022.)
+    tr = df["split"] == "train"
+    pos_mass = float(df.loc[tr & (df.label == 1), "weight"].sum())
+    trneg = tr & (df.label == 0)
+    if int(trneg.sum()) and pos_mass > 0:
+        df.loc[trneg, "weight"] = pos_mass / int(trneg.sum())
 
     # 7. leakage guard ----------------------------------------------------------------
     spanning = df.groupby("cluster_id")["split"].nunique()
@@ -283,12 +313,34 @@ def main():
     # summary -------------------------------------------------------------------------
     print("\n=== T15 splits ===")
     print(df.groupby(["split", "label"]).size().unstack(fill_value=0))
+    # positive composition per split: silver(T13) vs verified-in-genus vs verified-cross-species
+    pos = df[df.label == 1].copy()
+    pos["kind"] = np.where(pos.source == "T13_inferred", "silver(T13)",
+                  np.where(pos.in_genus, "verified_in_genus", "verified_cross_species"))
+    print("\npositives by split x kind:\n", pos.groupby(["split", "kind"]).size().unstack(fill_value=0))
     print("\nrows by source/label:\n", df.groupby(["source", "label"]).size())
-    pos = df[df.label == 1]
     print(f"\nclusters={df.cluster_id.nunique()}  rows={len(df)}  window={args.window}bp  identity={args.identity}")
-    print(f"positives: in-genus={int(pos.in_genus.sum())}  out-of-genus={int((~pos.in_genus).sum())}  "
+    print(f"positives total: in-genus={int(pos.in_genus.sum())}  out-of-genus={int((~pos.in_genus).sum())}  "
           f"silver(T13)={int((pos.source == 'T13_inferred').sum())}")
-    print("leakage check: PASS — no cluster spans splits")
+    # EVAL INVARIANT: val/test are verified-only — report the verified-in-genus count that actually matters
+    for sp in ("val", "test"):
+        m = df["split"] == sp
+        nsilver = int((m & (df.label == 1) & (df.source == "T13_inferred")).sum())
+        nverif_ig = int((m & (df.label == 1) & df.in_genus & (df.source != "T13_inferred")).sum())
+        nverif_xs = int((m & (df.label == 1) & (~df.in_genus)).sum())
+        npos = int((m & (df.label == 1)).sum()); nneg = int((m & (df.label == 0)).sum())
+        print(f"{sp}: verified_in_genus={nverif_ig}  verified_cross_species={nverif_xs}  "
+              f"silver={nsilver} (must be 0)  |  pos={npos} neg={nneg} ({100*npos/max(npos+nneg,1):.0f}% pos)")
+        assert nsilver == 0, f"EVAL LEAK: {sp} has {nsilver} silver positives — val/test must be verified-only"
+    # effective class balance (weights used AS sample weights) — TRAIN is rescaled to ~50/50
+    print("\neffective class balance (sum of sample weights):")
+    for sp in ("train", "val", "test"):
+        m = df["split"] == sp
+        pm = float(df.loc[m & (df.label == 1), "weight"].sum())
+        nm = float(df.loc[m & (df.label == 0), "weight"].sum())
+        print(f"  {sp:5}: pos_mass={pm:8.0f}  neg_mass={nm:8.0f}  -> {100*pm/max(pm+nm,1e-9):.0f}% positive")
+    print("  (TRAIN balanced to ~50/50 via negative weights; val/test left at natural prevalence)")
+    print("leakage check: PASS — no cluster spans splits; val/test are verified-only")
 
 
 if __name__ == "__main__":
