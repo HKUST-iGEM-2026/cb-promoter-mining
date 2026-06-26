@@ -376,7 +376,7 @@ rebalance, so confirm current owners with Oak.
   - ⚠️ **CONFIRMED INERT in current code (2026-06):** no trainer applies it. T18/T19 are unwritten; **T20's
     template (L538–544) builds a `WeightedRandomSampler` from inverse class-frequency — it ignores AND
     conflicts with the T15 weight** (re-balances by class but leaves silver at ~75% of positives → the
-    AT-trap). Trainers MUST apply `weight` as a per-sample loss weight (T20 fix: `model-training/T20/T20_WEIGHT_FIX_CLAUDE.md`);
+    AT-trap). Trainers MUST apply `weight` as a per-sample loss weight (T20 fix+run: `model-training/T20/YANY_T20_RUN_CLAUDE.md`);
     until then T13 trains at full weight and training is negative-skewed.
 - **Contig-end exclusion** (T12/T13): the target assembly isn't a complete genome, so drop
   loci whose upstream region is truncated by a contig boundary.
