@@ -171,7 +171,9 @@ T6 (Bakta annotations, ~8.9 GB) lives in a **separate** repo/folder `bakta_outpu
 
 ## 4. Compute — HPC4 = HKUST SuperPOD
 
-"HPC4" in our docs **is** the HKUST SuperPOD. Key facts:
+"HPC4" in our docs **is** the HKUST SuperPOD. **New to the cluster? Start with the step-by-step guide
+[`infrastructure/HPC4_GUIDE.md`](infrastructure/HPC4_GUIDE.md)** (login/VPN, env activation, SLURM jobs,
+storage, gotchas). Key facts:
 
 | Thing | Value |
 |---|---|

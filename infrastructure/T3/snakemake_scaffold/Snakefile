@@ -240,8 +240,8 @@ rule t21_hparam_sweep:
     output: "results/T21.done"
     resources: slurm_extra=GPU_EXTRA, runtime=720
     shell:
-        "python {REPO}/model-training/T21/hyperparameter_sweep_template.py && touch {output}"
-    # FIX: SWEEP_CONFIG points at stale child-script paths task18_prokbert_finetune/... -> model-training/T18|T19.
+        "python {REPO}/model-training/T21/hyperparameter_sweep.py && touch {output}"
+    # T21 = Optuna sweep over T18/T19/T20; optimises VAL AUPRC; rewritten 2026-06 (paths + metric fixed). Owner aligns T20 (CNN) CLI flags.
 
 
 # ---------------------------------------------------------------------

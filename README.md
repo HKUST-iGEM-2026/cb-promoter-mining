@@ -33,3 +33,11 @@ flowchart TB
 ### Why three models?
 Three different AI models each score the DNA independently, and we combine their votes — if they agree, we're far more confident a spot is a real promoter. We also run experimental and statistical checks so the final list is reliable and not just a guess.
 
+## Working on the project (HPC4)
+
+Running the pipeline on the HKUST SuperPOD ("HPC4")? Start here:
+
+- **[`infrastructure/HPC4_GUIDE.md`](infrastructure/HPC4_GUIDE.md)** — step-by-step for everyone: login, environment activation, submitting SLURM jobs, where to put files, common gotchas.
+- **[`infrastructure/T4/DEPLOY.md`](infrastructure/T4/DEPLOY.md)** — building/locking the shared conda environment (one-time).
+- **[`CLAUDE.md`](CLAUDE.md)** — full project context, task table, and conventions.
+
