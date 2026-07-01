@@ -76,6 +76,9 @@ cat > "$CONDA_PREFIX/etc/conda/activate.d/zz_env_fixes.sh" <<'EOF'
 export PYTHONNOUSERSITE=1        # ignore ~/.local so a stray user-site torch/numpy can't shadow the env
 export MKL_THREADING_LAYER=GNU   # fixes "Intel oneMKL FATAL ERROR: Cannot load libtorch_cpu.so"
                                  # (conda's MKL/Intel-OpenMP vs the pip-torch GNU-OpenMP clash on import)
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:${LD_LIBRARY_PATH:-}"   # env libstdc++ FIRST — else the older SYSTEM
+                                 # /lib/.../libstdc++.so.6 is loaded and scipy's _distance_pybind fails with
+                                 # "CXXABI_1.3.15 not found" -> breaks sklearn -> transformers -> peft import
 EOF
 conda deactivate && conda activate "$ENV"   # re-activate so the two vars take effect
 
@@ -187,5 +190,8 @@ too, so every node can read them.
 - **Lock** — regenerate per §5 from a freshly built env (don't trust an old committed lock); always
   re-apply the two pip-source patches (cu128 index + prokbert git URL) and confirm no `pytorch-cuda` line.
 - **Activate.d hygiene is not in the lock** — after any rebuild, recreate
-  `$CONDA_PREFIX/etc/conda/activate.d/zz_env_fixes.sh` (`PYTHONNOUSERSITE=1` + `MKL_THREADING_LAYER=GNU`, §3),
-  or torch will fail to import / `~/.local` can shadow the env.
+  `$CONDA_PREFIX/etc/conda/activate.d/zz_env_fixes.sh` (`PYTHONNOUSERSITE=1` + `MKL_THREADING_LAYER=GNU` +
+  `LD_LIBRARY_PATH=$CONDA_PREFIX/lib:…`, §3), or torch fails to import / `~/.local` shadows the env / scipy hits
+  **`CXXABI_1.3.15 not found`** (the system libstdc++ shadows the env's newer one — surfaced 2026-07 after a
+  `conda install` into the shared env; corollary: **don't install one-off CLIs like `datasets` into the ML env** —
+  use a throwaway env).
