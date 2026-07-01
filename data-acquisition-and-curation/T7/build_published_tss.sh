@@ -89,7 +89,8 @@ fi
 # (chromosome = longest record; plasmids/phage matched by name) so no accession is hard-coded. Any genome
 # that can't be staged/mapped is skipped gracefully (fewer positives, never a crash).
 _stage_genome() {                     # $1 accession -> prints path to .fna (empty on failure)
-  local acc="$1" fna="$REF_DIR/${acc}.fna"
+  local acc="$1"                       # NB separate declarations: `local a=.. b=${a}` fails under set -u
+  local fna="$REF_DIR/${acc}.fna"
   if [ ! -s "$fna" ]; then
     if is_real "$GENOMES_ZIP" && unzip -p "$GENOMES_ZIP" "ncbi_dataset/data/${acc}/*_genomic.fna" > "$fna" 2>/dev/null && [ -s "$fna" ]; then
       :
