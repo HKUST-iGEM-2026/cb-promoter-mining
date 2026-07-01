@@ -24,6 +24,7 @@ Run (driven by the T21 sweep): T21 appends --sweep-trial N --output-dir <trial d
 NB pre-stage the tokenizer/model on the login node (HF_HOME + HF_HUB_OFFLINE=1); compute nodes are offline.
 """
 import argparse
+import inspect
 import json
 import os
 import numpy as np
@@ -36,6 +37,23 @@ from transformers import (AutoConfig, AutoModelForSequenceClassification, Traine
 from sklearn.metrics import average_precision_score, roc_auc_score, f1_score
 
 PROKBERT_ID = "neuralbioinfo/prokbert-mini"
+
+
+def _warmup_kwargs(ratio=None, steps=None):
+    """transformers v5 REMOVED `warmup_ratio` (now `warmup_steps` accepts a float = ratio).
+    Feature-detect the surviving arg so this runs on BOTH 4.x and 5.x."""
+    ta = set(inspect.signature(TrainingArguments.__init__).parameters)
+    if ratio is not None:
+        if "warmup_ratio" in ta:
+            return {"warmup_ratio": ratio}
+        for k in ("warmup_steps", "warmup_step"):
+            if k in ta:
+                return {k: ratio}                     # v5: a float here == ratio
+    if steps is not None:
+        for k in ("warmup_steps", "warmup_step"):
+            if k in ta:
+                return {k: steps}
+    return {}
 
 
 # --------------------------------------------------------------------------- data
@@ -77,8 +95,14 @@ class WeightedTrainer(Trainer):
 
 
 def compute_metrics(eval_pred):
-    logits, labels = eval_pred
-    probs = torch.softmax(torch.tensor(np.asarray(logits)), dim=1)[:, 1].numpy()
+    logits = getattr(eval_pred, "predictions", None)      # v5 EvalPrediction: attribute access, not tuple-unpack
+    labels = getattr(eval_pred, "label_ids", None)
+    if logits is None:                                    # tuple-style fallback (older/edge cases)
+        logits, labels = eval_pred[0], eval_pred[1]
+    if isinstance(logits, (tuple, list)):                 # some models wrap logits in a tuple
+        logits = logits[0]
+    logits = np.asarray(logits, dtype=np.float32)
+    probs = torch.softmax(torch.from_numpy(logits), dim=1)[:, 1].numpy()
     preds = (probs >= 0.5).astype(int)
     return {"auprc": float(average_precision_score(labels, probs)),       # §7 selection metric
             "auroc": float(roc_auc_score(labels, probs)),
@@ -123,7 +147,7 @@ def main():
         per_device_train_batch_size=args.batch_size,
         per_device_eval_batch_size=64,
         num_train_epochs=args.num_epochs,
-        warmup_ratio=args.warmup_ratio,
+        **_warmup_kwargs(ratio=args.warmup_ratio),   # v5-safe: warmup_ratio was removed (see _warmup_kwargs)
         weight_decay=args.weight_decay,
         eval_strategy="epoch",                 # NB transformers>=4.56: eval_strategy, NOT evaluation_strategy
         save_strategy="epoch",
@@ -132,7 +156,8 @@ def main():
         greater_is_better=True,
         save_total_limit=1,
         seed=args.seed,
-        fp16=torch.cuda.is_available(),
+        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),      # H800 -> bf16 (safer than fp16)
+        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
         report_to=[],
         logging_steps=50,
     )
