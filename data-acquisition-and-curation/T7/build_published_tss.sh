@@ -83,6 +83,69 @@ elif [ -n "$HOCQ" ]; then
   fi
 fi
 
+# --- Hocq 2022 — C. beijerinckii (two MORE strains in the SAME workbook; +~4,337 in-genus positives) ---
+# Same extractor, same intergenic_sense class — just the two unused 25RPM sheets. Genomes are staged from
+# the T5 zip (datasets fallback), and each contig-map is DERIVED from the genome's own FASTA headers
+# (chromosome = longest record; plasmids/phage matched by name) so no accession is hard-coded. Any genome
+# that can't be staged/mapped is skipped gracefully (fewer positives, never a crash).
+_stage_genome() {                     # $1 accession -> prints path to .fna (empty on failure)
+  local acc="$1" fna="$REF_DIR/${acc}.fna"
+  if [ ! -s "$fna" ]; then
+    if is_real "$GENOMES_ZIP" && unzip -p "$GENOMES_ZIP" "ncbi_dataset/data/${acc}/*_genomic.fna" > "$fna" 2>/dev/null && [ -s "$fna" ]; then
+      :
+    elif command -v datasets >/dev/null 2>&1; then
+      ( cd "$REF_DIR" && datasets download genome accession "$acc" --include genome --filename "${acc}.zip" \
+        && unzip -o -q "${acc}.zip" -d "${acc}_d" \
+        && cat "${acc}_d"/ncbi_dataset/data/"${acc}"/*_genomic.fna > "$fna" ) 2>/dev/null || rm -f "$fna"
+    fi
+  fi
+  [ -s "$fna" ] && echo "$fna" || true
+}
+_auto_contig_map() {                  # $1 fna  $2 comma-list of Locus labels -> "Label=recordID,..."
+  python - "$1" "$2" <<'PY'
+import sys
+fna, labels = sys.argv[1], sys.argv[2].split(",")
+recs=[]; rid=None; desc=""; ln=0
+def flush():
+    if rid is not None: recs.append([rid, desc.lower(), ln])
+for line in open(fna):
+    if line.startswith(">"):
+        flush(); h=line[1:].strip(); rid=h.split()[0]; desc=h; ln=0
+    else:
+        ln += len(line.strip())
+flush()
+def pick(label):
+    L=label.lower()
+    keys={"chromosome":["chromosome"], "pnf1":["pnf1"], "pnf2":["pnf2"],
+          "phi_6423":["phage","prophage"]}.get(L, [L])   # NOT "6423" — it's in the strain name of every record
+    for rid_, d, _ in recs:
+        if any(k in d for k in keys): return rid_
+    if L=="chromosome" and recs:                 # fallback: chromosome = the LONGEST record
+        return max(recs, key=lambda r: r[2])[0]
+    return ""
+pairs=[(lab, pick(lab)) for lab in labels]
+print(",".join(f"{lab}={r}" for lab, r in pairs if r))
+PY
+}
+_run_hocq_beij() {                    # $1 sheet  $2 accession  $3 comma-list of Locus labels
+  local fna cmap
+  fna="$(_stage_genome "$2")"
+  if [ -z "$fna" ]; then echo "[T7b] C. beijerinckii $2 genome not staged — skipping $1 (need 'git lfs pull' for the T5 zip, or ncbi-datasets-cli + internet)."; return 0; fi
+  cmap="$(_auto_contig_map "$fna" "$3")"
+  if [ -z "$cmap" ]; then echo "[T7b] could not derive Locus->record map for $2 — skipping $1."; return 0; fi
+  echo "[T7b] $1: contig-map = $cmap"
+  python "$ING" --tss-table "$HOCQ" --sheet "$1" --genome "$fna" \
+    --species "Clostridium beijerinckii" --source Hocq2022 \
+    --pos-col Genome_position --strand-col Strand --contig-col Locus --contig-map "$cmap" \
+    --filter-col Class --filter-vals "${CAC_CLASSES:-intergenic_sense}" \
+    --out "$REF_DIR/hocq_$1.parquet" && PARTS+=("$REF_DIR/hocq_$1.parquet") \
+    || echo "[T7b] $1 ingest failed — check the sheet/cols vs the table."
+}
+if [ -n "$HOCQ" ] && is_real "$HOCQ"; then
+  _run_hocq_beij NCIMB_8052_25RPM GCF_000016965.1 "Chromosome"
+  _run_hocq_beij DSM_6423_25RPM   GCF_900010805.1 "Chromosome,Phi_6423,pNF1,pNF2"
+fi
+
 if [ ${#PARTS[@]} -eq 0 ]; then
   echo "[T7b] no usable published TSS tables -> writing an EMPTY (schema-valid) parquet. See $T7/PUBLISHED_TSS_README.md"
   python - "$OUT" <<'PY'
