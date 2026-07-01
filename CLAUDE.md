@@ -259,13 +259,15 @@ rebalance, so confirm current owners with Oak.
 - T5 Download Clostridium genomes — Salimah — ✅ 166 RefSeq genomes (taxon 1485)
 - T6 Re-annotate with Bakta — Leo — ✅ 166/166, Bakta 1.11.4 + DB v6.0 **light** (in `bakta_outputs/`)
 - T7 dRNA-seq literature search — Salimah — ✅ (see §8; 20 dRNA-seq vs 27 published TSS)
-- T7b Published in-genus TSS → `published_tss_promoters.parquet` — Salimah/Leo — ✅ **1,434 verified in-genus
-  positives** (Hocq 2022 *C. acetobutylicum* `intergenic_sense` TSS, 81 bp), run on HPC4 via
-  `build_published_tss.sh` + `extract_published_tss.py`. Needs: the Hocq `.xlsx` (committed via Git-LFS),
-  the `GCF_000008765.1` genome (auto-fetched via `ncbi-datasets-cli`), and `openpyxl` (now pinned in
-  `environment.yml`). Runner now **skips Git-LFS pointers / missing inputs gracefully** (writes an
-  empty schema-valid parquet) instead of crashing `local_prep`. **This is the in-genus training-positive
-  source that resolves the §7 open decision.** Al-Bassam supplement still optional/undownloaded. (`data-acquisition-and-curation/T7/`)
+- T7b Published in-genus TSS → `published_tss_promoters.parquet` — Salimah/Leo/Oak — ✅ **5,759 verified in-genus
+  positives** (EXTENDED 2026-07): Hocq 2022 `intergenic_sense` TSS, 81 bp, from **three** strains in the one
+  committed workbook — *C. acetobutylicum* ATCC 824 (1,434) + *C. beijerinckii* NCIMB 8052 (2,482) + DSM 6423
+  (1,843). Run on HPC4 via `build_published_tss.sh` + `extract_published_tss.py`. Genomes auto-fetched via
+  `ncbi-datasets-cli` (installed into the env 2026-07); `build_published_tss.sh` now **stages each genome +
+  auto-derives the Locus→record contig-map from the FASTA headers** (chromosome = longest record; DSM 6423's
+  12 phage/plasmid TSS drop as unmapped, <1%). Needs the Hocq `.xlsx` (Git-LFS), `openpyxl`, and internet on
+  the login node for the genome fetch. Skips LFS pointers / missing inputs gracefully. **In-genus training-positive
+  source (§7).** Al-Bassam supplement still optional/undownloaded. (`data-acquisition-and-curation/T7/`)
 - T8 Normalise RegulonDB+DBTBS → Parquet — Leo — ✅ **4,336** (3,963 RegulonDB + 373 DBTBS), landed on
   `main` (commit `82d9bbb`): `run_t8_pipeline.py` reads the committed `DBTBS_prom.fa` (Sine's 373 σA
   set, 81 bp) + `PromoterS_Set.txt`, asserts both sources non-empty, and reproducibly regenerates
@@ -286,25 +288,23 @@ rebalance, so confirm current owners with Oak.
 - T12 Operon detection (+ contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: (a) nested Bakta path (`<genome>_genomic_output/<genome>_genomic.gff3`); (b) **reverse-strand leader bug** — now clusters then picks the most-upstream gene strand-aware (min-start on `+`, **max-stop on `−`**). Ran on 166 genomes → 22,760 loci → 14,659 leaders; `+` leaders 7064/7064 and `−` leaders independently verified correct (`dataset-construction/T12/operon_detection.py`). (dep T6,T11)
 - T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna` path; ran end-to-end (236/236 windows, all 300 bp clean ACGT, ~72% AT). Reused by T28. Its windows are INFERRED positives → T15 treats them as **silver / down-weighted** (`--silver-weight 0.3`); §7 open decision now **resolved** (verified in-genus positives come from T7b). (`dataset-construction/T13/upstream_extraction.py`) (dep T11,T12)
 - T14 Four-class negatives incl. SRS — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna`/`.gff3` path; ran end-to-end → all four classes generate (SRS/CDS/Downstream/Intergenic). Minor: `random` is unseeded (non-reproducible negatives) — add a `--seed` before locking the dataset. (`dataset-construction/T14/negative_set_generation.py`) (dep T6,T13)
-- T15 CD-HIT clustering + cluster-aware 80/10/10 splits — Sine — 🟡 **script written + validated
-  (2026-06); first real run + Sine review pending.** `dataset-construction/T15/cdhit_splits.py`:
-  auto-detects + harmonises the 5 sources, re-windows everything to 81 bp (T13 → gene-PROXIMAL crop,
-  verified against T13's extraction; T14 SRS **regenerated** as 81 bp dinucleotide shuffles of the
-  re-windowed positives — a crop of the 300 bp SRS would be the wrong null), `cd-hit-est` clustering,
-  cluster-disjoint `StratifiedGroupKFold` 80/10/10 with a leakage `assert`. Decisions baked in:
-  window=81, T13 silver-weight 0.3, ~50/50 balance, **T9 held out** (`config t9_train_fraction=0`).
-  Smoke-tested end-to-end on synthetic data (leakage PASS). **T13 proximal-81 crop verified on real
-  data (own analysis + council cross-check, 2026-06):** the composition-controlled −10 signal peaks at
-  ~−24 to −40 bp (inside the crop), ~65–70% of the −10 enrichment mass is captured, the far-upstream
-  half is depleted; ~⅓ of signal sits upstream of −81 (long-5′UTR / operon promoters) — correctly
-  handled by the silver-weight (T13 windows carry real but approximate promoter signal). Still needs a
-  real HPC4 run. (dep T8,T7b,T13,T14)
-- T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ⬜ (dep T15)
+- T15 CD-HIT clustering + cluster-aware splits — Sine — ✅ **run + verified on HPC4 (2026-07)**:
+  `dataset-construction/T15/cdhit_splits.py` harmonises the 5 sources, re-windows to 81 bp (T13 → gene-PROXIMAL
+  crop; T14 SRS **regenerated** as 81 bp dinucleotide shuffles of the re-windowed positives), `cd-hit-est`
+  clusters, then splits cluster-disjoint. **Eval is VERIFIED-ONLY:** T13 silver clusters are pinned to TRAIN
+  (`StratifiedGroupKFold` over eligible-only), so val/test hold only verified positives (~87/6.4/6.4, NOT
+  80/10/10). **`weight` = label-confidence (silver 0.3) × class-balance (step 6b rescales train negatives so
+  train is effectively 50/50 — verified negatives land at ~0.633).** Ran on the extended data → **47,088 rows:
+  train 40,442 / val 3,323 / test 3,323; train pos_mass==neg_mass==11,919 (50/50); val/test verified-only ~29%
+  positive; leakage check PASS.** Decisions: window=81, silver-weight 0.3, T9 held out (`t9_train_fraction=0`). (dep T8,T7b,T13,T14)
+- T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ✅ **run on HPC4 (2026-07)**: `dataset-construction/T16/tokenise.py`
+  → `results/T16/{prokbert,nt,cnn}/{train,val,test}` (ProkBERT 78 tok, NT **67 tok**, CNN one-hot (N,81,4)).
+  ⚠️ NT=67 tok is higher than a typical 6-mer NT tokenisation (~15–18) — worth a sanity-check before the heavy T19 run. (dep T15)
 
 **Phase C — model training**
-- T17 Finalise fine-tuning recipe — Swasti+Oak — ⬜ (dep PT2)
-- T18 ProkBERT-mini fine-tune — Sanaa+Oak — ⬜ template removed 2026-06 (was inaccurate); write fresh from T16 tokens (dep T4,T16,T17)
-- T19 NT v2 250M LoRA fine-tune — Sanaa — ⬜ template removed 2026-06 (was inaccurate); write fresh from T16 tokens (dep T4,T16,T17)
+- T17 Finalise fine-tuning recipe — **Sanaa** — ⬜ (dep PT2; the T18/T19 template defaults are the starting recipe, tuned via T21)
+- T18 ProkBERT-mini fine-tune — **Sanaa** — 📄 `model-training/T18/train_prokbert.py` WRITTEN 2026-06 (WeightedTrainer + AUPRC selection + T21 sweep CLI, contract-validated); run per `SANAA_T18_T19_RUN_CLAUDE.md` (dep T4,T16,T17)
+- T19 NT v2 250M LoRA fine-tune — Sanaa — 📄 `model-training/T19/train_nt_lora.py` WRITTEN 2026-06 (LoRA q/v + WeightedTrainer + AUPRC); run per `SANAA_T18_T19_RUN_CLAUDE.md` (dep T4,T16,T17)
 - T20 Custom 1D CNN from scratch — Yany — 📄 `model-training/T20/` (dep T4,T16,T17)
 - T21 Hyperparameter sweep — Sanaa+Oak — 📄 `model-training/T21/` (dep T18,T19,T20)
 
@@ -331,9 +331,8 @@ rebalance, so confirm current owners with Oak.
 > ✅ **RESOLVED (2026-06).** The "no _verified_ in-genus positive in training" problem (raised
 > 2026-06-19) is fixed. The T15 positive set is now **T8 (cross-species, verified) + T7b (in-genus,
 > verified) + T13 (in-genus, _silver_)**, with T9 and T10 held out:
-> 1. **T7b now supplies ~1,434 verified in-genus positives** (Hocq 2022 _C. acetobutylicum_ empirical
->    TSS) — built + run on HPC4, feeds T15 `--positives`. This was the missing piece (T7b was an empty
->    stub when the alarm was raised; the `.xlsx` + genome + `openpyxl` are now in place).
+> 1. **T7b supplies 5,759 verified in-genus positives** (Hocq 2022 empirical TSS: _C. acetobutylicum_ 1,434
+>    + _C. beijerinckii_ NCIMB 8052 / DSM 6423 = 4,325; extended 2026-07) — built + run on HPC4, feeds T15 `--positives`.
 > 2. **T13 housekeeping upstreams = silver/weak labels** — T15 down-weights them (`--silver-weight 0.3`),
 >    never mixed at equal weight with verified positives; the SRS null is **regenerated per-positive at
 >    81 bp** (not a crop of the 300 bp shuffle).
@@ -449,12 +448,12 @@ select by **product description**, not the gene-symbol field.
 
 ## 10. Status snapshot
 
-**Solid (done + run/verified on HPC4, 2026-06):** T1, T2, T3, **T4 (env built + GPU-verified + locked)**,
-T5, T6, T7, **T7b (1,434 in-genus)**, **T8 (4,336)**, T9, **T10 (re-run, 1,746 TSS, over-call fixed)**,
-T11–T14 (Phase B ran: 22,760 → 14,659 → ~14.6k → ~53k), PT3, PT5 (re-run). The §7 in-genus-positive
-decision is **resolved**.
-**Frontier:** **T15 — script written + validated, first real run pending** (run it: stage `inputs/`,
-`snakemake --cores 4 results/T15.done`). Then **T16 (tokenisation) is the next unwritten blocker.**
+**Solid (done + run/verified on HPC4, 2026-07):** T1, T2, T3, **T4 (env built + GPU-verified + locked)**,
+T5, T6, T7, **T7b (5,759 in-genus — C. beijerinckii extension)**, **T8 (4,336)**, T9, **T10 (1,746 TSS)**,
+T11–T14 (Phase B), **T15 (run: 47,088 rows, verified-only val/test, train 50/50)**, **T16 (run: prokbert/nt/cnn
+tokenised)**, PT3, PT5. The §7 in-genus-positive decision is **resolved**. The shared `/project` clone is on clean `main`.
+**Frontier: model training (Phase C).** T16 is ready → **T17/T18/T19 (Sanaa) + T20 (Yany) can start now** —
+templates written + contract-validated; run per `SANAA_T18_T19_RUN_CLAUDE.md` / `YANY_T20_RUN_CLAUDE.md`, then the T21 sweep.
 **Needs attention (not blocking T15):** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS
 table · PT5 `sliding_window_inference.py` modified-uncommitted on HPC4 (review diff) · DEPLOY §7 HF
 model IDs (T18 wrong org; PT5 is `prokbert-mini-promoter` not `-long-promoter`) · the env lock + this
