@@ -29,7 +29,7 @@ import pandas as pd
 import torch
 from torch import nn
 from torch.utils.data import Dataset
-from transformers import (AutoModelForSequenceClassification, Trainer, TrainingArguments,
+from transformers import (AutoConfig, AutoModelForSequenceClassification, Trainer, TrainingArguments,
                           EarlyStoppingCallback, set_seed)
 from peft import LoraConfig, get_peft_model, TaskType
 from sklearn.metrics import average_precision_score, roc_auc_score, f1_score
@@ -165,8 +165,18 @@ def main():
     val = TokenDataset(f"{args.data_dir}/val.parquet")
     test = TokenDataset(f"{args.data_dir}/test.parquet")
 
+    # NT's remote code is v4-era: it reads config attributes (is_decoder, add_cross_attention, ...)
+    # that transformers v5 dropped as base-config defaults. Load the config first and backfill the
+    # missing encoder/decoder defaults (all False/0 -> NT is encoder-only) before building the model.
+    config = AutoConfig.from_pretrained(args.model_id, num_labels=2, trust_remote_code=True)
+    for _attr, _default in (("is_decoder", False), ("is_encoder_decoder", False),
+                            ("add_cross_attention", False), ("tie_encoder_decoder", False),
+                            ("chunk_size_feed_forward", 0), ("use_cache", False),
+                            ("output_attentions", False), ("output_hidden_states", False)):
+        if not hasattr(config, _attr):
+            setattr(config, _attr, _default)
     model = AutoModelForSequenceClassification.from_pretrained(
-        args.model_id, num_labels=2, trust_remote_code=True)
+        args.model_id, config=config, trust_remote_code=True)
     lora = LoraConfig(
         task_type=TaskType.SEQ_CLS,
         r=args.lora_r, lora_alpha=args.lora_alpha, lora_dropout=args.lora_dropout,
