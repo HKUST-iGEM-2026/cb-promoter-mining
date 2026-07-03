@@ -34,6 +34,37 @@ from transformers import (AutoModelForSequenceClassification, Trainer, TrainingA
 from peft import LoraConfig, get_peft_model, TaskType
 from sklearn.metrics import average_precision_score, roc_auc_score, f1_score
 
+# --- transformers v5 compat shim -----------------------------------------------------------------
+# NT's cached remote code (modeling_esm.py, loaded via trust_remote_code) imports two head-pruning
+# utilities that transformers v5 REMOVED. They're only imported (not called) during load/train, so
+# re-supplying them here (before from_pretrained runs) lets NT load on transformers 5.x.
+import transformers.pytorch_utils as _tpu
+if not hasattr(_tpu, "find_pruneable_heads_and_indices"):
+    def _fphi(heads, n_heads, head_size, already_pruned_heads):
+        mask = torch.ones(n_heads, head_size)
+        heads = set(heads) - already_pruned_heads
+        for h in heads:
+            h = h - sum(1 if p < h else 0 for p in already_pruned_heads)
+            mask[h] = 0
+        mask = mask.view(-1).contiguous().eq(1)
+        return heads, torch.arange(len(mask))[mask].long()
+    _tpu.find_pruneable_heads_and_indices = _fphi
+if not hasattr(_tpu, "prune_linear_layer"):
+    def _pll(layer, index, dim=0):
+        index = index.to(layer.weight.device)
+        W = layer.weight.index_select(dim, index).clone().detach()
+        b = None
+        if layer.bias is not None:
+            b = layer.bias.clone().detach() if dim == 1 else layer.bias[index].clone().detach()
+        size = list(layer.weight.size()); size[dim] = len(index)
+        new = nn.Linear(size[1], size[0], bias=layer.bias is not None).to(layer.weight.device)
+        new.weight.requires_grad = False; new.weight.copy_(W.contiguous()); new.weight.requires_grad = True
+        if b is not None:
+            new.bias.requires_grad = False; new.bias.copy_(b.contiguous()); new.bias.requires_grad = True
+        return new
+    _tpu.prune_linear_layer = _pll
+# -------------------------------------------------------------------------------------------------
+
 NT_ID = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
 
 
