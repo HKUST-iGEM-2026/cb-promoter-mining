@@ -29,6 +29,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import optuna
@@ -91,27 +92,57 @@ def suggest(trial, name, spec):
 
 
 def run_trial(script, params, trial_dir, trial_num, timeout):
-    """Launch the training script; return its val_auprc (None on failure/timeout -> trial pruned)."""
+    """Launch the training script, STREAMING its output live to this process's stdout (-> the SLURM
+    .out, so `tail -f` shows per-epoch/step progress in real time) while also capturing it to
+    trial_dir/train.log. Returns val_auprc (None on failure/timeout -> trial pruned).
+    `python -u` + merged stderr keep the child's logging unbuffered and visible; a watchdog Timer
+    enforces the timeout even if the child hangs silently (a plain readline loop would block forever)."""
     trial_dir.mkdir(parents=True, exist_ok=True)
-    cmd = [sys.executable, script, "--sweep-trial", str(trial_num), "--output-dir", str(trial_dir)]
+    cmd = [sys.executable, "-u", script, "--sweep-trial", str(trial_num), "--output-dir", str(trial_dir)]
     for k, v in params.items():
         cmd += [f"--{k}", str(v)]
     (trial_dir / "params.json").write_text(json.dumps(params, indent=2))
+    log_path = trial_dir / "train.log"
+
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    timed_out = {"v": False}
+
+    def _on_timeout():
+        timed_out["v"] = True
+        proc.kill()
+    watchdog = threading.Timer(timeout, _on_timeout)
+    watchdog.start()
+
+    header = f"----- trial {trial_num} | {' '.join(f'--{k} {v}' for k, v in params.items())} -----"
+    print(header, flush=True)
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        (trial_dir / "error.log").write_text(f"TIMEOUT after {timeout}s")
+        with open(log_path, "w") as log:
+            log.write(header + "\n")
+            for line in proc.stdout:                # streams until the child exits or is killed
+                sys.stdout.write(line)
+                sys.stdout.flush()
+                log.write(line)
+        proc.wait()
+    finally:
+        watchdog.cancel()
+
+    if timed_out["v"]:
+        (trial_dir / "error.log").write_text(f"TIMEOUT after {timeout}s (see train.log)")
+        print(f"----- trial {trial_num}: TIMEOUT after {timeout}s, skipped -----", flush=True)
         return None
-    if res.returncode != 0:
-        (trial_dir / "error.log").write_text((res.stderr or "")[-4000:])
+    if proc.returncode != 0:
+        (trial_dir / "error.log").write_text((log_path.read_text()[-4000:]) if log_path.exists() else "")
+        print(f"----- trial {trial_num}: FAILED (exit {proc.returncode}), skipped — see {trial_dir}/error.log -----", flush=True)
         return None
     mfile = trial_dir / "metrics.json"
     if mfile.exists():
-        return json.loads(mfile.read_text()).get("val_auprc")
-    for line in res.stdout.splitlines():                       # fallback: parse stdout
-        if line.startswith("Validation AUPRC:"):
+        v = json.loads(mfile.read_text()).get("val_auprc")
+        if v is not None:
+            return v
+    for line in log_path.read_text().splitlines():             # fallback: tolerant (matches logger-prefixed lines too)
+        if "Validation AUPRC:" in line:
             try:
-                return float(line.split(":", 1)[1])
+                return float(line.rsplit(":", 1)[1])
             except ValueError:
                 pass
     return None
