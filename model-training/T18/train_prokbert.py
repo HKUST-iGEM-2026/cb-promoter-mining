@@ -40,19 +40,21 @@ PROKBERT_ID = "neuralbioinfo/prokbert-mini"
 
 
 def _warmup_kwargs(ratio=None, steps=None):
-    """transformers v5 REMOVED `warmup_ratio` (now `warmup_steps` accepts a float = ratio).
-    Feature-detect the surviving arg so this runs on BOTH 4.x and 5.x."""
-    ta = set(inspect.signature(TrainingArguments.__init__).parameters)
+    """v5 DEPRECATED `warmup_ratio` (still present, but emits a warning; `warmup_steps` now accepts a
+    float in [0,1) = ratio). v4 keeps `warmup_ratio` as the ratio arg (its `warmup_steps` is int-only).
+    Feature-detect by the `warmup_steps` annotation so this runs CLEAN (no deprecation warning) on BOTH."""
+    params = inspect.signature(TrainingArguments.__init__).parameters
     if ratio is not None:
-        if "warmup_ratio" in ta:
+        ws = params.get("warmup_steps")
+        if ws is not None and ws.annotation in (float, "float"):   # v5: warmup_steps takes a float ratio
+            return {"warmup_steps": ratio}
+        if "warmup_ratio" in params:                                # v4: the dedicated ratio arg
             return {"warmup_ratio": ratio}
-        for k in ("warmup_steps", "warmup_step"):
-            if k in ta:
-                return {k: ratio}                     # v5: a float here == ratio
+        if ws is not None:
+            return {"warmup_steps": ratio}
     if steps is not None:
-        for k in ("warmup_steps", "warmup_step"):
-            if k in ta:
-                return {k: steps}
+        if "warmup_steps" in params:
+            return {"warmup_steps": steps}
     return {}
 
 

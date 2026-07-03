@@ -288,7 +288,8 @@ class CNNTrainer:
 
 def parse_args() -> CNNConfig:
     ap = argparse.ArgumentParser(description="Train custom 1D CNN on T16 CNN tensors")
-    ap.add_argument("--data-dir", type=str, required=True, help="Directory containing train/val/test.npz")
+    ap.add_argument("--data-dir", type=str, default="results/T16/cnn",
+                    help="Directory containing train/val/test.npz (default matches T16 layout; T21 relies on this default)")
     ap.add_argument("--output-dir", type=str, required=True, help="Directory to save model and metrics")
     ap.add_argument("--sweep-trial", type=int, default=0, help="External sweep trial id")
     ap.add_argument("--learning-rate", type=float, default=1e-3)
@@ -299,7 +300,8 @@ def parse_args() -> CNNConfig:
     ap.add_argument("--patience", type=int, default=8)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--num-workers", type=int, default=4)
-    ap.add_argument("--use-batch-norm", action="store_true", default=False)
+    ap.add_argument("--no-batch-norm", dest="use_batch_norm", action="store_false", default=True,
+                    help="disable BatchNorm (default: ON, matching the model architecture + T21 sweeps)")
     ap.add_argument("--conv1-filters", type=int, default=64)
     ap.add_argument("--conv2-filters", type=int, default=128)
     ap.add_argument("--conv3-filters", type=int, default=256)

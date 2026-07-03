@@ -138,8 +138,12 @@ def sweep_model(name, cfg, out_dir, n_trials, timeout, sweep_epochs):
     study = optuna.create_study(
         study_name=name, direction="maximize", sampler=TPESampler(seed=42),
         storage=f"sqlite:///{(model_out / 'study.db').resolve()}", load_if_exists=True)
-    remaining = max(0, n_trials - len(study.trials))
-    print(f"  {len(study.trials)} trial(s) already recorded; running {remaining} more (target {n_trials}).")
+    # Budget by COMPLETED trials, not len(study.trials): a failed/timed-out/preempted trial must NOT
+    # burn a slot. On `preempt` a killed trial is left non-COMPLETE; counting it would stop the sweep
+    # short of the target (and leave zombie RUNNING trials uncounted, which is fine — they just don't count).
+    n_done = sum(1 for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE)
+    remaining = max(0, n_trials - n_done)
+    print(f"  {n_done} completed / {len(study.trials)} attempted; running up to {remaining} more (target {n_trials} completed).")
     if remaining:
         study.optimize(objective, n_trials=remaining)
 
