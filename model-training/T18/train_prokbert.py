@@ -155,6 +155,9 @@ def main():
         metric_for_best_model="eval_auprc",
         greater_is_better=True,
         save_total_limit=1,
+        remove_unused_columns=False,   # CRITICAL: keep the per-sample `weight` column. The Trainer strips
+                                       # non-model-input columns by default -> drops `weight` before
+                                       # compute_loss -> KeyError. The AT-trap guard depends on this.
         seed=args.seed,
         bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),      # H800 -> bf16 (safer than fp16)
         fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
