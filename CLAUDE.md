@@ -187,6 +187,12 @@ storage, gotchas). Key facts:
 **The shared conda env (T4):** `infrastructure/T4/environment.yml`, deployed at
 `/project/igem2026/envs/promoter-mining-hpc4`. Build/verify/lock steps are in
 `infrastructure/T4/DEPLOY.md`. Everyone `conda activate`s that one prefix.
+
+**TWO envs (2026-07):** the main `promoter-mining-hpc4` (transformers **5.3.0**) runs everything EXCEPT the
+Nucleotide Transformer (**T19**), which needs a **second** env `nt-tf4x` (transformers **4.57.6**) — NT's
+remote code is v4-era and breaks on v5 in ≥6 ways (one *silent*). Recipe + rationale:
+**`infrastructure/T4/NT_ENV.md`**. Only T19 (standalone + the T21 NT sweep) uses `nt-tf4x`; T18/T20/all data
+tasks stay on the 5.3.0 env.
 - Channels: `pytorch, nvidia, conda-forge, bioconda`; PyTorch pinned `>=2.1,<2.5` with
   `pytorch-cuda=12.1` (**confirm against `module avail cuda`** on SuperPOD before building).
 - **TSSpredator is a Java JAR, not a conda package** — the env ships `openjdk`; download the
@@ -302,11 +308,11 @@ rebalance, so confirm current owners with Oak.
   ⚠️ NT=67 tok is higher than a typical 6-mer NT tokenisation (~15–18) — worth a sanity-check before the heavy T19 run. (dep T15)
 
 **Phase C — model training**
-- T17 Finalise fine-tuning recipe — **Sanaa** — ⬜ (dep PT2; the T18/T19 template defaults are the starting recipe, tuned via T21)
-- T18 ProkBERT-mini fine-tune — **Sanaa** — 📄 `model-training/T18/train_prokbert.py` WRITTEN 2026-06 (WeightedTrainer + AUPRC selection + T21 sweep CLI, contract-validated); run per `SANAA_T18_T19_RUN_CLAUDE.md` (dep T4,T16,T17)
-- T19 NT v2 250M LoRA fine-tune — Sanaa — 📄 `model-training/T19/train_nt_lora.py` WRITTEN 2026-06 (LoRA q/v + WeightedTrainer + AUPRC); run per `SANAA_T18_T19_RUN_CLAUDE.md` (dep T4,T16,T17)
-- T20 Custom 1D CNN from scratch — Yany — 📄 `model-training/T20/` (dep T4,T16,T17)
-- T21 Hyperparameter sweep — Sanaa+Oak — 📄 `model-training/T21/` (dep T18,T19,T20)
+- T17 Finalise fine-tuning recipe — **Sanaa** — 🟡 via the T21 sweep (template defaults = starting recipe; sweep tunes them). T19's slight overfit-after-epoch-2 ⇒ its LR has room to drop.
+- T18 ProkBERT-mini fine-tune — **Sanaa** — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.876 / test 0.872, weighted, full 40,442-row train.** `model-training/T18/train_prokbert.py`. Session bug-fixes: v5 `warmup_ratio` (feature-detect), `remove_unused_columns=False` (the `weight` KeyError). (dep T4,T16)
+- T19 NT v2 250M LoRA fine-tune — Sanaa — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.853 / test 0.841, weighted, LoRA 0.507% trainable.** Runs on the **`nt-tf4x`** (transformers 4.57) env, NOT 5.3.0 (`infrastructure/T4/NT_ENV.md`); `--no-grad-checkpoint`. `model-training/T19/train_nt_lora.py`. (dep T4,T16)
+- T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.811 / test 0.818, weighted.** `model-training/T20/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on by default; `--data-dir` defaults to `results/T16/cnn`). (dep T4,T16)
+- T21 Hyperparameter sweep — Sanaa+Oak — 🟡 **ready, wired for the two-env split** (`model-training/T21/hyperparameter_sweep.py`): resumable sqlite study, `--sweep-epochs` cheap proxy, budget by COMPLETED trials, live-streamed trial logs, per-model `extra_args` (NT auto-gets `--no-grad-checkpoint`). Run as **2 jobs** — `--models prokbert,cnn` on 5.3.0 + `--models nt_lora` on `nt-tf4x`, same `--out`. (dep T18,T19,T20)
 
 **Phase D — evaluation & calibration**
 - T22 Metrics suite (AUROC/AUPRC/MCC/F1) — Yany — ⬜ (dep PT3,T18,T19,T20)
@@ -443,20 +449,30 @@ select by **product description**, not the gene-symbol field.
   `pytorch`/`nvidia` channels are gone. GPU env builds from `environment.yml`; the CPU bio CLI
   (meme/sra-tools/segemehl) from `environment-bio.yml`. Verify `torch.cuda.is_available()` +
   `torch.version.cuda=='12.8'` **inside a GPU job**. Never run a bare `pip install torch` — it pulls the cu13 build.
+- **`git` over SSH breaks while a training env is active (2026-07):** the env's `activate.d` prepends
+  `$CONDA_PREFIX/lib` to `LD_LIBRARY_PATH` (needed for torch's libstdc++), which makes the system `ssh` load the
+  env's OpenSSL → `OpenSSL version mismatch … Could not read from remote repository`. Run git as
+  **`LD_LIBRARY_PATH= git …`** (or in a shell without the env active). The commit/push flow lives on the Mac;
+  the shared `/project` clone should be **pull-only** (a stray local commit there, e.g. `ceb9783`, diverges it).
+- **`~/.local` shadows the env (2026-07):** a stale user-site `pandas`/`numpy` (built for numpy 1.x) on
+  `~/.local` shadows the env and crashes with `_ARRAY_API not found` under numpy 2.x. The envs set
+  `PYTHONNOUSERSITE=1` (so **jobs are immune**); for interactive checks, activate the env or prefix
+  `PYTHONNOUSERSITE=1` (do NOT add `python -S` — that also hides the env's own packages).
 
 ---
 
 ## 10. Status snapshot
 
-**Solid (done + run/verified on HPC4, 2026-07):** T1, T2, T3, **T4 (env built + GPU-verified + locked)**,
-T5, T6, T7, **T7b (5,759 in-genus — C. beijerinckii extension)**, **T8 (4,336)**, T9, **T10 (1,746 TSS)**,
-T11–T14 (Phase B), **T15 (run: 47,088 rows, verified-only val/test, train 50/50)**, **T16 (run: prokbert/nt/cnn
-tokenised)**, PT3, PT5. The §7 in-genus-positive decision is **resolved**. The shared `/project` clone is on clean `main`.
-**Frontier: model training (Phase C).** T16 is ready → **T17/T18/T19 (Sanaa) + T20 (Yany) can start now** —
-templates written + contract-validated; run per `SANAA_T18_T19_RUN_CLAUDE.md` / `YANY_T20_RUN_CLAUDE.md`, then the T21 sweep.
-**Needs attention (not blocking T15):** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS
-table · PT5 `sliding_window_inference.py` modified-uncommitted on HPC4 (review diff) · DEPLOY §7 HF
-model IDs (T18 wrong org; PT5 is `prokbert-mini-promoter` not `-long-promoter`) · the env lock + this
-session's edits still to be committed from the Mac.
+**Solid (done + run/verified on HPC4, 2026-07):** T1–T16 + PT3/PT5, AND **all three Phase-C models trained +
+verified:** **T18 ProkBERT val AUPRC 0.876**, **T19 NT-LoRA 0.853** (on the `nt-tf4x` 4.57 env), **T20 CNN 0.811**
+— all `weighted`, full 40,442-row train / 3,323 verified-only val (29% pos), test≈val (no leakage), healthy
+curves. Verification was AI-council-audited (no truncation/leakage/metric-inflation). §7 decision **resolved**.
+**Frontier: T21 hyperparameter sweep (Phase C→D).** Wired for the two-env split (prokbert/cnn on 5.3.0, NT on
+`nt-tf4x`); run it, retrain winners at full epochs, then Phase D (T22–T27 eval/calibration) + Phase E (T28+ mining).
+**Two envs now (`infrastructure/T4/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
+**Needs attention:** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS table · **nt_len=67**
+tokenisation (higher than a typical 6-mer NT tok — sanity-check with Leo; not an inflation) · this session's
+edits (T18/T19/T20/T21 fixes + `NT_ENV.md`) committed from the Mac; the shared `/project` clone had a local
+commit (`ceb9783`) — keep the shared clone **pull-only** so it stops diverging.
 **When in doubt:** confirm owners/decisions with Oak; verify tool usage and accessions against
 the literature; keep changes surgical and within your task.

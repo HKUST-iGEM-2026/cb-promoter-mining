@@ -64,6 +64,7 @@ SWEEP_CONFIG = {
         },
         "n_trials": 25,
         "timeout": 21600,      # 6 h/trial — NT-250M is heavy (raise if a full-epoch trial needs longer)
+        "extra_args": ["--no-grad-checkpoint"],   # NT: no grad-checkpointing (67-tok seqs don't need it; matches the verified standalone run)
     },
     "cnn": {
         # Yany: align these keys with train_cnn.py's CLI flags (+ it must accept --num-epochs for --sweep-epochs).
@@ -91,7 +92,7 @@ def suggest(trial, name, spec):
     return trial.suggest_float(name, spec["min"], spec["max"])
 
 
-def run_trial(script, params, trial_dir, trial_num, timeout):
+def run_trial(script, params, trial_dir, trial_num, timeout, extra_args=()):
     """Launch the training script, STREAMING its output live to this process's stdout (-> the SLURM
     .out, so `tail -f` shows per-epoch/step progress in real time) while also capturing it to
     trial_dir/train.log. Returns val_auprc (None on failure/timeout -> trial pruned).
@@ -101,6 +102,7 @@ def run_trial(script, params, trial_dir, trial_num, timeout):
     cmd = [sys.executable, "-u", script, "--sweep-trial", str(trial_num), "--output-dir", str(trial_dir)]
     for k, v in params.items():
         cmd += [f"--{k}", str(v)]
+    cmd += list(extra_args)                 # per-model fixed flags (e.g. NT: --no-grad-checkpoint)
     (trial_dir / "params.json").write_text(json.dumps(params, indent=2))
     log_path = trial_dir / "train.log"
 
@@ -160,7 +162,8 @@ def sweep_model(name, cfg, out_dir, n_trials, timeout, sweep_epochs):
         params = {k: suggest(trial, k, spec) for k, spec in to_sample.items()}
         if sweep_epochs:
             params["num-epochs"] = sweep_epochs
-        auprc = run_trial(cfg["script"], params, model_out / f"trial_{trial.number}", trial.number, timeout)
+        auprc = run_trial(cfg["script"], params, model_out / f"trial_{trial.number}", trial.number, timeout,
+                          cfg.get("extra_args", ()))
         if auprc is None:
             raise optuna.exceptions.TrialPruned()
         return auprc
