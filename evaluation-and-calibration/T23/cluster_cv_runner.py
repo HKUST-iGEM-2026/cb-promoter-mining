@@ -10,18 +10,23 @@ What it does
 1. Builds a CV pool from T15 train+val (keeps T15 test untouched).
 2. Creates 5 cluster-disjoint folds using StratifiedGroupKFold.
 3. Pins silver positives (T13_inferred clusters) to training-only, matching T15 policy.
-4. Materializes fold datasets for all three model formats from T16:
+4. Materializes each fold as trainer-ready train/val/test for all three model formats from T16
+   (test = the held-out fold; val = the next fold, for early stopping; train = the rest + silver):
    - prokbert: parquet with input_ids/attention_mask + metadata
    - nt:       parquet with input_ids/attention_mask + metadata
    - cnn:      npz + aligned meta parquet
 5. Writes fold manifests and a summary table for auditability.
+6. Writes run_t23.sh — a runnable SLURM submitter that trains + scores all folds x models in the
+   right envs, then runs aggregate_cv.py (mean +/- std per model). Nothing is left to fill in.
 
 Run
 ---
+# 1) prepare folds + emit run_t23.sh:
 python evaluation-and-calibration/T23/cluster_cv_runner.py \
-  --t15-dir results/T15 \
-  --t16-dir results/T16 \
-  --out results/T23
+  --t15-dir results/T15 --t16-dir results/T16 --out results/T23
+# 2) launch the whole CV (submits jobs, aggregates when they finish):
+bash results/T23/run_t23.sh
+# -> results/T23/cv_summary.csv  (CV AUPRC/AUROC/MCC/F1 = mean +/- std per model)
 """
 
 from __future__ import annotations
@@ -47,11 +52,14 @@ T15_SPLIT_COLS = ["split", "label", "source", "cluster_id", "promoter_id"]
 class FoldStats:
     fold: int
     train_rows: int
-    eval_rows: int
+    val_rows: int
+    test_rows: int
     train_pos: int
-    eval_pos: int
+    val_pos: int
+    test_pos: int
     train_clusters: int
-    eval_clusters: int
+    val_clusters: int
+    test_clusters: int
 
 
 def _canonical_value(v) -> str:
@@ -116,10 +124,16 @@ def assign_cluster_folds(cv_df: pd.DataFrame, n_folds: int, seed: int) -> pd.Dat
     return out
 
 
-def fold_row_sets(assign_df: pd.DataFrame, fold_idx: int) -> Tuple[set, set]:
-    eval_rows = set(assign_df.loc[assign_df["fold"] == fold_idx, "t23_row_id"].tolist())
-    train_rows = set(assign_df["t23_row_id"].tolist()) - eval_rows
-    return train_rows, eval_rows
+def fold_tvt_sets(assign_df: pd.DataFrame, fold_idx: int, n_folds: int) -> Tuple[set, set, set]:
+    """CV fold k: test = fold k (held out for scoring), val = fold (k+1) % n (early-stopping
+    set, verified-only), train = everything else (the other folds' verified rows + the silver
+    train_only rows). All three are cluster-disjoint by construction, so no cluster leaks across
+    train/val/test."""
+    test_rows = set(assign_df.loc[assign_df["fold"] == fold_idx, "t23_row_id"].tolist())
+    val_fold = (fold_idx + 1) % n_folds
+    val_rows = set(assign_df.loc[assign_df["fold"] == val_fold, "t23_row_id"].tolist())
+    train_rows = set(assign_df["t23_row_id"].tolist()) - test_rows - val_rows
+    return train_rows, val_rows, test_rows
 
 
 def _build_assignment_keys(assign_df: pd.DataFrame, model_meta_cols: Sequence[str]) -> pd.DataFrame:
@@ -165,12 +179,10 @@ def materialize_hf_model(
         fold_path = model_out / f"fold_{k + 1:02d}"
         fold_path.mkdir(parents=True, exist_ok=True)
 
-        tr_ids, ev_ids = fold_row_sets(assign_df, k)
-        fold_train = mapped[mapped["t23_row_id"].isin(tr_ids)].copy()
-        fold_eval = mapped[mapped["t23_row_id"].isin(ev_ids)].copy()
-
-        fold_train.to_parquet(fold_path / "train.parquet", index=False)
-        fold_eval.to_parquet(fold_path / "eval.parquet", index=False)
+        tr_ids, va_ids, te_ids = fold_tvt_sets(assign_df, k, n_folds)
+        mapped[mapped["t23_row_id"].isin(tr_ids)].to_parquet(fold_path / "train.parquet", index=False)
+        mapped[mapped["t23_row_id"].isin(va_ids)].to_parquet(fold_path / "val.parquet", index=False)
+        mapped[mapped["t23_row_id"].isin(te_ids)].to_parquet(fold_path / "test.parquet", index=False)
 
 
 def materialize_cnn_model(
@@ -204,68 +216,144 @@ def materialize_cnn_model(
         fold_path = model_out / f"fold_{k + 1:02d}"
         fold_path.mkdir(parents=True, exist_ok=True)
 
-        tr_ids, ev_ids = fold_row_sets(assign_df, k)
-        tr_mask = mapped_meta["t23_row_id"].isin(tr_ids).to_numpy()
-        ev_mask = mapped_meta["t23_row_id"].isin(ev_ids).to_numpy()
-
-        np.savez_compressed(fold_path / "train.npz", X=X[tr_mask], label=y[tr_mask], weight=w[tr_mask])
-        np.savez_compressed(fold_path / "eval.npz", X=X[ev_mask], label=y[ev_mask], weight=w[ev_mask])
-
-        mapped_meta.loc[tr_mask].to_parquet(fold_path / "train_meta.parquet", index=False)
-        mapped_meta.loc[ev_mask].to_parquet(fold_path / "eval_meta.parquet", index=False)
+        tr_ids, va_ids, te_ids = fold_tvt_sets(assign_df, k, n_folds)
+        for name, ids in (("train", tr_ids), ("val", va_ids), ("test", te_ids)):
+            mask = mapped_meta["t23_row_id"].isin(ids).to_numpy()
+            np.savez_compressed(fold_path / f"{name}.npz", X=X[mask], label=y[mask], weight=w[mask])
+            mapped_meta.loc[mask].to_parquet(fold_path / f"{name}_meta.parquet", index=False)
 
 
 def compute_fold_stats(assign_df: pd.DataFrame, n_folds: int) -> List[FoldStats]:
     rows: List[FoldStats] = []
     for k in range(n_folds):
-        tr_ids, ev_ids = fold_row_sets(assign_df, k)
+        tr_ids, va_ids, te_ids = fold_tvt_sets(assign_df, k, n_folds)
         tr = assign_df[assign_df["t23_row_id"].isin(tr_ids)]
-        ev = assign_df[assign_df["t23_row_id"].isin(ev_ids)]
+        va = assign_df[assign_df["t23_row_id"].isin(va_ids)]
+        te = assign_df[assign_df["t23_row_id"].isin(te_ids)]
 
-        overlap = set(tr["cluster_id"].tolist()) & set(ev["cluster_id"].tolist())
-        if overlap:
-            raise ValueError(f"Fold {k + 1}: leakage detected ({len(overlap)} overlapping clusters).")
+        tr_c = set(tr["cluster_id"].tolist())
+        va_c = set(va["cluster_id"].tolist())
+        te_c = set(te["cluster_id"].tolist())
+        # test must be cluster-disjoint from BOTH train and val; val disjoint from train.
+        if te_c & (tr_c | va_c):
+            raise ValueError(f"Fold {k + 1}: leakage — test clusters overlap train/val.")
+        if va_c & tr_c:
+            raise ValueError(f"Fold {k + 1}: leakage — val clusters overlap train.")
 
         rows.append(
             FoldStats(
                 fold=k + 1,
                 train_rows=len(tr),
-                eval_rows=len(ev),
+                val_rows=len(va),
+                test_rows=len(te),
                 train_pos=int(tr["label"].sum()),
-                eval_pos=int(ev["label"].sum()),
+                val_pos=int(va["label"].sum()),
+                test_pos=int(te["label"].sum()),
                 train_clusters=int(tr["cluster_id"].nunique()),
-                eval_clusters=int(ev["cluster_id"].nunique()),
+                val_clusters=int(va["cluster_id"].nunique()),
+                test_clusters=int(te["cluster_id"].nunique()),
             )
         )
     return rows
 
 
-def write_command_stub(out_dir: Path, n_folds: int) -> None:
-    lines = [
-        "#!/usr/bin/env bash",
-        "set -euo pipefail",
-        "",
-        "# T23 command stub: fill model-paths for each fold and run in the correct env.",
-        "# ProkBERT/CNN -> promoter-mining-hpc4 env; NT -> nt-tf4x env.",
-        "",
-    ]
+def write_run_script(out_dir: Path, n_folds: int) -> None:
+    """Write a REAL, runnable orchestration script. For each fold it sbatch-submits the
+    ProkBERT+CNN training/scoring (promoter-mining-hpc4 env) and the NT training/scoring
+    (nt-tf4x env), then submits an aggregation job that runs after ALL folds succeed
+    (afterok dependency). Nothing is left to fill in — just `bash run_t23.sh` on HPC4."""
+    folds = " ".join(f"{k:02d}" for k in range(1, n_folds + 1))
+    script = f'''#!/usr/bin/env bash
+# ============================================================================
+# T23 — cluster-level {n_folds}-fold CV: train + score every fold x model, then aggregate.
+# Auto-generated by cluster_cv_runner.py. Submits SLURM GPU jobs, then one CPU
+# aggregation job that runs automatically after every fold job succeeds.
+#   ProkBERT + CNN -> promoter-mining-hpc4 env (transformers 5.3.0)
+#   NT-LoRA        -> nt-tf4x env             (transformers 4.57)
+#
+# Override these before running if your cluster paths differ:
+#   export REPO=/project/igem2026/cb-promoter-mining
+#   export ENV_MAIN=/project/igem2026/envs/promoter-mining-hpc4
+#   export ENV_NT=/project/igem2026/envs/nt-tf4x
+#   export CONDA_SH=<conda base>/etc/profile.d/conda.sh   # auto-detected via `conda info --base`
+#
+# NB the CNN uses --no-batch-norm to match the standalone T20 production model
+# (see predict_and_score.py). If your chosen CNN was trained WITH BatchNorm,
+# drop that flag on the train_cnn line below so the CV matches production.
+# ============================================================================
+set -euo pipefail
 
-    for k in range(1, n_folds + 1):
-        fold = f"fold_{k:02d}"
-        lines.extend([
-            f"# ==== {fold} ====",
-            f"# python model-training/T18/train_prokbert.py --data-dir results/T23/folds/prokbert/{fold} --output-dir results/T23/runs/prokbert/{fold}",
-            f"# python model-training/T19/train_nt_lora.py --data-dir results/T23/folds/nt/{fold} --output-dir results/T23/runs/nt/{fold}",
-            f"# python model-training/T20/train_cnn.py --data-dir results/T23/folds/cnn/{fold} --output-dir results/T23/runs/cnn/{fold}",
-            "",
-            "# Score eval fold with T22-style script after each model finishes:",
-            f"# python evaluation-and-calibration/T22/predict_and_score.py --model prokbert --model-path results/T23/runs/prokbert/{fold}/best_model --data-dir results/T23/folds/prokbert/{fold} --out results/T23/scores/{fold}",
-            f"# python evaluation-and-calibration/T22/predict_and_score.py --model nt --model-path results/T23/runs/nt/{fold}/best_adapter --data-dir results/T23/folds/nt/{fold} --out results/T23/scores/{fold}",
-            f"# python evaluation-and-calibration/T22/predict_and_score.py --model cnn --model-path results/T23/runs/cnn/{fold}/best_model.pt --data-dir results/T23/folds/cnn/{fold} --out results/T23/scores/{fold}",
-            "",
-        ])
+REPO="${{REPO:-/project/igem2026/cb-promoter-mining}}"
+ENV_MAIN="${{ENV_MAIN:-/project/igem2026/envs/promoter-mining-hpc4}}"
+ENV_NT="${{ENV_NT:-/project/igem2026/envs/nt-tf4x}}"
+CONDA_SH="${{CONDA_SH:-$(conda info --base 2>/dev/null)/etc/profile.d/conda.sh}}"
+SCAF="$REPO/infrastructure/T3/snakemake_scaffold"
 
-    (out_dir / "run_t23_commands.sh").write_text("\n".join(lines) + "\n")
+cd "$SCAF"
+mkdir -p logs results/T23/runs results/T23/scores
+JOBIDS=""
+
+for k in {folds}; do
+  # ---- ProkBERT + CNN (promoter-mining-hpc4) ----
+  JID=$(sbatch --parsable --account=igem2026 --partition=preempt --requeue --signal=B:USR1@120 \\
+        --gpus-per-node=1 --time=06:00:00 --job-name="t23_main_$k" \\
+        --output="logs/t23_main_${{k}}_%j.out" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+source "$CONDA_SH"; conda activate "$ENV_MAIN"
+export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1
+cd "$SCAF"
+python "$REPO/model-training/T18/train_prokbert.py" \\
+  --data-dir results/T23/folds/prokbert/fold_$k --output-dir results/T23/runs/prokbert/fold_$k
+python "$REPO/evaluation-and-calibration/T22/predict_and_score.py" --model prokbert \\
+  --model-path results/T23/runs/prokbert/fold_$k/best_model \\
+  --data-dir results/T23/folds/prokbert/fold_$k --out results/T23/scores/fold_$k
+python "$REPO/model-training/T20/train_cnn.py" --no-batch-norm \\
+  --data-dir results/T23/folds/cnn/fold_$k --output-dir results/T23/runs/cnn/fold_$k
+python "$REPO/evaluation-and-calibration/T22/predict_and_score.py" --model cnn \\
+  --model-path results/T23/runs/cnn/fold_$k/best_model.pt \\
+  --data-dir results/T23/folds/cnn/fold_$k --out results/T23/scores/fold_$k
+EOF
+)
+  echo "fold $k main -> job $JID"; JOBIDS="$JOBIDS:$JID"
+
+  # ---- NT-LoRA (nt-tf4x) ----
+  JID=$(sbatch --parsable --account=igem2026 --partition=preempt --requeue --signal=B:USR1@120 \\
+        --gpus-per-node=1 --time=08:00:00 --job-name="t23_nt_$k" \\
+        --output="logs/t23_nt_${{k}}_%j.out" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+source "$CONDA_SH"; conda activate "$ENV_NT"
+export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1
+export LD_LIBRARY_PATH="\\$CONDA_PREFIX/lib:\\${{LD_LIBRARY_PATH:-}}"
+cd "$SCAF"
+python "$REPO/model-training/T19/train_nt_lora.py" --no-grad-checkpoint \\
+  --data-dir results/T23/folds/nt/fold_$k --output-dir results/T23/runs/nt/fold_$k
+python "$REPO/evaluation-and-calibration/T22/predict_and_score.py" --model nt \\
+  --model-path results/T23/runs/nt/fold_$k/best_adapter \\
+  --data-dir results/T23/folds/nt/fold_$k --out results/T23/scores/fold_$k
+EOF
+)
+  echo "fold $k nt   -> job $JID"; JOBIDS="$JOBIDS:$JID"
+done
+
+# ---- aggregate mean +/- std across folds, after every fold job succeeds ----
+sbatch --account=igem2026 --partition=cpu --time=00:20:00 --job-name="t23_agg" \\
+  --dependency="afterok${{JOBIDS}}" --output="logs/t23_agg_%j.out" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+source "$CONDA_SH"; conda activate "$ENV_MAIN"
+export PYTHONNOUSERSITE=1
+cd "$SCAF"
+python "$REPO/evaluation-and-calibration/T23/aggregate_cv.py" \\
+  --scores-dir results/T23/scores --out results/T23
+EOF
+echo "aggregation queued (runs afterok all {n_folds} folds x 3 models)."
+echo "watch:  squeue -u \\$USER      final table:  $SCAF/results/T23/cv_summary.csv"
+'''
+    p = out_dir / "run_t23.sh"
+    p.write_text(script)
+    p.chmod(0o755)
 
 
 def parse_args() -> argparse.Namespace:
@@ -277,7 +365,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--seed", type=int, default=DEFAULT_SEED)
     p.add_argument("--models", default="prokbert,nt,cnn",
                    help="Comma-separated subset of models to materialize: prokbert, nt, cnn")
-    p.add_argument("--write-command-stub", action="store_true", help="Write run_t23_commands.sh helper")
     return p.parse_args()
 
 
@@ -337,11 +424,11 @@ def main() -> None:
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
-    if args.write_command_stub:
-        write_command_stub(out_dir, args.n_folds)
+    write_run_script(out_dir, args.n_folds)
 
     print(f"T23 fold datasets prepared at: {out_dir}")
     print(f"Fold summary: {out_dir / 'fold_summary.csv'}")
+    print(f"Run the CV:   bash {out_dir / 'run_t23.sh'}   (submits all folds, then aggregates)")
 
 
 if __name__ == "__main__":
