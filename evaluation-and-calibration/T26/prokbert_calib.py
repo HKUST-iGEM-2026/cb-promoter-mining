@@ -6,58 +6,54 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-#practice with the un-tuned model 
 model_name = "neuralbioinfo/prokbert-mini-promoter"
 model_path = "/project/igem2026/cb-promoter-mining/results/T21/prokbert/trial_12/best_model"
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForSequenceClassification.from_pretrained(model_path, trust_remote_code=True)
 model.eval()
 
-data = pd.read_csv("ecoli_calib_set.csv")
+data = pd.read_csv("data-acquisition-and-curation/T9/literature_promoters.tsv", sep="\t")
 # takes the sequences as an ordered series
-promoters = data["Sequence"]    
-scores = []
+promoters = data["Sequence"]
+probs = []    # raw model probability, kept for reporting
+logits = []   # positive-class log-odds, the calibrator feature
 
 # takes index in batches, so i goes from 0, 32, 64
 # window size is 81, batch size is 32
-for i in range(0, len(promoters), 32): 
+for i in range(0, len(promoters), 32):
     batch = promoters[i:i+32].tolist()
-    inputs = tokenizer(batch, padding=max_length, max_length=81, return_tensors="pt")
+    inputs = tokenizer(batch, padding="max_length", truncation=True, max_length=81, return_tensors="pt")
 
-    with torch.no_grad(): 
+    with torch.no_grad():
         outputs = model(**inputs)
-        probs = torch.softmax(outputs.logits, dim=1)[:,1].tolist()
+        # log-odds of the positive class = logit for Platt/logistic calibration.
+        # softmax(...)[:,1] makes it into probabilities from 0 to 1 so it's not the full picture so shouldn't be fed into the calibrator 
+        logits.extend((outputs.logits[:, 1] - outputs.logits[:, 0]).tolist())
+        probs.extend(torch.softmax(outputs.logits, dim=1)[:, 1].tolist())
 
-    scores.extend(probs)
+data["Score"] = probs     # raw probabilities from the model w/o calibrator for the before/after comparison
+data["Logit"] = logits    # what's actually fed goes into the calibrator
 
-data["Score"] = scores
-print(tokenizer(["A" * 52], padding="max_length", max_length=78, return_tensors="pt").keys()) 
+# will do simple logistic regression model. the calibrator is fit on the logit difference which is platt scaling technically so calibrated_prob = s(a*logit + b)
 
-# no need to train prokBERT we just need to have some test data & then the calibrator data & see if the prediction improves
-# will do simple logistic regression model
-# x has to be 2D for logreg
+# split rows so we keep both the raw score (for reporting) and the logit (calibrator feature) aligned
+calib_df, test_df = train_test_split(
+    data, test_size=0.3, random_state=42, stratify=data["Target"]
+)
 
-x,y = data[["Score"]],data["Target"]
-
-# having the test group be 30%, and the rest be calibration, just to check since we're not changing anything
-
-x_calib, x_test, y_calib, y_test = train_test_split(x,y,test_size=0.3)
 clf = LogisticRegression()
-clf.fit(x_calib, y_calib)
+clf.fit(calib_df[["Logit"]], calib_df["Target"])   # x has to be 2D for logreg so use double brackets, since "features"
 
-# takes the x_test and turns it into a dataframe, this is the test set that shows actual success or not after the calibrator is fitted onto the data
+calibrated_probs = clf.predict_proba(test_df[["Logit"]])[:, 1]
 
-calibrated_probs = clf.predict_proba(x_test)[:, 1]
+# use .values throughout so pandas indices can't mismatch after the split
 
-# calib probs are in same order as y_test & x_test because both of them were cut by train_test_split tgt
-# calibrated probs are in a numpy array so we turn everything else so there's no weird mismatching
-# ignore pandas labels and just use everything in their current order
- 
-df=pd.DataFrame(
-    {"Target": y_test.reset_index(drop=True),
-    "ProkBERTScore": x_test["Score"].reset_index(drop=True),
-     "CalibScore": calibrated_probs,
-     }
+df = pd.DataFrame(
+    {
+        "Target": test_df["Target"].values,
+        "ProkBERTScore": test_df["Score"].values,   # raw probability uncalibrated for "before" comparison
+        "CalibScore": calibrated_probs,             # after logistic calibration so should be more accurate
+    }
 )
 
 df.to_csv("finalized_data_prokbert.csv", index=False)
