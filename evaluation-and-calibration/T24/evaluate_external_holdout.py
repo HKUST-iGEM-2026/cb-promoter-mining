@@ -259,7 +259,9 @@ def evaluate_all(
         probs_by_model["cnn"] = prob_cnn
         metrics["cnn"] = metric_dict(y, prob_cnn, threshold)
 
-    # Save per-model predictions
+    # Save PER-MODEL predictions, overall metrics, and species breakdown. Per-model files mean that
+    # running this script twice into the same --out (prokbert,cnn in one env, then nt_lora in the
+    # nt-tf4x env) ACCUMULATES results instead of the second run clobbering the first.
     for model_name, probs in probs_by_model.items():
         pd.DataFrame({
             "species": species,
@@ -268,20 +270,26 @@ def evaluate_all(
             "pred": (probs >= threshold).astype(int),
         }).to_csv(pred_dir / f"{model_name}_external_predictions.csv", index=False)
 
-    # Species-level summary
-    rows = []
-    for model_name, probs in probs_by_model.items():
+        (out_dir / f"{model_name}_metrics.json").write_text(json.dumps(metrics[model_name], indent=2) + "\n")
+
+        srows = []
         sdf = pd.DataFrame({"species": species, "label": y, "prob": probs})
         for sp, g in sdf.groupby("species"):
-            yy = g["label"].to_numpy()
-            pp = g["prob"].to_numpy()
-            md = metric_dict(yy, pp, threshold)
+            md = metric_dict(g["label"].to_numpy(), g["prob"].to_numpy(), threshold)
             md["model"] = model_name
             md["species"] = str(sp)
-            rows.append(md)
-    pd.DataFrame(rows).to_csv(out_dir / "species_metrics.csv", index=False)
+            srows.append(md)
+        pd.DataFrame(srows).to_csv(out_dir / f"{model_name}_species_metrics.csv", index=False)
 
-    (out_dir / "metrics_summary.json").write_text(json.dumps(metrics, indent=2) + "\n")
+    # Rebuild the combined summary + species table from ALL per-model files present (so a later
+    # NT-only run merges with an earlier prokbert/cnn run rather than overwriting it).
+    combined = {json.loads(f.read_text()).get("model", f.stem.replace("_metrics", "")): json.loads(f.read_text())
+                for f in sorted(out_dir.glob("*_metrics.json"))}
+    (out_dir / "metrics_summary.json").write_text(json.dumps(combined, indent=2) + "\n")
+
+    sp_files = [pd.read_csv(f) for f in sorted(out_dir.glob("*_species_metrics.csv"))]
+    if sp_files:
+        pd.concat(sp_files, ignore_index=True).to_csv(out_dir / "species_metrics.csv", index=False)
 
 
 def parse_args() -> argparse.Namespace:
