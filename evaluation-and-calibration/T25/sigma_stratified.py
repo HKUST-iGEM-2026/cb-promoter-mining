@@ -21,16 +21,18 @@ WHY sigma alone is weak (council-reviewed):
       or a headline. The GC-quartile cut (axis 2) is the dense, honest version of the same question.
 
 Metrics per stratum (all calibration-free + comparable across strata):
-  n_pos · median raw score · median RANK-PERCENTILE (position among ALL test scores) · AUROC vs the SHARED
-  negative pool, with a positives-bootstrap 90% CI. Per-stratum AUPRC and recall@0.5 are deliberately
-  omitted — AUPRC's baseline = n_pos/(n_pos+n_neg) varies by stratum (not comparable), and 0.5 is
-  meaningless on an uncalibrated, balanced-trained score.
+  n_pos · median raw score · median RANK-PERCENTILE (position among ALL test scores) · TWO AUROCs — vs the
+  full negative pool AND vs the SRS-only (composition-matched dinucleotide-shuffle) negatives; the all->SRS
+  drop is the composition contribution (small drop = genuine motif discrimination). Positives-bootstrap 90%
+  CIs. Per-stratum AUPRC and recall@0.5 are deliberately omitted — AUPRC's baseline = n_pos/(n_pos+n_neg)
+  varies by stratum (not comparable), and 0.5 is meaningless on an uncalibrated, balanced-trained score.
 
 Inputs (NOT the Snakefile's T10 TSS calls — those carry no sigma labels and are out-of-genus):
   --t15-dir results/T15   test.parquet: sequence (for GC), label, source, sigma_factor — row-aligned w/ T22
   --t22-dir results/T22   {model}_test_predictions.csv from predict_and_score.py (columns: label, prob, pred)
 Outputs:
-  results/T25/stratified_eval.csv   (tidy: model, axis, stratum, n_pos, median_score, median_pctl, auroc, ci_lo, ci_hi)
+  results/T25/stratified_eval.csv   (tidy: model, axis, stratum, n_pos, median_score, median_pctl,
+                                     auroc_allneg, ci_lo, ci_hi, auroc_srs, srs_ci_lo, srs_ci_hi)
   results/T25/stratified_eval.md    (readable tables + the coverage/limits header)
 
 sklearn + pandas; runs in the main promoter-mining-hpc4 env. Run from the scaffold dir:
@@ -60,20 +62,31 @@ def gc_frac(seq):
     return (s.count("G") + s.count("C")) / len(s) if len(s) else np.nan
 
 
-def auroc_ci(pos_p, neg_p, rng, nboot=NBOOT):
-    """AUROC of this stratum's positives vs the shared negative pool, + 90% CI by resampling positives."""
+def _au(pos_p, neg_p):
     if len(pos_p) == 0 or len(neg_p) == 0:
-        return (np.nan, np.nan, np.nan)
-    yy = np.concatenate([np.ones(len(pos_p)), np.zeros(len(neg_p))])
-    point = roc_auc_score(yy, np.concatenate([pos_p, neg_p]))
+        return np.nan
+    return roc_auc_score(np.concatenate([np.ones(len(pos_p)), np.zeros(len(neg_p))]),
+                         np.concatenate([pos_p, neg_p]))
+
+
+def _ci(arr):
+    a = arr[np.isfinite(arr)]
+    return (float(np.percentile(a, 5)), float(np.percentile(a, 95))) if len(a) else (np.nan, np.nan)
+
+
+def auroc_vs(pos_p, neg_all, neg_srs, rng, nboot=NBOOT):
+    """AUROC of this stratum's positives vs (a) the full negative pool and (b) the SRS-only
+    (composition-matched dinucleotide-shuffle) pool, each with a 90% CI from the SAME positive
+    bootstrap so the two columns are directly comparable. The all→SRS drop = composition's share."""
+    p_all, p_srs = _au(pos_p, neg_all), _au(pos_p, neg_srs)
     if len(pos_p) < 3:
-        return (point, np.nan, np.nan)
-    bs = np.empty(nboot)
+        return (p_all, np.nan, np.nan, p_srs, np.nan, np.nan)
+    b_all, b_srs = np.empty(nboot), np.empty(nboot)
     for i in range(nboot):
         bp = rng.choice(pos_p, size=len(pos_p), replace=True)
-        y2 = np.concatenate([np.ones(len(bp)), np.zeros(len(neg_p))])
-        bs[i] = roc_auc_score(y2, np.concatenate([bp, neg_p]))
-    return (point, float(np.percentile(bs, 5)), float(np.percentile(bs, 95)))
+        b_all[i], b_srs[i] = _au(bp, neg_all), _au(bp, neg_srs)
+    (la, ha), (ls, hs) = _ci(b_all), _ci(b_srs)
+    return (p_all, la, ha, p_srs, ls, hs)
 
 
 def strata_source(src, y):
@@ -125,6 +138,7 @@ def main():
            if "sigma_factor" in meta.columns else np.array([None] * len(y), dtype=object))
     gcv = (meta["sequence"].map(gc_frac).to_numpy()
            if "sequence" in meta.columns else np.full(len(y), np.nan))
+    srs_mask = (y == 0) & pd.Series(src).str.upper().str.contains("SRS", na=False).to_numpy()
 
     n_pos = int((y == 1).sum())
     n_lab = int(sum(1 for i in range(len(y)) if y[i] == 1 and sig[i] is not None))
@@ -133,8 +147,12 @@ def main():
         f"Test set: {len(y)} windows, {n_pos} positive, {int((y == 0).sum())} negative (shared pool). "
         f"**Only {n_lab}/{n_pos} positives carry a sigma label** (cross-species; DBTBS = blanket 'SigmaA'); "
         "there are NO in-genus sigma labels. Metrics: median rank-percentile (position among all test "
-        "scores) and AUROC vs the shared negatives (both calibration-free, comparable across strata); "
-        f"AUROC CI = 90% by resampling positives. `⚠` = n < {MIN_N} (do not narrate as a finding).\n",
+        "scores) and two AUROCs (calibration-free, comparable across strata; 90% CI by resampling "
+        f"positives). `⚠` = n < {MIN_N} (do not narrate as a finding).\n",
+        f"**AUROC vs all-neg** = positives vs the full genomic negative mix. **AUROC vs SRS** = positives "
+        f"vs the {int(srs_mask.sum())} composition-matched dinucleotide-shuffle negatives (the "
+        "in-distribution motif test) — a large all→SRS drop means the model was leaning on base "
+        "composition; a small drop means genuine motif discrimination.\n",
         "Sigma is a weak, cross-species proxy for the composition confound — the **GC quartile** cut is "
         "the dense, in-genus-inclusive version. Sigma-vs-sigma is only valid within RegulonDB (E. coli); "
         "the 'SigmaA' row is really the B. subtilis set (species-confounded).\n",
@@ -155,7 +173,8 @@ def main():
         if not np.all(np.isfinite(prob)):
             raise SystemExit(f"{key}: non-finite probabilities in {pp}.")
         pctl = pd.Series(prob).rank(pct=True).to_numpy()
-        neg_p = prob[y == 0]
+        neg_all = prob[y == 0]
+        neg_srs = prob[srs_mask]
 
         md.append(f"\n## {name}\n")
         axes = [("Overall", iter([("— all positives —", (y == 1))])),
@@ -167,23 +186,28 @@ def main():
             if not block:
                 continue
             md.append(f"\n**{axis_name}**\n")
-            md.append("| Stratum | n_pos | median score | median rank-pctl | AUROC [90% CI] |")
-            md.append("|---|---|---|---|---|")
+            md.append("| Stratum | n_pos | median score | median rank-pctl | AUROC vs all-neg [CI] | AUROC vs SRS [CI] |")
+            md.append("|---|---|---|---|---|---|")
             for label, mask in block:
                 n = int(mask.sum())
                 if n == 0:
                     continue
                 ms = float(np.median(prob[mask]))
                 mp = float(np.median(pctl[mask]))
-                pt, lo, hi = auroc_ci(prob[mask], neg_p, rng)
-                ci = f"[{lo:.2f}–{hi:.2f}]" if np.isfinite(lo) else "[n<3]"
+                pa, la, ha, ps, ls, hs = auroc_vs(prob[mask], neg_all, neg_srs, rng)
+                ca = f"[{la:.2f}–{ha:.2f}]" if np.isfinite(la) else "[n<3]"
+                cs = f"[{ls:.2f}–{hs:.2f}]" if np.isfinite(ls) else ("[n<3]" if np.isfinite(ps) else "")
+                sa = f"{ps:.3f} {cs}".strip() if np.isfinite(ps) else "—"
                 flag = "" if n >= MIN_N else " ⚠"
-                md.append(f"| {label}{flag} | {n} | {ms:.3f} | {mp:.3f} | {pt:.3f} {ci} |")
+                md.append(f"| {label}{flag} | {n} | {ms:.3f} | {mp:.3f} | {pa:.3f} {ca} | {sa} |")
                 rows.append({"model": name, "axis": axis_name, "stratum": label, "n_pos": n,
                              "median_score": round(ms, 4), "median_pctl": round(mp, 4),
-                             "auroc": round(pt, 4) if np.isfinite(pt) else "",
-                             "ci_lo": round(lo, 4) if np.isfinite(lo) else "",
-                             "ci_hi": round(hi, 4) if np.isfinite(hi) else ""})
+                             "auroc_allneg": round(pa, 4) if np.isfinite(pa) else "",
+                             "ci_lo": round(la, 4) if np.isfinite(la) else "",
+                             "ci_hi": round(ha, 4) if np.isfinite(ha) else "",
+                             "auroc_srs": round(ps, 4) if np.isfinite(ps) else "",
+                             "srs_ci_lo": round(ls, 4) if np.isfinite(ls) else "",
+                             "srs_ci_hi": round(hs, 4) if np.isfinite(hs) else ""})
 
     pd.DataFrame(rows).to_csv(os.path.join(a.out, "stratified_eval.csv"), index=False)
     text = "\n".join(md) + "\n"
