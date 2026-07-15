@@ -34,6 +34,10 @@ import torch
 from sklearn.metrics import average_precision_score, f1_score, matthews_corrcoef, roc_auc_score
 
 NT_ID = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
+# Load the ProkBERT tokenizer from the BASE repo (identical vocab) rather than the fine-tuned
+# best_model dir: trainer.save_model can leave a slow tokenizer transformers can't rebuild, and
+# fine-tuning never changes the tokenizer. The fine-tuned MODEL still comes from --prokbert-model-path.
+PROKBERT_BASE = "neuralbioinfo/prokbert-mini"
 
 
 def dinucleotide_shuffle(seq: str, rng: random.Random) -> str:
@@ -231,7 +235,7 @@ def evaluate_all(
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
         if prokbert_model_path is None:
             raise ValueError("prokbert requested but --prokbert-model-path was not provided")
-        tok_pk = AutoTokenizer.from_pretrained(str(prokbert_model_path), trust_remote_code=True)
+        tok_pk = AutoTokenizer.from_pretrained(PROKBERT_BASE, trust_remote_code=True)
         model_pk = AutoModelForSequenceClassification.from_pretrained(str(prokbert_model_path), trust_remote_code=True).to(device).eval()
         prob_pk = predict_transformer(model_pk, tok_pk, seqs, device)
         probs_by_model["prokbert"] = prob_pk

@@ -301,7 +301,7 @@ for k in {folds}; do
 #!/usr/bin/env bash
 set -euo pipefail
 source "$CONDA_SH"; conda activate "$ENV_MAIN"
-export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1
+export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1 HF_HOME=/project/igem2026/hf_cache
 cd "$SCAF"
 python "$REPO/model-training/T18/train_prokbert.py" \\
   --data-dir results/T23/folds/prokbert/fold_$k --output-dir results/T23/runs/prokbert/fold_$k
@@ -324,7 +324,7 @@ EOF
 #!/usr/bin/env bash
 set -euo pipefail
 source "$CONDA_SH"; conda activate "$ENV_NT"
-export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1
+export PYTHONNOUSERSITE=1 HF_HUB_OFFLINE=1 HF_HOME=/project/igem2026/hf_cache
 export LD_LIBRARY_PATH="\\$CONDA_PREFIX/lib:\\${{LD_LIBRARY_PATH:-}}"
 cd "$SCAF"
 python "$REPO/model-training/T19/train_nt_lora.py" --no-grad-checkpoint \\
