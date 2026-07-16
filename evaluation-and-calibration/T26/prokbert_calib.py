@@ -10,9 +10,18 @@ model_name = "neuralbioinfo/prokbert-mini-promoter"
 model_path = "/project/igem2026/cb-promoter-mining/results/T21/prokbert/trial_12/best_model"
 tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
 model = AutoModelForSequenceClassification.from_pretrained(model_path, trust_remote_code=True)
+model.to(device)
 model.eval()
 
-data = pd.read_csv("data-acquisition-and-curation/T9/literature_promoters.tsv", sep="\t")
+data = pd.read_csv("/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T9/literature_promoters.tsv", sep="\t")
+
+
+def at_fraction(seq):
+    seq = seq.upper()
+    return (seq.count("A") + seq.count("T")) / len(seq)
+
+data["AT"] = data["Sequence"].apply(at_fraction)
+
 # takes the sequences as an ordered series
 promoters = data["Sequence"]
 probs = []    # raw model probability, kept for reporting
@@ -34,15 +43,19 @@ for i in range(0, len(promoters), 32):
 data["Score"] = probs     # raw probabilities from the model w/o calibrator for the before/after comparison
 data["Logit"] = logits    # what's actually fed goes into the calibrator
 
-# will do simple logistic regression model. the calibrator is fit on the logit difference which is platt scaling technically so calibrated_prob = s(a*logit + b)
+# will do simple logistic regression model. the calibrator is fit on the logit difference which is platt scaling (but 2D) technically so calibrated_prob = s(a*logit + b*AT + c)
 
 # split rows so we keep both the raw score (for reporting) and the logit (calibrator feature) aligned
+
 calib_df, test_df = train_test_split(
     data, test_size=0.3, random_state=42, stratify=data["Target"]
 )
 
-clf = LogisticRegression()
-clf.fit(calib_df[["Logit"]], calib_df["Target"])   # x has to be 2D for logreg so use double brackets, since "features"
+features = ["Logit", "AT"] #stores the column names
+clf = LogisticRegression(penalty=None)
+clf.fit(calib_df[features], calib_df["Target"])
+calibrated_probs = clf.predict_proba(test_df[features])[:, 1]
+  # x has to be 2D for logreg so use double brackets, since "features" & also has 2 input variables
 
 calibrated_probs = clf.predict_proba(test_df[["Logit"]])[:, 1]
 
