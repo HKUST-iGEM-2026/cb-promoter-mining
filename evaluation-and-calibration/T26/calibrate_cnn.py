@@ -344,10 +344,10 @@ def main() -> None:
     # --- fit calibrators on the CALIB subset only ---
     Xc_logit = logit_diff[calib_idx].reshape(-1, 1)                 # (N, 1) per spec
     Xc_logit_at = np.column_stack([logit_diff[calib_idx], data["at_fraction"].values[calib_idx]])
-    # C=np.inf -> unregularized logistic regression (Platt scaling). (penalty=None is deprecated in
-    # sklearn 1.8 / removed in 1.10; sklearn recommends C=np.inf as the replacement.)
-    cal_logit = LogisticRegression(C=np.inf).fit(Xc_logit, y_calib)
-    cal_logit_at = LogisticRegression(C=np.inf).fit(Xc_logit_at, y_calib)
+    # penalty=None -> unregularized logistic regression (Platt scaling); the supported way to fit a
+    # plain logistic calibrator (kept identical across the three T26 scripts).
+    cal_logit = LogisticRegression(penalty=None).fit(Xc_logit, y_calib)
+    cal_logit_at = LogisticRegression(penalty=None).fit(Xc_logit_at, y_calib)
 
     # --- apply to the HELD-OUT test logits only ---
     Xt_logit = logit_diff[test_idx].reshape(-1, 1)
