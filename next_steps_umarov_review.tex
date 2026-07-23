@@ -1,0 +1,101 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Next Steps after Dr.\ Umarov's Review\\ \large Actions and reasoning for the promoter-mining workflow}
+\date{July 19, 2026}
+\author{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This memo turns Dr.\ Ramzan Umarov's review (19/07) into a concrete, prioritized action plan, with the reasoning --- and the disagreements --- made explicit. The short version: the review is largely correct, and most of it \emph{confirms weaknesses our own held-out evaluation already found} (T24: composition-matched negatives exposed apparent composition-reliance --- though a later per-species split showed the transformers do hold real \emph{in-genus} motif signal and the chance-level number was an out-of-genus averaging artifact, not a collapse; T25: every model dips in the AT-rich band). The core problem is the \textbf{negatives}, not the models. We therefore adopt most of the review, but we do \emph{not} accept it wholesale: we keep the dinucleotide-shuffle set as a diagnostic (it was a deliberate, literature-backed choice), we \emph{test} rather than assume the transformers are unnecessary (with a commitment to drop them if a fair baseline matches them), and we treat the ``more negatives than positives'' point as secondary to negative \emph{quality}. Two high-value levers the review did not mention --- restricting the scan region and growing the in-genus evaluation set --- are added.
+\end{abstract}
+
+\section{The review, and our stance on each point}
+\begin{table}[h]
+\centering
+\small
+\caption{Umarov's points mapped to our verdict.}
+\begin{tabular}{@{}c L{6.6cm} L{5.3cm}@{}}
+\toprule
+\# & Review point & Our verdict \\
+\midrule
+1 & Transformers may be unnecessary (short, local motif; no long-range interactions) & \textbf{Test, don't assume} --- bake-off vs simple baselines; simplify if they match \\
+2 & Structured negatives ``too easy''; model separates negative \emph{classes}, not the motif & \textbf{Agree} --- our T24/T25 confirm composition-reliance \\
+3 & Use random genomic negatives, from multiple genomes; accept small contamination & \textbf{Adopt}, principally via hard-negative mining (T33) \\
+4 & F1 is misleading; thousands of false positives at genome scale & \textbf{Agree} --- already in our rationale; change the reporting \\
+5 & Train with more negatives than positives & \textbf{Secondary} --- quality $>$ ratio; cheap sweep only \\
+6 & Calibration negatives should be random genomic windows & \textbf{Adopt} --- fixes what T26 currently does \\
+7 & Try foundation-model (Evo) embeddings $+$ random forest & \textbf{Adopt} as a baseline in the bake-off \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{The plan (prioritized)}
+Priority is by \emph{impact per unit effort}, and it is deliberately \emph{not} in the order the points were raised. Note especially that the cheapest correct fix (recalibration) is \emph{not} the biggest lever --- the negatives are.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Recommended order of work.}
+\begin{tabular}{@{}c L{6.4cm} L{2.3cm} c L{2.6cm}@{}}
+\toprule
+Order & Action & Task(s) & Effort & Impact \\
+\midrule
+1 & Restrict the scan region to gene-upstream / intergenic windows (not every window) & T28 & Low & High \\
+2 & Recalibrate on \emph{random genomic} negatives (target + a relative), masked for annotations & T26 & Low & Med--High \\
+3 & Add a genome-scale false-positive benchmark; report expected-FP / FDR, demote F1 & T22, T25, T27 & Low--Med & High \\
+4 & Negatives overhaul: add a random-genomic class + \emph{iterative hard-negative mining} & T14, T15, T33 & High & Highest \\
+5 & Baseline bake-off (Evo$+$RF, $k$-mer classifier) on the \emph{hard} tests & new pre-task & Low--Med & High (decision) \\
+6 & Grow the verified in-genus evaluation set & T7b ext.\ & Med & High (enables measurement) \\
+7 & Make the negative:positive ratio a swept hyperparameter & T15, T21 & Low & Low--Med \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Reasoning, action by action}
+
+\paragraph{1. Restrict the scan region (T28).}
+The genome-scale false-positive burden is set by how many windows we score. \emph{C.\ butyricum} is $\sim$4.6\,Mb; scanning every position is $\sim$$4.6\times10^{6}$ windows, of which $\sim$0.2\% are real. Even at 99.9\% specificity that is $\sim$4{,}600 false positives against $\sim$9{,}000 possible true positives --- precision below 70\% \emph{before} any of the harder, composition-matched errors. Scoring only gene-upstream and intergenic windows removes the deep-CDS majority of the search space, cutting the false-positive \emph{denominator} directly. This is the cheapest large lever and, notably, one the review did not raise (it is in our own \texttt{WORKFLOW\_RATIONALE.md} \S5.2). \emph{Risk:} a promoter inside a mis-annotated region is missed --- acceptable, since the deliverable is an enriched candidate list, not a complete map.
+
+\paragraph{2. Recalibrate on random genomic negatives (T26).}
+This is the review's most surgical and clearly correct point. The current \texttt{T26/prokbert\_calib.py} fits its calibrator on the T9 \emph{literature} promoters, not on the background the model actually meets at scan time. A probability calibrator is only as honest as its negatives: to set a genome-scale operating threshold, the negatives must be \emph{random windows from the target genome} (plus a relative), masked for annotated genes/TSS. This changes only the calibration data, not the model --- a half-day change with outsized effect on the eventual threshold. \emph{Caveat (non-obvious):} calibration rescales scores monotonically; it fixes the \emph{prior}, not the decision boundary. If the model learned a composition shortcut, calibration cannot undo it --- which is why this is action 2, not action 1 for \emph{impact}. It makes the threshold honest; it does not make the model better.
+
+\paragraph{3. Genome-scale FP benchmark; change the reporting (T22/T25/T27).}
+The review is right that F1 (and even AUPRC) on a balanced window set understates the scan-time burden; our own rationale already quantifies this ($\sim$460{,}000 phantom promoters at 90\% specificity on \emph{E.\ coli}). Two concrete changes: (i) add a genome-scale benchmark --- slide across a genome with known promoters (\emph{E.\ coli} via PT5) and \emph{count} false positives versus RegulonDB, rather than reporting a window-level proportion; (ii) headline \textbf{expected false positives per Mb at a fixed recall} and \textbf{FDR $q$-values} (T27) instead of F1. Also make the T27 null the \emph{random-genomic} distribution, not only the shuffle null --- a real-background null gives a more honest FP estimate.
+
+\paragraph{4. Negatives overhaul + hard-negative mining (T14/T15/T33).}
+This is where the real gain is, and where the review is sharpest. Our four structured classes each have a distinct signature, so the model can shortcut by classifying the \emph{negative type} instead of the motif --- and T24/T25 show it partly does. The fix is \emph{not} simply ``add random negatives'': most random windows (deep CDS, very AT-poor regions) are \emph{easy} and would make training easier, not harder. The lever that matters is \textbf{iterative hard-negative mining} (already scoped as T33): run the current model on the genome, take its \emph{highest-scoring} false positives, add them as a new negative class, regenerate T15/T16, retrain. Those mined negatives are simultaneously real genomic background (the review's ``random locations'') and composition-hard (what actually fools the model) --- the synthesis of the review's point and our anti-AT-trap reasoning. The review's feedback is a strong argument to \textbf{pull T33 forward} from ``v2, later'' to the next training pass. \emph{Risk the review flagged and we must handle:} a mined ``false positive'' may be a real, unannotated promoter; feeding it back teaches the model to reject true positives. Mitigate by mining only windows far from any annotation, keeping the loop to 1--2 iterations, and spot-checking a sample before retraining.
+
+\paragraph{5. Baseline bake-off (new pre-task).}
+The review says the transformers may be unnecessary; our own numbers half-agree (the from-scratch CNN, AUPRC 0.811, trails ProkBERT 0.876 by only $\sim$0.06). The correct response is neither to keep them on inertia nor to drop them on assertion, but to \emph{measure}: build Evo-embedding$+$random-forest and $k$-mer-logistic baselines (extending the existing \texttt{embedding\_probe.py}) and compare them against the ensemble \textbf{on the hard tests} (T24 composition-matched, and the new genome-scale FP benchmark) --- not the easy balanced split, where everything looks good. \textbf{Commitment:} if a simple baseline matches the ensemble on the hard tests, we simplify and drop the transformer(s). That is the honest, non-sunk-cost position. \emph{Update (species split, 23/07):} the composition-matched test broken out by species now shows the transformers holding real in-genus signal (ProkBERT 0.69, NT 0.71) suggestively above the CNN (0.59), and --- crucially --- that NT's earlier ``chance'' result was an out-of-genus averaging artifact, not a collapse. NT is therefore genus-specific, not composition-degenerate: it stays in the ensemble pending the bake-off, and the earlier ``drop NT now'' suggestion is superseded.
+
+\paragraph{6. Grow the verified in-genus evaluation set (T7b extension).}
+This is a prerequisite the review did not mention but everything above depends on: our verified \emph{in-genus} evaluation is thin ($\sim$270 promoters), so a real improvement from actions 1--5 and statistical noise currently look the same. Adding in-genus positives (e.g.\ Al-Bassam 2018 \emph{C.\ ljungdahlii} TSS) is higher-value than another model tweak, because without it we cannot \emph{tell} whether the changes worked.
+
+\paragraph{7. Negative:positive ratio as a swept knob (T15/T21).}
+The review recommends training with many more negatives than positives. We treat this as \emph{secondary}: post-hoc calibration (action 2) already recovers the base-rate prior, and negative \emph{quality} (action 4) dominates the ratio. Extreme imbalance also destabilises training (the model collapses toward all-negative). So we expose the ratio as a T21 sweep parameter and let validation AUPRC choose --- cheap, but not a headline fix.
+
+\section{Where we push back (not a yes-man)}
+\begin{description}
+\item[Keep the shuffle negatives as a diagnostic, not the main negative.] The review calls the dinucleotide shuffles ``too easy.'' They \emph{are} too easy to carry the training set alone --- but they were a deliberate, cited choice (DeePromoter 2019) to force motif-learning over composition, and they remain the right \emph{control} for isolating motif from composition (they are exactly what exposed the weakness in T24/T25). We demote them, we do not delete them.
+\item[Do not drop the transformers on assertion.] The claim that a short local motif needs no transformer is plausible and half-supported by our CNN, but the ensemble's cross-model \emph{agreement} is our confidence signal, and ProkBERT-mini is small and cheap. We resolve this by the bake-off (action 5) with a pre-committed decision rule, rather than by argument.
+\item[Ratio is not the fix.] ``More negatives than positives'' addresses the symptom (false positives) via class frequency; the cause is the negatives' \emph{content}. We prioritise content (action 4) and calibration (action 2) over ratio (action 7).
+\item[And we criticise our own design.] Three of our choices were wrong or insufficient and the review is right to press them: the four-class structured negatives invite a shortcut; calibrating on T9 literature rather than genomic background was a mistake; and F1/AUPRC-forward reporting understates the scan-time FP burden. Actions 2--4 fix these.
+\end{description}
+
+\section{Open questions and follow-ups}
+\begin{itemize}
+\item \textbf{Confirm the calibration genomes.} The note ``random parts of C.P \& C.A'' --- C.A is almost certainly \emph{C.\ acetobutylicum}; C.P is ambiguous (\emph{C.\ pasteurianum}? \emph{phytofermentans}?). For a target-honest threshold the set should include the \emph{target} (\emph{C.\ butyricum}) itself. One-line email to confirm.
+\item \textbf{Sequence T33.} Decide whether hard-negative mining happens now (before a v1 candidate list) or as the v2 pass. Recommendation: one mining iteration \emph{before} v1, since it is the biggest FP lever.
+\item \textbf{Follow up on the lncRNA work} he offered, and send him the revised negative plan --- it shows we engaged with the substance, not just the conclusion.
+\end{itemize}
+
+\end{document}

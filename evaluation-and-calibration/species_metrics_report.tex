@@ -1,0 +1,92 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Model Performance Across Species}
+\date{July 23, 2026}
+\author{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report consolidates the promoter-prediction models' performance broken down by bacterial species, across the two evaluation regimes we have: (i) the in-distribution test set, where positives are scored against the heterogeneous training-style negatives, and (ii) a held-out, composition-matched test, where each positive is scored against its own dinucleotide shuffle. The two regimes answer different questions and are not directly comparable, so they are reported separately. The headline is a clean in-genus / out-of-genus split: within genus \emph{Clostridium} the models carry genuine motif signal that survives composition matching, whereas on the out-of-genus \emph{C.\ phytofermentans} they lose it (NT-LoRA drops significantly below chance; the other two are indistinguishable from chance). A per-species breakdown also \textbf{corrects an earlier reading of NT-LoRA}: its apparent ``collapse to chance'' on the mixed external holdout was an averaging artifact --- split by species, NT is on par with ProkBERT in-genus (well clear of chance) and only fails out-of-genus.
+\end{abstract}
+
+\section{Purpose}
+Aggregate metrics hide where a model's performance comes from. This report stratifies every available result by species so we can see (a) whether performance is uniform across the training species and the in-genus target-adjacent species, and (b) how far it generalizes to a genuinely out-of-genus organism. Because the target, \emph{C.\ butyricum}, has no ground-truth promoters of its own, its in-genus relatives (\emph{C.\ acetobutylicum}, \emph{C.\ beijerinckii}) are the best available proxies for how the models will behave when mined on the target.
+
+\section{Two evaluation regimes (read this first)}
+The same species can score very differently depending on what it is scored \emph{against}. Keeping the two regimes distinct is essential to reading the tables correctly.
+
+\begin{itemize}
+\item \textbf{Regime A --- in-distribution, heterogeneous negatives (Table~1).} From the T15 held-out test set: each species' verified positives are ranked against the \emph{shared} pool of training-style negatives (CDS, intergenic, downstream, and dinucleotide-shuffle windows from 166 \emph{Clostridium} genomes). This measures ordinary discrimination on data drawn like the training data. Metric: AUROC.
+\item \textbf{Regime B --- held-out, composition-matched negatives (Table~2).} From the external T9 holdout: each positive is scored against \emph{its own} dinucleotide shuffle (same base and dinucleotide composition, motif destroyed), 1:1. Because the negative is composition-identical to the positive, base composition gives the model no help --- it must read the actual motif. This is the strictest, most diagnostic test, and its positives are a different, harder set (the $\sim$51\,bp curated T9 promoters, N-padded to 81\,bp) than Regime A's.
+\end{itemize}
+
+\noindent A drop from Regime A to Regime B for the same species (e.g.\ \emph{C.\ acetobutylicum} 0.95 $\rightarrow$ 0.69) therefore reflects \emph{both} the harder composition-matched negatives \emph{and} the harder held-out positives; it is not a contradiction.
+
+\section{Regime A --- in-distribution performance by species}
+\begin{table}[h]
+\centering
+\caption{AUROC on the T15 test set, by species, vs.\ the shared heterogeneous negative pool. ($n$ = verified positives in the test split; \textbf{bold} = best model per species.)}
+\begin{tabular}{lccc}
+\toprule
+Species ($n_{\text{pos}}$) & ProkBERT & NT-LoRA & CNN \\
+\midrule
+\emph{E.\ coli} (358)              & 0.942 & \textbf{0.956} & 0.932 \\
+\emph{B.\ subtilis} (38)           & \textbf{0.922} & 0.918 & 0.855 \\
+\emph{C.\ acetobutylicum} (152)    & \textbf{0.950} & 0.921 & 0.900 \\
+\emph{C.\ beijerinckii} (421)      & \textbf{0.945} & 0.924 & 0.896 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three models are strong across every species (AUROC 0.86--0.96). Two patterns matter for the target. First, \textbf{ProkBERT's best two species are the in-genus \emph{Clostridium}} (0.950 / 0.945) --- its in-distribution performance is not carried by the cross-species data, which is the strongest possible signal that it will transfer to \emph{C.\ butyricum}. Second, \textbf{NT-LoRA is the opposite}: its best species is \emph{E.\ coli} (0.956) and its in-genus \emph{Clostridium} scores (0.921 / 0.924) are among its lowest, consistent with a cross-species lean. The CNN trails both transformers on every species. (Recall at the 0.5 operating point tells the same story: ProkBERT 0.85--0.89, NT 0.71--0.87, CNN 0.68--0.91.)
+
+\section{Regime B --- composition-matched held-out (in-genus vs.\ out-of-genus)}
+\begin{table}[h]
+\centering
+\caption{Held-out T9 promoters vs.\ per-positive dinucleotide-shuffle negatives (balanced 1:1, chance = 0.5). AUROC with 90\% bootstrap CI; AUPRC, MCC, F1 at threshold 0.5.}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llL{2.7cm}ccc}
+\toprule
+Model & Species & AUROC [90\% CI] & AUPRC & MCC & F1 \\
+\midrule
+ProkBERT & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & 0.689 [0.61--0.76] & 0.699 & 0.228 & 0.555 \\
+NT-LoRA  & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & \textbf{0.714 [0.63--0.78]} & 0.700 & 0.281 & 0.620 \\
+CNN      & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & 0.589 [0.49--0.66] & 0.600 & 0.182 & 0.632 \\
+\midrule
+ProkBERT & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.373 [0.26--0.50] & 0.510 & 0.058 & 0.250 \\
+NT-LoRA  & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.179 [0.09--0.30] & 0.361 & $-0.173$ & 0.125 \\
+CNN      & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.403 [0.28--0.55] & 0.509 & $-0.240$ & 0.367 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\emph{C.\ phytofermentans} was reclassified into \emph{Lachnoclostridium} --- a different genus --- so it is the strictest generalization test in the pipeline. AUROC below 0.5 means the model ranks the shuffled sequence \emph{above} the real promoter.
+
+\section{Interpretation}
+
+\paragraph{The species split corrects the NT-LoRA story.} The mixed external holdout previously reported NT at AUROC $\approx$ 0.50 and was read as ``NT collapsed to chance / is composition-reliant.'' That was an \textbf{averaging artifact}. Split by species, NT is \emph{on par with ProkBERT} in-genus on composition-matched negatives (0.714 vs 0.689 --- overlapping CIs, both clear of chance), and its ``chance'' came entirely from the out-of-genus \emph{C.\ phytofermentans} (0.179), which dragged the 68:25 average down to $\sim$0.5. NT is therefore \textbf{genus-specific}, not composition-collapsed --- a materially more favorable read than the mixed number implied.
+
+\paragraph{In-genus, the motif signal is real, and the transformers earn their place.} Against composition-matched shuffles --- the test that forces motif over composition --- both transformers retain genuine signal (ProkBERT 0.689, NT 0.714, CIs clear of 0.5), while the \textbf{CNN is only borderline} (0.589, CI lower bound 0.49). The point estimates favour the transformers ($\sim$0.70 vs 0.59), but their 90\% CIs overlap the CNN's, so the gap is \emph{suggestive, not established}: a paired test on the shared 68 positives would be needed to confirm it, and those positives are an engineered mutant-library set with sibling constructs, so the effective sample is smaller (and the true CIs wider) than $n{=}68$ implies.
+
+\paragraph{Out-of-genus, the signal is gone.} On \emph{C.\ phytofermentans} \textbf{NT falls significantly below chance} (0.179, CI 0.09--0.30 entirely under 0.5 --- it ranks the shuffle \emph{above} the real promoter), while ProkBERT (0.373 [0.26--0.50]) and the CNN (0.403 [0.28--0.55]) are \emph{not distinguishable from chance} (CIs bracket 0.5). None shows above-chance recognition of a foreign-genus promoter. This is \emph{directional} evidence --- $n{=}25$, a single engineered library from one study --- that generalization does not extend past the genus; it is consistent with expectation for a genus-restricted tool, but should not be over-read from one dataset.
+
+\paragraph{What it means for the target.} \emph{C.\ butyricum} is in-genus, so the relevant evidence is the in-genus results: strong and motif-driven in both regimes, with ProkBERT the most robust and NT a genuine (not degenerate) contributor. Trust the in-genus numbers; treat any out-of-genus behaviour as out of scope.
+
+\section{Caveats}
+\begin{itemize}
+\item \emph{C.\ phytofermentans} is $n{=}25$ (50 rows with its shuffles): CIs are wide and point estimates directional only. \emph{Only} NT's CI is entirely below 0.5 (significantly sub-chance); ProkBERT's [0.26--0.50] and the CNN's [0.28--0.55] bracket 0.5 (not distinguishable from chance). The bootstrap (200 resamples) is also thin at this $n$.
+\item The two regimes use different positives for \emph{C.\ acetobutylicum}: Regime A = T7b empirical dRNA-seq TSS (81\,bp, natural); Regime B = T9 \emph{engineered mutant-library} promoters ($\sim$51\,bp), fed to the transformers at their native length --- a mismatch vs.\ the 81\,bp training windows (only the CNN path pads to 81). So the A$\rightarrow$B gap conflates harder negatives, shorter/synthetic positives, \emph{and} a train/eval length mismatch; it is not a clean comparison.
+\item Regime B's composition-matched shuffle is the strictest possible negative; Regime A's heterogeneous negatives are the easiest. Real genome-scale behaviour lies between, and is measured separately by the genome-scale FP benchmark.
+\end{itemize}
+
+\end{document}
