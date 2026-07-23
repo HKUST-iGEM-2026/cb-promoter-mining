@@ -38,6 +38,8 @@ NT_ID = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
 # best_model dir: trainer.save_model can leave a slow tokenizer transformers can't rebuild, and
 # fine-tuning never changes the tokenizer. The fine-tuned MODEL still comes from --prokbert-model-path.
 PROKBERT_BASE = "neuralbioinfo/prokbert-mini"
+BOOT_SEED = 0      # deterministic bootstrap for the per-species CIs
+NBOOT = 200
 
 
 def dinucleotide_shuffle(seq: str, rng: random.Random) -> str:
@@ -207,6 +209,31 @@ def metric_dict(y: np.ndarray, prob: np.ndarray, threshold: float) -> Dict[str, 
     return m
 
 
+def bootstrap_ci(y: np.ndarray, prob: np.ndarray, seed: int = BOOT_SEED, nboot: int = NBOOT) -> Dict[str, float]:
+    """90% CI for AUROC and AUPRC, resampling positives and negatives separately (keeps the 1:1
+    balance). Important here because the per-species strata are tiny (C. phytofermentans n=25)."""
+    y = np.asarray(y).astype(int)
+    prob = np.asarray(prob, dtype=float)
+    pos = np.where(y == 1)[0]
+    neg = np.where(y == 0)[0]
+    keys = ("auroc_lo", "auroc_hi", "auprc_lo", "auprc_hi")
+    if len(pos) == 0 or len(neg) == 0:
+        return {k: float("nan") for k in keys}
+    rng = np.random.default_rng(seed)
+    aurocs, auprcs = [], []
+    for _ in range(nboot):
+        idx = np.concatenate([rng.choice(pos, len(pos), replace=True),
+                              rng.choice(neg, len(neg), replace=True)])
+        yb, pb = y[idx], prob[idx]
+        if len(np.unique(yb)) < 2:
+            continue
+        aurocs.append(roc_auc_score(yb, pb))
+        auprcs.append(average_precision_score(yb, pb))
+    qq = lambda a, p: float(np.percentile(a, p)) if a else float("nan")
+    return {"auroc_lo": qq(aurocs, 5), "auroc_hi": qq(aurocs, 95),
+            "auprc_lo": qq(auprcs, 5), "auprc_hi": qq(auprcs, 95)}
+
+
 def evaluate_all(
     data: pd.DataFrame,
     prokbert_model_path: Path | None,
@@ -279,7 +306,10 @@ def evaluate_all(
         srows = []
         sdf = pd.DataFrame({"species": species, "label": y, "prob": probs})
         for sp, g in sdf.groupby("species"):
-            md = metric_dict(g["label"].to_numpy(), g["prob"].to_numpy(), threshold)
+            yy = g["label"].to_numpy()
+            pp = g["prob"].to_numpy()
+            md = metric_dict(yy, pp, threshold)
+            md.update(bootstrap_ci(yy, pp))          # auroc_lo/hi, auprc_lo/hi (90% CI)
             md["model"] = model_name
             md["species"] = str(sp)
             srows.append(md)
