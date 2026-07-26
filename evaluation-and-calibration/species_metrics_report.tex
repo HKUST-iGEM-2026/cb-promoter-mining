@@ -15,7 +15,7 @@
 \maketitle
 
 \begin{abstract}
-This report consolidates the promoter-prediction models' performance broken down by bacterial species, across the two evaluation regimes we have: (i) the in-distribution test set, where positives are scored against the heterogeneous training-style negatives, and (ii) a held-out, composition-matched test, where each positive is scored against its own dinucleotide shuffle. The two regimes answer different questions and are not directly comparable, so they are reported separately. The headline is a clean in-genus / out-of-genus split: within genus \emph{Clostridium} the models carry genuine motif signal that survives composition matching, whereas on the out-of-genus \emph{C.\ phytofermentans} they lose it (NT-LoRA drops significantly below chance; the other two are indistinguishable from chance). A per-species breakdown also \textbf{corrects an earlier reading of NT-LoRA}: its apparent ``collapse to chance'' on the mixed external holdout was an averaging artifact --- split by species, NT is on par with ProkBERT in-genus (well clear of chance) and only fails out-of-genus.
+This report consolidates the promoter-prediction models' performance broken down by bacterial species, across the two evaluation regimes we have: (i) the in-distribution test set, where positives are scored against the heterogeneous training-style negatives, and (ii) a held-out, composition-matched test, where each positive is scored against its own dinucleotide shuffle. The two regimes answer different questions and are not directly comparable, so they are reported separately. The headline is a clean in-genus / out-of-genus split: within genus \emph{Clostridium} the models carry genuine motif signal that survives composition matching, whereas on the out-of-genus \emph{C.\ phytofermentans} they lose it (NT-LoRA drops significantly below chance; the other two are indistinguishable from chance). A per-species breakdown also \textbf{corrects an earlier reading of NT-LoRA}: its apparent ``collapse to chance'' on the mixed external holdout was an averaging artifact --- split by species, NT is on par with ProkBERT in-genus (well clear of chance) and only fails out-of-genus. A third, genome-scale regime slides ProkBERT across a whole held-out in-genus genome and quantifies the deployment reality: a strong enricher (650--1450$\times$ over random) that nonetheless yields thousands of false positives, confirming the ``enriched candidate list, not a map'' framing.
 \end{abstract}
 
 \section{Purpose}
@@ -71,6 +71,27 @@ CNN      & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.403 [0.28--0.
 \end{table}
 
 \emph{C.\ phytofermentans} was reclassified into \emph{Lachnoclostridium} --- a different genus --- so it is the strictest generalization test in the pipeline. AUROC below 0.5 means the model ranks the shuffled sequence \emph{above} the real promoter.
+
+\section{Regime C --- genome-scale false positives (held-out in-genus)}
+Regimes A and B score a \emph{balanced} window set; neither shows the deployment reality, where real promoters are $\sim$0.01--0.2\% of windows so even a strong model yields many false positives per scan. This regime slides a model across a whole \emph{held-out in-genus} genome (\emph{C.\ ljungdahlii}, Al-Bassam 2018 --- 1{,}245 primary TSS, never trained on) and counts false-positive \emph{peaks} genome-wide.
+
+\begin{table}[h]
+\centering
+\caption{Genome-scale FP benchmark: ProkBERT on \emph{C.\ ljungdahlii} (full scan, 9.26M windows, both strands; base rate 0.013\%). NT-LoRA, CNN, and the restrict-scan variant pending (see note).}
+\begin{tabular}{lccccc}
+\toprule
+Recall & TSS found & FP peaks & FP / Mb & precision & enrichment \\
+\midrule
+0.50 & 623   & 2{,}569  & 555   & 19.5\% & 1452$\times$ \\
+0.70 & 872   & 5{,}512  & 1{,}190 & 13.7\% & 1016$\times$ \\
+0.90 & 1{,}121 & 11{,}685 & 2{,}524 & 8.8\%  & 651$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two things are true at once. The model is a \textbf{massive enricher} --- 650--1450$\times$ over random --- so it strongly concentrates real promoters at the top of the ranking, the best evidence yet that it will enrich on the (also-unseen, in-genus) target. But at genome scale it still produces \textbf{thousands of false-positive peaks} at 9--20\% precision: to catch half the promoters you would hand the wet lab $\sim$3{,}200 candidates, only $\sim$1 in 5 real. This is exactly the burden that a balanced-set F1/AUPRC ($\sim$0.9) hides, and it is why the deliverable must be framed as an FDR-controlled enriched candidate list, not a genome-wide map. Precision here is a \emph{lower bound} --- the 1{,}245-primary-TSS truth omits the study's own 116 internal, 25 antisense, and 125 orphan real TSS, so some ``false'' peaks are genuine.
+
+\emph{Pending:} NT-LoRA and the CNN, plus the \textbf{restrict-scan} variant (scoring only gene-upstream / intergenic windows, which should sharply raise precision by removing deep-coding false positives), are being run for all three models to complete this table.
 
 \section{Interpretation}
 

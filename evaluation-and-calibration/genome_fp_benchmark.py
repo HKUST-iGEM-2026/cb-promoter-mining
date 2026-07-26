@@ -52,6 +52,32 @@ def load_truth(path, contig_col, pos_col, strand_col, sep):
     return contig, df[pos_col].to_numpy(int), strand
 
 
+def load_regions(path):
+    """BED (contig,start,end,strand) -> {(contig,strand): (sorted_starts, sorted_ends)} (non-overlapping)."""
+    df = pd.read_csv(path, sep="\t")
+    out = {}
+    for (c, st), g in df.groupby(["contig", "strand"]):
+        g = g.sort_values("start")
+        out[(str(c), str(st))] = (g["start"].to_numpy(int), g["end"].to_numpy(int))
+    return out
+
+
+def in_region_mask(wctg, wstart, wstr, window, regions):
+    """Boolean mask: window [start, start+window) overlaps some region on its (contig, strand)."""
+    keep = np.zeros(len(wstart), dtype=bool)
+    we = wstart + window
+    for (contig, strand), (rs, re) in regions.items():
+        gi = np.where((wctg == contig) & (wstr == strand))[0]
+        if len(gi) == 0:
+            continue
+        idx = np.searchsorted(rs, we[gi], side="right") - 1     # region with largest start < window end
+        ok = idx >= 0
+        ov = np.zeros(len(gi), dtype=bool)
+        ov[ok] = re[idx[ok]] > wstart[gi][ok]                    # ...and it ends after the window starts
+        keep[gi[ov]] = True
+    return keep
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scores", required=True)
@@ -62,6 +88,9 @@ def main():
     ap.add_argument("--tol", type=int, default=40, help="bp; a window within tol of a TSS covers it")
     ap.add_argument("--merge", type=int, default=81, help="bp; collapse FP windows within this gap into one peak")
     ap.add_argument("--recall-targets", default="0.5,0.7,0.9")
+    ap.add_argument("--regions", default=None,
+                    help="restrict-scan: BED (contig,start,end,strand) from make_candidate_regions.py; "
+                         "only windows overlapping a region are scored (shrinks the FP denominator).")
     ap.add_argument("--ignore-strand", action="store_true", help="match regardless of strand (default: strand-aware)")
     ap.add_argument("--contig-col", default="contig")
     ap.add_argument("--start-col", default="start")
@@ -76,6 +105,13 @@ def main():
     use_strand = not a.ignore_strand
 
     wctg, wstart, wstr, wsc = load_track(a.scores, a.contig_col, a.start_col, a.strand_col, a.score_col)
+    n_full = len(wsc)
+    region_note = ""
+    if a.regions:
+        keep = in_region_mask(wctg, wstart, wstr, a.window, load_regions(a.regions))
+        wctg, wstart, wstr, wsc = wctg[keep], wstart[keep], wstr[keep], wsc[keep]
+        region_note = (f" **Restrict-scan:** {int(keep.sum()):,}/{n_full:,} windows "
+                       f"({keep.mean():.1%}) in candidate regions.")
     tctg, tpos, tstr = load_truth(a.truth, a.truth_contig_col, a.truth_pos_col, a.truth_strand_col, a.truth_sep)
     n_win, n_truth = len(wsc), len(tpos)
     if n_win == 0 or n_truth == 0:
@@ -122,7 +158,7 @@ def main():
     md.append("# Genome-scale false-positive benchmark\n")
     md.append(f"Genome length {glen:,} bp - windows scored {n_win:,} - known TSS {n_truth:,} "
               f"({detectable:,} covered by >=1 window). Genome-scale base rate (TSS / windows) = {base_rate:.4%}. "
-              f"Contigs in track: {len(set(wctg))}. strand-aware={use_strand}.\n")
+              f"Contigs in track: {len(set(wctg))}. strand-aware={use_strand}.{region_note}\n")
     md.append(f"tol {a.tol} bp - FP-peak merge {a.merge} bp.\n")
     md.append("| Recall target | threshold | TSS detected | FP peaks | FP per Mb | precision | enrichment vs random |")
     md.append("|---|---|---|---|---|---|---|")
