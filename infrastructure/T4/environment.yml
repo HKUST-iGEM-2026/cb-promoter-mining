@@ -37,7 +37,8 @@ dependencies:
   - biopython
   - bedtools                 # interval ops (T12 / T13)
   - samtools                 # faidx for upstream extraction (T13)
-  - cd-hit>=4.8              # clustering for cluster-aware splits (T15)
+  - cd-hit>=4.8              # clustering for cluster-aware splits (T15, identity >=0.8)
+  - mmseqs2                  # low-identity (0.6) clustering for T15 (cd-hit-est can't do DNA <~0.8)
   # meme / sra-tools / segemehl / openjdk now live in environment-bio.yml — the MEME suite needs an
   # older icu/libcurl than this env's modern conda-forge base, so the heavy T10/T31 CLI tools can't
   # co-solve with the PyTorch stack. Build that companion env only if you own T10 (Sine) or T31 (Leo).

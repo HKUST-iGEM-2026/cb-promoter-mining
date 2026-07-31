@@ -354,6 +354,13 @@ def encode_nt(sequences, model_name, pad_multiple=128, pad_length=None,
     Returns {"tokens": np.ndarray, "attention_mask": np.ndarray,
              "real_lengths": list[int], "_format": "ntv3_jax"}.
     """
+    # Coerce any non-ACGT base (including IUPAC ambiguity codes R/Y/S/W/...) to
+    # 'N'. NTv3's NucleotideTokenizer only recognises A/C/G/T/N, so a stray code
+    # would mis-tokenize (short row, then PAD-filled). check_sequences already
+    # warned these would be "treated as N" — this is where that is enforced.
+    sequences = ["".join(b if b in "ACGTN" else "N" for b in str(s).upper())
+                 for s in sequences]
+
     # Pad raw sequences with 'N' to a multiple of the downsample factor FIRST,
     # so pad-length validation fails fast even outside the ntv3-jax env.
     real_lengths = [len(s) for s in sequences]
@@ -448,7 +455,8 @@ def encode_prokbert(sequences, model_repo, max_length, kmer, shift):
 # ─────────────────────────────────────────────────────────────────────
 
 
-def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1):
+def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1,
+                            sequence_col="sequence"):
     """
     One-hot encode a T15 split parquet for the T20 CNN, writing a .npz whose
     layout is EXACTLY what train_cnn.py's load_split() consumes:
@@ -473,7 +481,7 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1):
     n_in = len(df)
     print(f"Loaded {n_in} rows from {parquet_path}")
 
-    for required in ("sequence", "label", "weight"):
+    for required in (sequence_col, "label", "weight"):
         if required not in df.columns:
             print(
                 f"ERROR: {parquet_path} missing required column '{required}' "
@@ -482,8 +490,23 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1):
             )
             sys.exit(1)
 
-    sequences = df["sequence"].astype(str).str.upper().tolist()
+    sequences = df[sequence_col].astype(str).str.upper().tolist()
     check_sequences(sequences, min_length, "parquet")
+
+    # The CNN one-hots the FIRST `window` bp. For a long-context column that is
+    # the upstream flank, not the promoter — refuse rather than silently encode
+    # the wrong region. Feed the CNN the 81 bp core column, not sequence_context.
+    over = sum(len(s) > window for s in sequences)
+    if over:
+        print(
+            f"ERROR: {over} sequence(s) exceed the CNN window ({window} bp) in "
+            f"column '{sequence_col}'. Two possible causes: (1) you passed the long "
+            f"context column — the CNN needs the core, use --sequence-col sequence; or "
+            f"(2) T15 was run with a larger --window than this — match it with "
+            f"--window <T15 window>. Refusing to one-hot only the first {window} bp.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     X = (np.stack([_one_hot(s, window) for s in sequences])
          if n_in else np.empty((0, window, 4), dtype=np.float32))
@@ -518,7 +541,10 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1):
 
     # Also write a full metadata sidecar (T16 does this: {split}_meta.parquet),
     # so label/weight/source/species/etc. are all recoverable row-aligned.
-    meta_cols = [c for c in df.columns if c != "sequence"]
+    # Drop every recognised raw-sequence column (both the 81 bp core and the
+    # long-context column) so the sidecar carries metadata, not sequence text.
+    seq_cols = {"sequence", "sequence_context", sequence_col}
+    meta_cols = [c for c in df.columns if c not in seq_cols]
     meta_path = npz_path.with_name(npz_path.stem + "_meta.parquet")
     df[meta_cols].to_parquet(meta_path, index=False)
 
@@ -535,7 +561,7 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1):
 
 
 def encode_nt_from_parquet(parquet_path, output_path, pad_multiple=128,
-                           pad_length=None, min_length=128):
+                           pad_length=None, min_length=128, sequence_col="sequence"):
     """
     Tokenize a T15 split parquet for NTv3, carrying EVERY T15 metadata column
     (label, weight, source, species, sigma_factor, cluster_id, promoter_id,
@@ -563,19 +589,22 @@ def encode_nt_from_parquet(parquet_path, output_path, pad_multiple=128,
     n_in = len(df)
     print(f"Loaded {n_in} rows from {parquet_path}")
 
-    if "sequence" not in df.columns:
+    if sequence_col not in df.columns:
         print(
-            f"ERROR: {parquet_path} has no 'sequence' column. Columns: "
+            f"ERROR: {parquet_path} has no '{sequence_col}' column. Columns: "
             f"{list(df.columns)}",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    # meta_cols contract, identical to T16: carry everything EXCEPT sequence.
-    meta_cols = [c for c in df.columns if c != "sequence"]
+    # meta_cols contract, like T16: carry everything EXCEPT the raw-sequence
+    # columns. Drop both the 81 bp core and the long-context column so the token
+    # parquet stays metadata + tokens, not duplicated sequence text.
+    seq_cols = {"sequence", "sequence_context", sequence_col}
+    meta_cols = [c for c in df.columns if c not in seq_cols]
 
     # Uppercase (NTv3, like the HF tokenizers in T16, needs uppercase input).
-    sequences = df["sequence"].astype(str).str.upper().tolist()
+    sequences = df[sequence_col].astype(str).str.upper().tolist()
 
     # Validate (length floor + alphabet). Same checks as the FASTA path.
     check_sequences(sequences, min_length, "parquet")
@@ -647,12 +676,14 @@ Examples:
       --positives pos.fasta --min-length 128
 
   # NTv3 from a T15 split parquet (TRAINING path; run in ntv3-jax env).
-  # Carries label/weight/source/species + all T15 metadata through,
-  # row-aligned with T16. Use the SAME --nt-pad-length across splits.
+  # REQUIRES a context-built T15 (sequence_context column, via build_context_windows.py):
+  # read the LONG column with --sequence-col sequence_context, NOT the 81bp core.
+  # Carries label/weight/source/species + all T15 metadata through, row-aligned with T16.
+  # Use the SAME --nt-pad-length for EVERY split (train/val/test), or their widths differ.
   python encode.py --model nt --from-parquet results/T15/train.parquet \\
-      --output results/T16/nt3/train.parquet --nt-pad-length 768
+      --sequence-col sequence_context --output results/T16/nt3/train.parquet --nt-pad-length 768
   python encode.py --model nt --from-parquet results/T15/val.parquet \\
-      --output results/T16/nt3/val.parquet --nt-pad-length 768
+      --sequence-col sequence_context --output results/T16/nt3/val.parquet --nt-pad-length 768
 
   # NTv3 from loose FASTA (standalone; e.g. T24 composition-matched shuffle).
   python encode.py --model nt --input neg.fasta --output neg_nt.pt \\
@@ -681,6 +712,13 @@ Examples:
                         "row-aligned, matching T16. Supported for --model nt "
                         "(writes token parquet) and --model cnn (writes "
                         "(N,window,4) .npz with label/weight for T20).")
+    parser.add_argument(
+        "--sequence-col", type=str, default="sequence",
+        help="Which column of the --from-parquet file to encode. Default "
+        "'sequence' (the 81 bp core, for CNN/ProkBERT). For NTv3 long-context "
+        "runs pass 'sequence_context'. Any recognised raw-sequence column "
+        "('sequence', 'sequence_context') is dropped from the carried metadata; "
+        "all other columns ride through row-aligned.")
     parser.add_argument("--output", required=True, type=str, help="Path to save encoded output.")
     parser.add_argument("--label", choices=["pos", "neg"], default="neg")
     parser.add_argument(
@@ -775,12 +813,25 @@ Examples:
     # row-aligned with T16.
     if args.from_parquet:
         if args.model == "nt":
+            # Every split (train/val/test) MUST get the SAME token width, or the
+            # model sees inconsistent input lengths across splits. Without an
+            # explicit length each split would pad to its own batch-max — require it.
+            if args.nt_pad_length is None:
+                print(
+                    "ERROR: --nt-pad-length is required with --from-parquet "
+                    "--model nt so every split gets identical token width. Pick a "
+                    "multiple of 128 >= your longest window (e.g. 768), and pass "
+                    "the SAME value for train/val/test.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
             encode_nt_from_parquet(
                 args.from_parquet,
                 args.output,
                 pad_multiple=args.nt_pad_multiple,
                 pad_length=args.nt_pad_length,
                 min_length=args.min_length,
+                sequence_col=args.sequence_col,
             )
             return
         elif args.model == "cnn":
@@ -791,6 +842,7 @@ Examples:
                 args.output,
                 window=args.window,
                 min_length=1,
+                sequence_col=args.sequence_col,
             )
             return
         else:
