@@ -319,6 +319,41 @@ def _nt_pad_to_multiple(sequences, multiple, pad_length=None):
     return padded, target
 
 
+def _sanitize_for_ntv3(sequences):
+    """
+    Replace every non-ACGT character with 'N' so the sequence uses only the
+    A/C/G/T/N alphabet the NTv3 NucleotideTokenizer understands.
+
+    Necessary because NucleotideTokenizer knows only A/T/C/G/N; a stray IUPAC
+    ambiguity code (R/Y/S/W/K/M/B/D/H/V) would mis-tokenize — the row would be
+    truncated at the unknown character and then PAD-filled, silently corrupting
+    that sequence and (since N-padding assumes a clean 1-base-to-1-token map)
+    knocking the whole row off the expected token width.
+
+    check_sequences already promised these "will be treated as N" — this is
+    where that promise is actually kept, for the NT path. (The CNN path is
+    already safe: _one_hot maps any non-ACGT to an all-zero row inline.)
+
+    Returns (sanitized_sequences, n_replaced).
+    """
+    allowed = set("ACGTN")
+    out = []
+    n_replaced = 0
+    for s in sequences:
+        if all(b in allowed for b in s):
+            out.append(s)
+            continue
+        chars = []
+        for b in s:
+            if b in allowed:
+                chars.append(b)
+            else:
+                chars.append("N")
+                n_replaced += 1
+        out.append("".join(chars))
+    return out, n_replaced
+
+
 def encode_nt(sequences, model_name, pad_multiple=128, pad_length=None,
               embeddings_layer=None):
     """
@@ -354,12 +389,17 @@ def encode_nt(sequences, model_name, pad_multiple=128, pad_length=None,
     Returns {"tokens": np.ndarray, "attention_mask": np.ndarray,
              "real_lengths": list[int], "_format": "ntv3_jax"}.
     """
-    # Coerce any non-ACGT base (including IUPAC ambiguity codes R/Y/S/W/...) to
-    # 'N'. NTv3's NucleotideTokenizer only recognises A/C/G/T/N, so a stray code
-    # would mis-tokenize (short row, then PAD-filled). check_sequences already
-    # warned these would be "treated as N" — this is where that is enforced.
-    sequences = ["".join(b if b in "ACGTN" else "N" for b in str(s).upper())
-                 for s in sequences]
+    # Convert any non-ACGT base (IUPAC ambiguity codes, stray chars) to 'N'
+    # BEFORE padding/tokenizing. NucleotideTokenizer only knows A/C/G/T/N, so
+    # an unhandled character would mis-tokenize the whole row. This is a 1-for-1
+    # character swap, so it does not change sequence length.
+    sequences, n_replaced = _sanitize_for_ntv3(sequences)
+    if n_replaced:
+        warnings.warn(
+            f"NTv3: replaced {n_replaced} non-ACGT character(s) with 'N' before "
+            f"tokenizing. If these came from a dinucleotide shuffle, check "
+            f"upstream — a proper SRS shuffle should not introduce ambiguity codes."
+        )
 
     # Pad raw sequences with 'N' to a multiple of the downsample factor FIRST,
     # so pad-length validation fails fast even outside the ntv3-jax env.
@@ -456,7 +496,7 @@ def encode_prokbert(sequences, model_repo, max_length, kmer, shift):
 
 
 def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1,
-                            sequence_col="sequence"):
+                            allow_truncate=False, sequence_col="sequence"):
     """
     One-hot encode a T15 split parquet for the T20 CNN, writing a .npz whose
     layout is EXACTLY what train_cnn.py's load_split() consumes:
@@ -471,8 +511,19 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1,
     T16's CNN branch exactly (same one_hot, same npz keys), so encode.py and
     T16 produce interchangeable CNN inputs.
 
-    Pure conversion: no re-split/re-window beyond the fixed-window one-hot,
-    no reorder. Row i out == row i in. A row-count guard fires before writing.
+    OVER-LENGTH GUARD (safety): _one_hot keeps seq[:window] — the FIRST `window`
+    bp. For a genomic-context parquet (300-681 bp) that is the upstream FLANK,
+    not the promoter, and the corruption is silent (right shape, trains fine,
+    wrong window). A T15 CNN parquet should already be windowed to `window` bp
+    (T15.rewindow does this), so over-length almost always means the WRONG
+    parquet was passed (e.g. an NTv3/long-context one). Therefore:
+      - default: ABORT loudly listing the offending lengths;
+      - allow_truncate=True: CENTER-crop to the window (keeps the middle, the
+        biologically sensible crop — matches T15's 'center' anchor and T24's
+        one_hot_81) and warn.
+
+    Pure conversion otherwise: no re-split/reorder. Row i out == row i in.
+    A row-count guard fires before writing.
     """
     import pandas as pd
     import numpy as np
@@ -493,20 +544,40 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1,
     sequences = df[sequence_col].astype(str).str.upper().tolist()
     check_sequences(sequences, min_length, "parquet")
 
-    # The CNN one-hots the FIRST `window` bp. For a long-context column that is
-    # the upstream flank, not the promoter — refuse rather than silently encode
-    # the wrong region. Feed the CNN the 81 bp core column, not sequence_context.
-    over = sum(len(s) > window for s in sequences)
+    # ── Over-length guard ─────────────────────────────────────────
+    over = [(i, len(s)) for i, s in enumerate(sequences) if len(s) > window]
     if over:
-        print(
-            f"ERROR: {over} sequence(s) exceed the CNN window ({window} bp) in "
-            f"column '{sequence_col}'. Two possible causes: (1) you passed the long "
-            f"context column — the CNN needs the core, use --sequence-col sequence; or "
-            f"(2) T15 was run with a larger --window than this — match it with "
-            f"--window <T15 window>. Refusing to one-hot only the first {window} bp.",
-            file=sys.stderr,
+        preview = ", ".join(f"row{i}={L}bp" for i, L in over[:5])
+        more = f" (+{len(over) - 5} more)" if len(over) > 5 else ""
+        if not allow_truncate:
+            print(
+                f"ERROR: {len(over)} sequence(s) in {parquet_path} column "
+                f"'{sequence_col}' are longer than the CNN window={window} bp "
+                f"[{preview}{more}]. _one_hot would keep only the FIRST "
+                f"{window} bp — for a genomic-context column that is the "
+                f"upstream FLANK, not the promoter. Likely causes: (1) you "
+                f"passed the long context column — the CNN needs the core, use "
+                f"--sequence-col sequence; (2) the WRONG parquet was passed (an "
+                f"NTv3/long-context one?); or (3) T15 used a larger window — "
+                f"match it with --window <N>. Or pass --cnn-allow-truncate to "
+                f"center-crop deliberately.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        # allow_truncate: center-crop to the window (keep the middle).
+        warnings.warn(
+            f"CNN: center-cropping {len(over)} sequence(s) longer than "
+            f"window={window} bp to the middle {window} bp [{preview}{more}]. "
+            f"Ensure this is the intended promoter window."
         )
-        sys.exit(1)
+        cropped = []
+        for s in sequences:
+            if len(s) > window:
+                off = (len(s) - window) // 2
+                cropped.append(s[off:off + window])
+            else:
+                cropped.append(s)
+        sequences = cropped
 
     X = (np.stack([_one_hot(s, window) for s in sequences])
          if n_in else np.empty((0, window, 4), dtype=np.float32))
@@ -560,8 +631,44 @@ def encode_cnn_from_parquet(parquet_path, output_path, window=81, min_length=1,
 # ─────────────────────────────────────────────────────────────────────
 
 
+def compute_global_nt_pad_length(parquet_paths, pad_multiple=128,
+                                 sequence_col="sequence"):
+    """
+    Scan several T15 split parquets and return the SINGLE token width that fits
+    all of them: the longest sequence across ALL splits, rounded up to a
+    multiple of `pad_multiple`.
+
+    Scans the SAME column that will be encoded (sequence_col) — critical when
+    encoding the long 'sequence_context' column, since scanning the 81 bp
+    'sequence' column instead would derive a length far too short.
+
+    This exists to prevent the split-width-drift bug: if each split is padded
+    to its own batch-max, train/val/test can end up at different token widths
+    and become mutually incompatible for one model. Feed the returned value as
+    --nt-pad-length for EVERY split's encode run.
+    """
+    import pandas as pd
+
+    overall_max = 0
+    per_file = {}
+    for p in parquet_paths:
+        df = pd.read_parquet(p, columns=[sequence_col])
+        m = int(df[sequence_col].astype(str).str.len().max()) if len(df) else 0
+        per_file[p] = m
+        overall_max = max(overall_max, m)
+
+    target = ((overall_max + pad_multiple - 1) // pad_multiple) * pad_multiple
+    print(f"Global NTv3 pad-length scan (column '{sequence_col}'):")
+    for p, m in per_file.items():
+        print(f"  {p}: max seq = {m} bp")
+    print(f"  -> longest across all splits = {overall_max} bp")
+    print(f"  -> use --nt-pad-length {target}  (next multiple of {pad_multiple})")
+    return target
+
+
 def encode_nt_from_parquet(parquet_path, output_path, pad_multiple=128,
-                           pad_length=None, min_length=128, sequence_col="sequence"):
+                           pad_length=None, min_length=128,
+                           sequence_col="sequence"):
     """
     Tokenize a T15 split parquet for NTv3, carrying EVERY T15 metadata column
     (label, weight, source, species, sigma_factor, cluster_id, promoter_id,
@@ -675,15 +782,29 @@ Examples:
   python encode.py --model cnn --input neg.fasta --output neg_cnn.pt \\
       --positives pos.fasta --min-length 128
 
-  # NTv3 from a T15 split parquet (TRAINING path; run in ntv3-jax env).
-  # REQUIRES a context-built T15 (sequence_context column, via build_context_windows.py):
-  # read the LONG column with --sequence-col sequence_context, NOT the 81bp core.
-  # Carries label/weight/source/species + all T15 metadata through, row-aligned with T16.
-  # Use the SAME --nt-pad-length for EVERY split (train/val/test), or their widths differ.
+  # NTv3 from T15 split parquets (TRAINING path; run in ntv3-jax env).
+  # Carries label/weight/source/species + all T15 metadata through, row-aligned
+  # with T16. A fixed pad length is REQUIRED so all splits share one width.
+  # Option A — explicit (same value on every split; e.g. 768 for <=681 bp):
   python encode.py --model nt --from-parquet results/T15/train.parquet \\
-      --sequence-col sequence_context --output results/T16/nt3/train.parquet --nt-pad-length 768
+      --output results/T16/nt3/train.parquet --nt-pad-length 768
   python encode.py --model nt --from-parquet results/T15/val.parquet \\
-      --sequence-col sequence_context --output results/T16/nt3/val.parquet --nt-pad-length 768
+      --output results/T16/nt3/val.parquet --nt-pad-length 768
+  # Option B — auto-derive one global width across all splits (pass the SAME
+  # --nt-scan-splits list to every run so they agree by construction):
+  python encode.py --model nt --from-parquet results/T15/train.parquet \\
+      --output results/T16/nt3/train.parquet \\
+      --nt-scan-splits results/T15/train.parquet results/T15/val.parquet results/T15/test.parquet
+  # (Just print the recommended length without encoding anything:)
+  python encode.py --model nt --output /dev/null \\
+      --nt-scan-splits results/T15/train.parquet results/T15/val.parquet results/T15/test.parquet
+
+  # NTv3 on a CONTEXT-BUILT T15 (long 'sequence_context' column, via
+  # build_context_windows.py): read the LONG column with --sequence-col, NOT
+  # the 81 bp core. Scan uses the same column so the derived width is correct.
+  python encode.py --model nt --from-parquet results/T15/train.parquet \\
+      --sequence-col sequence_context \\
+      --output results/T16/nt3/train.parquet --nt-pad-length 768
 
   # NTv3 from loose FASTA (standalone; e.g. T24 composition-matched shuffle).
   python encode.py --model nt --input neg.fasta --output neg_nt.pt \\
@@ -712,6 +833,7 @@ Examples:
                         "row-aligned, matching T16. Supported for --model nt "
                         "(writes token parquet) and --model cnn (writes "
                         "(N,window,4) .npz with label/weight for T20).")
+    parser.add_argument("--output", required=True, type=str, help="Path to save encoded output.")
     parser.add_argument(
         "--sequence-col", type=str, default="sequence",
         help="Which column of the --from-parquet file to encode. Default "
@@ -719,12 +841,18 @@ Examples:
         "runs pass 'sequence_context'. Any recognised raw-sequence column "
         "('sequence', 'sequence_context') is dropped from the carried metadata; "
         "all other columns ride through row-aligned.")
-    parser.add_argument("--output", required=True, type=str, help="Path to save encoded output.")
     parser.add_argument("--label", choices=["pos", "neg"], default="neg")
     parser.add_argument(
         "--window", type=int, default=81,
         help="CNN fixed one-hot window in bp (default: 81). The T20 CNN "
         "hard-requires (N, window, 4); do not change unless T20 changes.",
+    )
+    parser.add_argument(
+        "--cnn-allow-truncate", action="store_true", default=False,
+        help="CNN --from-parquet: if sequences exceed --window, CENTER-CROP "
+        "them to the window instead of aborting. Off by default: a T15 CNN "
+        "parquet should already be windowed, so over-length usually means the "
+        "wrong (genomic-context/NTv3) parquet was passed — better to fail loud.",
     )
     parser.add_argument(
         "--min-length", type=int, default=128,
@@ -761,10 +889,19 @@ Examples:
     )
     parser.add_argument(
         "--nt-pad-length", type=int, default=None,
-        help="Optional explicit target length (multiple of --nt-pad-multiple). "
-        "Set the SAME value for the positives and negatives runs to guarantee "
-        "matching token dimensions for T24. If omitted, uses the batch max "
-        "rounded up.",
+        help="Explicit target token length (multiple of --nt-pad-multiple). "
+        "REQUIRED in --from-parquet + --model nt mode (or use --nt-scan-splits) "
+        "so train/val/test all get the SAME width. Use the same value for the "
+        "positives/negatives runs in FASTA T24 mode too. In FASTA mode, if "
+        "omitted, the batch max is rounded up.",
+    )
+    parser.add_argument(
+        "--nt-scan-splits", type=str, nargs="+", default=None,
+        help="One or more T15 split parquets (e.g. train/val/test) to scan for "
+        "the single global NTv3 pad length. In --from-parquet + --model nt mode, "
+        "the derived length is used for THIS split, guaranteeing all splits match "
+        "when you pass the same --nt-scan-splits list to each run. Can also be "
+        "used alone (with --model nt, no --from-parquet) just to print the value.",
     )
     parser.add_argument(
         "--nt-embeddings-layer", type=int, default=None,
@@ -793,6 +930,20 @@ Examples:
 
     args = parser.parse_args()
 
+    # ── Scan-only shortcut ────────────────────────────────────────
+    # `--model nt --nt-scan-splits a b c` with NO --input/--from-parquet just
+    # prints the recommended global pad length and exits (a planning helper).
+    if (args.nt_scan_splits and not args.from_parquet and not args.input):
+        if args.model != "nt":
+            print("ERROR: --nt-scan-splits applies to --model nt.",
+                  file=sys.stderr)
+            sys.exit(1)
+        compute_global_nt_pad_length(
+            args.nt_scan_splits, pad_multiple=args.nt_pad_multiple,
+            sequence_col=args.sequence_col,
+        )
+        return
+
     # ── Input-source validation ───────────────────────────────────
     if args.from_parquet and args.input:
         print(
@@ -813,15 +964,37 @@ Examples:
     # row-aligned with T16.
     if args.from_parquet:
         if args.model == "nt":
-            # Every split (train/val/test) MUST get the SAME token width, or the
-            # model sees inconsistent input lengths across splits. Without an
-            # explicit length each split would pad to its own batch-max — require it.
-            if args.nt_pad_length is None:
+            # SPLIT-WIDTH-DRIFT GUARD. If pad_length is left to the batch-max,
+            # each split (train/val/test) pads to its OWN longest sequence and
+            # the three end up at different token widths — incompatible for one
+            # model. So in parquet mode an explicit pad length is REQUIRED.
+            # Either pass --nt-pad-length directly, or pass --nt-scan-splits
+            # <all splits> to derive the single global length automatically.
+            pad_length = args.nt_pad_length
+            if args.nt_scan_splits:
+                scanned = compute_global_nt_pad_length(
+                    args.nt_scan_splits, pad_multiple=args.nt_pad_multiple,
+                    sequence_col=args.sequence_col,
+                )
+                if pad_length is not None and pad_length != scanned:
+                    print(
+                        f"ERROR: --nt-pad-length ({pad_length}) disagrees with "
+                        f"the scanned global length ({scanned}). Pass one or the "
+                        f"other, not conflicting values.",
+                        file=sys.stderr,
+                    )
+                    sys.exit(1)
+                pad_length = scanned
+            if pad_length is None:
                 print(
-                    "ERROR: --nt-pad-length is required with --from-parquet "
-                    "--model nt so every split gets identical token width. Pick a "
-                    "multiple of 128 >= your longest window (e.g. 768), and pass "
-                    "the SAME value for train/val/test.",
+                    "ERROR: --model nt --from-parquet requires a fixed token "
+                    "width so train/val/test all match. Either:\n"
+                    "  (a) pass --nt-pad-length <N> (a multiple of "
+                    f"{args.nt_pad_multiple}), the SAME value for every split; or\n"
+                    "  (b) pass --nt-scan-splits <train.parquet> <val.parquet> "
+                    "<test.parquet> to derive one global length automatically.\n"
+                    "Without this, each split would pad to its own batch-max and "
+                    "the widths would drift apart.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -829,7 +1002,7 @@ Examples:
                 args.from_parquet,
                 args.output,
                 pad_multiple=args.nt_pad_multiple,
-                pad_length=args.nt_pad_length,
+                pad_length=pad_length,
                 min_length=args.min_length,
                 sequence_col=args.sequence_col,
             )
@@ -842,6 +1015,7 @@ Examples:
                 args.output,
                 window=args.window,
                 min_length=1,
+                allow_truncate=args.cnn_allow_truncate,
                 sequence_col=args.sequence_col,
             )
             return
