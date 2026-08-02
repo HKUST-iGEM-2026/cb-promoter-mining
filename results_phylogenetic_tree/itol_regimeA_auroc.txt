@@ -1,0 +1,19 @@
+DATASET_MULTIBAR
+SEPARATOR COMMA
+DATASET_LABEL,Model Performance (Regime A AUROC)
+COLOR,#0072B2
+
+# Display settings
+FIELD_LABELS,ProkBERT,NT-LoRA,CNN
+FIELD_COLORS,#aec7e8,#ffbb78,#98df8a
+DATASET_SCALE,0,0.25,0.5,0.75,1.0
+WIDTH,300
+HEIGHT_FACTOR,1
+
+DATA
+Escherichia_coli,0.942,0.956,0.932
+Bacillus_subtilis,0.922,0.918,0.855
+Lachnoclostridium_phytofermentans,0.000,0.000,0.000
+Clostridium_acetobutylicum,0.950,0.921,0.900
+Clostridium_beijerinckii,0.945,0.924,0.896
+Clostridium_butyricum,0.000,0.000,0.000
