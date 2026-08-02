@@ -299,18 +299,49 @@ def parse_encodings(encodings: str) -> Set[str]:
     return active
 
 
+def reconstruct_sequences_from_onehot(X: np.ndarray) -> List[str]:
+    """Recover ACGTN strings from a T16 one-hot array (N, L, 4).
+
+    T16 / encode.py write the CNN split as X=(N,81,4) one-hot with non-ACGT bases
+    encoded as an all-zero row. argmax alone would map those zero rows to 'A', so we
+    detect them (row sum == 0) and emit 'N'. This makes v2 consume the SAME
+    results/T16/cnn/{split}.npz the production CNN uses — no separate raw-sequence
+    export, and the two CNNs stay on identical data for a fair comparison.
+    """
+    X = np.asarray(X)
+    if X.ndim != 3 or X.shape[2] != 4:
+        raise ValueError(f"expected one-hot X of shape (N, L, 4), got {X.shape}")
+    lut = np.array(list("ACGT"))
+    idx = X.argmax(axis=2)            # (N, L) -> 0..3
+    has_base = X.sum(axis=2) > 0      # (N, L) True where some channel is set
+    seqs = []
+    for row_idx, row_has in zip(idx, has_base):
+        seqs.append("".join(np.where(row_has, lut[row_idx], "N")))
+    return seqs
+
+
 def load_split(data_dir: str, split: str) -> Tuple[List[str], np.ndarray, np.ndarray]:
+    """Load a split as (sequences, labels, weights).
+
+    Accepts either raw-sequence npz keys ('seq'/'sequence') or the T16 one-hot 'X'
+    (N,L,4), which is reconstructed to strings so v2's multi-encoding features can be
+    computed. label/weight carry the T15 silver-aware per-sample weight.
+    """
     path = Path(data_dir) / f"{split}.npz"
     z = np.load(path, allow_pickle=False)
     if "seq" in z:
-        seqs = z["seq"]
+        seqs = [str(s) for s in z["seq"]]
     elif "sequence" in z:
-        seqs = z["sequence"]
+        seqs = [str(s) for s in z["sequence"]]
+    elif "X" in z:
+        seqs = reconstruct_sequences_from_onehot(z["X"])
     else:
-        raise ValueError(f"{path} must contain 'seq' or 'sequence'")
+        raise ValueError(f"{path} must contain 'seq', 'sequence', or one-hot 'X'")
     y = z["label"]
     w = z["weight"]
-    return [str(s) for s in seqs], y.astype(np.int64), w.astype(np.float32)
+    if not (len(seqs) == len(y) == len(w)):
+        raise ValueError(f"{path}: length mismatch seq={len(seqs)} label={len(y)} weight={len(w)}")
+    return seqs, y.astype(np.int64), w.astype(np.float32)
 
 
 def build_loaders(config: CNNConfig):
@@ -485,6 +516,62 @@ class CNNTrainer:
             torch.load(self.best_model_path, map_location=self.device)
         )
         return history, best_val_auprc
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Reusable inference API (imported by T22 predict_and_score + genome_inference)
+# ─────────────────────────────────────────────────────────────────────
+
+
+def build_model_from_config(cfg: Dict, device: str = "cpu") -> "MultiEncodingPromoterCNN":
+    """Rebuild the multi-branch model from a saved config dict (config.json /
+    metrics.json['config']) so a checkpoint's state_dict loads. The active
+    encoding set is read from the config; forward() imposes a fixed branch order
+    (onehot, dinuc, trinuc, enac), so a set is sufficient to reproduce the exact
+    fusion layout."""
+    if cfg.get("active_encodings"):
+        active = set(cfg["active_encodings"])
+    else:
+        active = parse_encodings(cfg.get("encodings", "onehot,dinuc,trinuc,enac"))
+    model = MultiEncodingPromoterCNN(
+        active_encodings=active,
+        conv1_filters=int(cfg.get("conv1_filters", 64)),
+        conv2_filters=int(cfg.get("conv2_filters", 128)),
+        conv3_filters=int(cfg.get("conv3_filters", 256)),
+        dropout_rate=float(cfg.get("dropout_rate", 0.3)),
+        use_batch_norm=bool(cfg.get("use_batch_norm", True)),
+        fusion_dim=int(cfg.get("fusion_dim", 256)),
+    )
+    return model.to(device)
+
+
+def _featurize_batch(seqs: List[str], enac_window: int):
+    """Turn a list of sequences into the four model-input tensors (all four are
+    built regardless of active encodings; unused ones are ignored by forward)."""
+    x1 = torch.tensor(np.stack([one_hot_encode_sequence(s).T for s in seqs]),
+                      dtype=torch.float32)                                    # (B,4,L)
+    x2 = torch.tensor(np.stack([kmer_frequencies(s, 2, DINUC_INDEX) for s in seqs]),
+                      dtype=torch.float32)                                    # (B,16)
+    x3 = torch.tensor(np.stack([kmer_frequencies(s, 3, TRINUC_INDEX) for s in seqs]),
+                      dtype=torch.float32)                                    # (B,64)
+    x4 = torch.tensor(np.stack([enac_matrix(s, window=enac_window) for s in seqs]),
+                      dtype=torch.float32)                                    # (B,4,L)
+    return x1, x2, x3, x4
+
+
+@torch.no_grad()
+def predict_proba(model: nn.Module, sequences: List[str], device: str,
+                  enac_window: int = 5, batch_size: int = 256) -> np.ndarray:
+    """P(positive) for each sequence. Shared by T22 and genome_inference so the
+    feature pipeline at inference is byte-identical to training."""
+    model.eval()
+    out = []
+    for i in range(0, len(sequences), batch_size):
+        b = sequences[i:i + batch_size]
+        x1, x2, x3, x4 = _featurize_batch(b, enac_window)
+        logits = model(x1.to(device), x2.to(device), x3.to(device), x4.to(device))
+        out.append(torch.softmax(logits.float(), dim=1)[:, 1].cpu().numpy())
+    return np.concatenate(out) if out else np.zeros(0, dtype=np.float32)
 
 
 def parse_args() -> CNNConfig:

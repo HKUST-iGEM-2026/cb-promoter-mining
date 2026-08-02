@@ -35,7 +35,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score
 
-MODELS = [("prokbert", "ProkBERT"), ("nt", "NT-LoRA"), ("cnn", "CNN")]
+MODELS = [("prokbert", "ProkBERT"), ("nt", "NT-LoRA"), ("cnn", "CNN"), ("cnn_v2", "CNN-v2")]
 THR = 0.5           # operating point for rejection / recall (uncalibrated score)
 NBOOT = 200         # bootstrap resamples for the AUROC CI
 MIN_N = 20          # strata below this are flagged / pooled

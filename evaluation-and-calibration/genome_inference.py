@@ -89,6 +89,36 @@ def cnn_scorer(model, device, window):
     return score
 
 
+# --------------------------------------------------------------------------- CNN-v2 (multi-encoding)
+def load_cnn_v2(model_path, device):
+    """Load the multi-branch v2 CNN (train_cnn_v2.MultiEncodingPromoterCNN). Returns
+    (module, model, enac_window) — the module carries predict_proba, enac_window is
+    the feature window the model was trained with (read from config.json)."""
+    import importlib.util
+    repo = Path(__file__).resolve().parents[1]
+    t20v2 = repo / "model-training" / "T20" / "train_cnn_v2.py"
+    spec = importlib.util.spec_from_file_location("train_cnn_v2", str(t20v2))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    cfg = {}
+    cfg_path = Path(model_path).parent / "config.json"
+    if cfg_path.exists():
+        cfg = json.loads(cfg_path.read_text())
+    model = mod.build_model_from_config(cfg, device=str(device))
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.eval()
+    print(f"[info] CNN-v2 {model_path}  encodings={cfg.get('encodings', cfg.get('active_encodings'))}",
+          file=sys.stderr)
+    return mod, model, int(cfg.get("enac_window", 5))
+
+
+def cnn_v2_scorer(mod, model, device, enac_window):
+    def score(wins):
+        return mod.predict_proba(model, list(wins), str(device),
+                                 enac_window=enac_window, batch_size=len(wins))
+    return score
+
+
 # --------------------------------------------------------------------------- scan
 def scan_contig(rec_id, seq, strand, window, step, scorer, batch_size, out_handle, write_header):
     L = len(seq)
@@ -114,7 +144,7 @@ def main():
     ap.add_argument("--genome", required=True)
     ap.add_argument("--model-id", default=None, help="BASE id for the tokenizer / LoRA base (transformers)")
     ap.add_argument("--model-path", required=True, help="checkpoint dir (HF) or .pt (CNN)")
-    ap.add_argument("--model-type", default="auto", choices=["auto", "transformer", "cnn"])
+    ap.add_argument("--model-type", default="auto", choices=["auto", "transformer", "cnn", "cnn_v2"])
     ap.add_argument("--out", required=True)
     ap.add_argument("--window", type=int, default=81)
     ap.add_argument("--step", type=int, default=1)
@@ -126,6 +156,8 @@ def main():
 
     mtype = a.model_type
     if mtype == "auto":
+        # both CNNs are .pt; auto picks the prod CNN. For the multi-branch model
+        # pass --model-type cnn_v2 explicitly (it can't be told apart by extension).
         mtype = "cnn" if str(a.model_path).endswith(".pt") else "transformer"
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -134,6 +166,9 @@ def main():
 
     if mtype == "cnn":
         scorer = cnn_scorer(load_cnn(a.model_path, device), device, a.window)
+    elif mtype == "cnn_v2":
+        mod, model, enac_w = load_cnn_v2(a.model_path, device)
+        scorer = cnn_v2_scorer(mod, model, device, enac_w)
     else:
         if not a.model_id:
             raise SystemExit("--model-id is required for transformer models (tokenizer / LoRA base).")

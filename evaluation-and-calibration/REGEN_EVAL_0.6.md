@@ -191,6 +191,45 @@ grep -H "" $RES/regimeC/fp_*_restrict/genome_fp_benchmark.md | head -80
 
 ---
 
+## Phase 2.5 — include the multi-encoding CNN (cnn_v2)
+
+`train_cnn_v2.py` (one-hot + ENAC + di/tri-nucleotide fusion) is now a first-class model in
+the eval. It reads the SAME `results/T16/cnn` one-hot data as the prod CNN (reconstructed to
+sequences internally), so the two CNNs are compared on identical rows.
+
+Train (main env; add the swept hyperparameters if you have them):
+
+```bash
+conda activate $MAIN
+python $REPO/model-training/T20/train_cnn_v2.py \
+    --data-dir  $T16DIR/cnn \
+    --output-dir $RES/T21_final/cnn_v2 \
+    --encodings onehot,dinuc,trinuc,enac
+# -> $RES/T21_final/cnn_v2/{best_model.pt, metrics.json, config.json, history.json}
+```
+
+Test-set predictions (Regime A/B) — `modular_eval` already lists cnn_v2 and picks this up:
+
+```bash
+python $EVAL/T22/predict_and_score.py --model cnn_v2 \
+    --model-path $RES/T21_final/cnn_v2/best_model.pt \
+    --data-dir   $T16DIR/cnn --out $RES/T22
+# (then re-run the Phase 1 modular_eval step — cnn_v2 now appears in the tables)
+```
+
+Genome-scale (Regime C) — note `--model-type cnn_v2` is REQUIRED (both CNNs are `.pt`, so
+auto-detect can't tell them apart), and no `--model-id`:
+
+```bash
+python $EVAL/genome_inference.py --genome $CLJ_FASTA \
+    --model-path $RES/T21_final/cnn_v2/best_model.pt --model-type cnn_v2 \
+    --out $RES/regimeC/clj_cnn_v2_track.csv --window 81 --step 1 --batch-size 512
+```
+
+Then add `cnn_v2` to the Phase 2c benchmark loop (`for M in prokbert cnn nt cnn_v2`).
+
+---
+
 ## Phase 3 — update the report (Oak commits from the Mac)
 
 Paste the Phase 1 (`modular_eval.md`) and Phase 2 (`fp_*_{full,restrict}`) outputs back into the
