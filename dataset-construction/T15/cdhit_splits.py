@@ -144,6 +144,13 @@ def load_source(path, is_positive, silver_weight):
     else:
         raise ValueError(f"unrecognised schema for {path}: {sorted(cols)}")
 
+    # Carry the long-context column + its core offset through UNCHANGED if the
+    # source provides them (build_context_windows.py output). Re-windowing below
+    # only touches `sequence` (the 81 bp core); sequence_context rides through as-is.
+    for extra in ("sequence_context", "core_offset"):
+        if extra in cols:
+            out[extra] = df[extra].values
+
     out["label"] = 1 if is_positive else 0     # the --positives/--negatives flag is authoritative
     out["_anchor"] = anchor
     print(f"  loaded {len(out):>7} rows from {os.path.basename(path)}  "
@@ -196,12 +203,75 @@ def pick_word(c):   # cd-hit-est recommended word size (-n) for a given identity
     return 10 if c >= 0.95 else 8 if c >= 0.90 else 7 if c >= 0.88 else 6 if c >= 0.85 else 5 if c >= 0.80 else 4
 
 
+# --------------------------------------------------------------------------- MMseqs2 (low identity)
+def mmseqs_clusters(seqs, identity, coverage, cov_mode, threads, workdir):
+    """Cluster nucleotide sequences with MMseqs2 easy-cluster and return per-sequence cluster ids.
+
+    Needed because cd-hit-est cannot cluster DNA below ~0.75-0.80 identity (its short-word filter
+    has no valid word size for nucleotides below that). MMseqs2 is alignment-based and handles low
+    identity, but at low identity you MUST also set a coverage threshold (`-c` / `--cov-mode`), or
+    sequences matching over only a short stretch get merged.
+    """
+    if not shutil.which("mmseqs"):
+        sys.exit("ERROR: `mmseqs` not on PATH. Needed for identity < 0.8 (cd-hit-est's DNA floor). "
+                 "Install with `conda install -c bioconda mmseqs2` (add it to environment.yml).")
+    cdir = os.path.join(workdir, "_cluster_mmseqs")     # keep mmseqs artifacts out of the split dir
+    os.makedirs(cdir, exist_ok=True)
+    fa = os.path.join(cdir, "all.fasta")
+    with open(fa, "w") as fh:
+        for i, s in enumerate(seqs):
+            fh.write(f">{i}\n{s}\n")
+    prefix, tmp = os.path.join(cdir, "mmseqs"), os.path.join(cdir, "tmp")
+    subprocess.run(["mmseqs", "easy-cluster", fa, prefix, tmp,
+                    "--min-seq-id", str(identity), "-c", str(coverage),
+                    "--cov-mode", str(cov_mode), "--threads", str(threads)],
+                   check=True, stdout=subprocess.DEVNULL)
+    rep_of = {}                                    # member index -> representative index
+    with open(prefix + "_cluster.tsv") as fh:
+        for line in fh:
+            rep, mem = line.rstrip("\n").split("\t")
+            rep_of[int(mem)] = int(rep)
+    missing = [i for i in range(len(seqs)) if i not in rep_of]
+    if missing:
+        sys.exit(f"ERROR: MMseqs2 did not return {len(missing)} of {len(seqs)} sequences "
+                 f"(first few: {missing[:5]}). Check the run / inputs.")
+    reps = {r: c for c, r in enumerate(sorted(set(rep_of.values())))}   # rep index -> compact cluster id
+    return [reps[rep_of[i]] for i in range(len(seqs))]
+
+
+def cluster_sequences(seqs, identity, tool, coverage, cov_mode, word, threads, workdir):
+    """Dispatch to cd-hit-est (high identity) or MMseqs2 (low identity). tool='auto' picks by
+    identity (cd-hit-est's DNA floor is ~0.8). Returns (cluster_ids, tool_name)."""
+    if tool == "auto":
+        tool = "cdhit" if identity >= 0.8 else "mmseqs2"
+    if tool == "cdhit":
+        if identity < 0.8:
+            sys.exit(f"ERROR: cd-hit-est cannot cluster DNA at identity {identity} (< ~0.8). "
+                     f"Use --cluster-tool mmseqs2 (or --cluster-tool auto).")
+        w = word or pick_word(identity)
+        print(f"\ncd-hit-est: {len(seqs)} seqs @ identity={identity} (-n {w}) ...", file=sys.stderr)
+        return cdhit_clusters(seqs, identity, w, threads, workdir), "cd-hit-est"
+    else:
+        print(f"\nmmseqs2 easy-cluster: {len(seqs)} seqs @ min-seq-id={identity}, "
+              f"cov={coverage} (mode {cov_mode}) ...", file=sys.stderr)
+        return mmseqs_clusters(seqs, identity, coverage, cov_mode, threads, workdir), "mmseqs2"
+
+
 # --------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser(description="T15 cluster-aware 80/10/10 splits")
     ap.add_argument("--positives", nargs="+", required=True)
     ap.add_argument("--negatives", nargs="+", required=True)
-    ap.add_argument("--identity", type=float, default=0.9, help="cd-hit-est identity (config cdhit_identity)")
+    ap.add_argument("--identity", type=float, default=0.6,
+                    help="clustering identity (config cdhit_identity). Default 0.6 per reviewer "
+                    "guidance (stricter anti-leakage than the old 0.9). NOTE cd-hit-est cannot "
+                    "cluster DNA below ~0.8, so identity <0.8 auto-routes to MMseqs2.")
+    ap.add_argument("--cluster-tool", choices=["auto", "cdhit", "mmseqs2"], default="auto",
+                    help="clustering backend. 'auto' = cd-hit-est for identity>=0.8, MMseqs2 below.")
+    ap.add_argument("--cluster-coverage", type=float, default=0.8,
+                    help="MMseqs2 coverage (-c): fraction of the sequence the alignment must span. "
+                    "Only used by the mmseqs2 backend; important at low identity.")
+    ap.add_argument("--cov-mode", type=int, default=1, help="MMseqs2 --cov-mode (default 1).")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--out", required=True)
     ap.add_argument("--window", type=int, default=81, help="DECISION: target window bp (verified positives are 81)")
@@ -220,6 +290,16 @@ def main():
         sys.exit("ERROR: no usable input rows — are the inputs/ files staged (run local_prep + Phase B + T7b)?")
     df = pd.concat(frames, ignore_index=True)
 
+    # Context columns are ALL-OR-NOTHING. pd.concat unions columns and fills gaps with NaN, so if
+    # some sources carry sequence_context and others don't, has_ctx would be True but a subset of
+    # rows are NaN — that NaN reaches the output parquet and later breaks NTv3 tokenisation with a
+    # misleading "length 3 bp" error. Fail loudly here instead.
+    if "sequence_context" in df.columns and df["sequence_context"].isna().any():
+        bad = sorted(df.loc[df["sequence_context"].isna(), "source"].astype(str).unique())
+        sys.exit(f"ERROR: sequence_context is present but MISSING for sources {bad}. Run "
+                 f"build_context_windows.py on ALL sources (every positive AND every T14 negative "
+                 f"class) or none — partial context is not allowed.")
+
     # 2. re-window everything to one length -------------------------------------------
     short = int((df["sequence"].str.len() < args.window).sum())
     if short:
@@ -234,11 +314,13 @@ def main():
     #     for an 81bp positive is a shuffle of THAT 81bp window. So drop T14's SRS and re-shuffle the
     #     re-windowed T13 positives 1:1 (preserves base/dinucleotide composition, destroys the motif).
     df = df[df["source"] != "T14_SRS"].reset_index(drop=True)
+    has_ctx = "sequence_context" in df.columns
     t13 = df[(df.label == 1) & (df.source == "T13_inferred")]
     if len(t13):
         _rng = random.Random(args.seed)
-        srs = pd.DataFrame({
-            "sequence":     [dinucleotide_shuffle(s, _rng) for s in t13["sequence"]],
+        shuffled = [dinucleotide_shuffle(s, _rng) for s in t13["sequence"]]
+        srs_cols = {
+            "sequence":     shuffled,
             "label":        0,
             "in_genus":     True,
             "strand":       ".",
@@ -247,11 +329,27 @@ def main():
             "sigma_factor": np.nan,
             "weight":       GOLD,
             "promoter_id":  "SRS_" + t13["promoter_id"].astype(str).values,
-        })
+        }
+        if has_ctx:
+            # Matched null WITH context: keep the REAL flanks and shuffle ONLY the
+            # core region, so the model cannot separate positives from negatives on
+            # "real vs shuffled flanks" (the failure a naive whole-window shuffle
+            # would create). Needs core_offset to locate the core in the context.
+            if "core_offset" not in df.columns or t13["core_offset"].isna().any():
+                sys.exit("ERROR: sequence_context present but core_offset missing/NaN for T13 — "
+                         "regenerate windows with build_context_windows.py so the SRS null can keep "
+                         "real flanks and shuffle only the core.")
+            offs = t13["core_offset"].astype(int).values
+            srs_cols["sequence_context"] = [
+                str(c)[:o] + sc + str(c)[o + len(sc):]
+                for c, o, sc in zip(t13["sequence_context"].values, offs, shuffled)]
+            srs_cols["core_offset"] = offs
+        srs = pd.DataFrame(srs_cols)
         srs = srs[srs["sequence"].str.len() == args.window]      # guard: shuffle keeps length (no N in T13)
         df = pd.concat([df, srs], ignore_index=True)
-        print(f"  regenerated {len(srs)} SRS nulls @ {args.window}bp from re-windowed T13 positives",
-              file=sys.stderr)
+        print(f"  regenerated {len(srs)} SRS nulls @ {args.window}bp"
+              f"{' (+context: real flanks kept, core shuffled)' if has_ctx else ''} "
+              f"from re-windowed T13 positives", file=sys.stderr)
 
     # 3. dedup exact sequences (prefer verified positive > silver positive > negative) -
     df["_rank"] = df["label"] * 2 + (df["weight"] >= GOLD).astype(int)
@@ -268,10 +366,14 @@ def main():
         df = pd.concat([df[df.label == 1], neg], ignore_index=True)
     df = df.sample(frac=1, random_state=args.seed).reset_index(drop=True)
 
-    # 5. cluster near-duplicates (the anti-leakage step) ------------------------------
-    word = args.word_size or pick_word(args.identity)
-    print(f"\ncd-hit-est: {len(df)} seqs @ identity={args.identity} (-n {word}) ...", file=sys.stderr)
-    df["cluster_id"] = cdhit_clusters(df["sequence"].tolist(), args.identity, word, args.threads, args.out)
+    # 5. cluster near-duplicates ON THE 81 bp CORE (`sequence`) — the anti-leakage step -----
+    #    Clustering on the core (not the long sequence_context) keeps the guarantee tight: two
+    #    promoters with an identical -10/-35 core but different flanks cluster together (over a
+    #    long window they would fall below the identity threshold and leak across splits). Backend
+    #    auto-selects by identity (cd-hit-est >=0.8, MMseqs2 below — cd-hit-est cannot do DNA <~0.8).
+    df["cluster_id"], tool_used = cluster_sequences(
+        df["sequence"].tolist(), args.identity, args.cluster_tool,
+        args.cluster_coverage, args.cov_mode, args.word_size, args.threads, args.out)
 
     # 6. cluster-disjoint, label-stratified 80/10/10 — EVAL (val/test) is VERIFIED-ONLY -----
     #    T13 silver positives carry INFERRED labels (the "AT-rich upstream = promoter" assumption);
@@ -307,8 +409,11 @@ def main():
     assert (spanning == 1).all(), f"LEAKAGE: {(spanning > 1).sum()} clusters span >1 split"
 
     # 8. write ------------------------------------------------------------------------
+    #    Carry the long-context columns to the output too, if present, so the NTv3
+    #    tokeniser (encode.py --sequence-col sequence_context) can read them.
+    out_cols = OUT_COLS + [c for c in ("sequence_context", "core_offset") if c in df.columns]
     for sp in ("train", "val", "test"):
-        df[df.split == sp][OUT_COLS].to_parquet(os.path.join(args.out, f"{sp}.parquet"), index=False)
+        df[df.split == sp][out_cols].to_parquet(os.path.join(args.out, f"{sp}.parquet"), index=False)
 
     # summary -------------------------------------------------------------------------
     print("\n=== T15 splits ===")
@@ -319,7 +424,8 @@ def main():
                   np.where(pos.in_genus, "verified_in_genus", "verified_cross_species"))
     print("\npositives by split x kind:\n", pos.groupby(["split", "kind"]).size().unstack(fill_value=0))
     print("\nrows by source/label:\n", df.groupby(["source", "label"]).size())
-    print(f"\nclusters={df.cluster_id.nunique()}  rows={len(df)}  window={args.window}bp  identity={args.identity}")
+    print(f"\nclusters={df.cluster_id.nunique()}  rows={len(df)}  window={args.window}bp  "
+          f"identity={args.identity} (tool={tool_used})")
     print(f"positives total: in-genus={int(pos.in_genus.sum())}  out-of-genus={int((~pos.in_genus).sum())}  "
           f"silver(T13)={int((pos.source == 'T13_inferred').sum())}")
     # EVAL INVARIANT: val/test are verified-only — report the verified-in-genus count that actually matters
@@ -340,7 +446,12 @@ def main():
         nm = float(df.loc[m & (df.label == 0), "weight"].sum())
         print(f"  {sp:5}: pos_mass={pm:8.0f}  neg_mass={nm:8.0f}  -> {100*pm/max(pm+nm,1e-9):.0f}% positive")
     print("  (TRAIN balanced to ~50/50 via negative weights; val/test left at natural prevalence)")
-    print("leakage check: PASS — no cluster spans splits; val/test are verified-only")
+    ctx_note = ("\n  NOTE: leakage is enforced on the 81bp CORE (`sequence`). The long `sequence_context` "
+                "windows of genome-adjacent rows CAN overlap across splits, and each context-SRS shares "
+                "real flanks with its train-pinned parent — acceptable for a first pass, but tighten "
+                "(cluster/pin on context proximity) before trusting NTv3 val/test as leak-free."
+                if "sequence_context" in df.columns else "")
+    print("leakage check: PASS — no CORE cluster spans splits; val/test are verified-only" + ctx_note)
 
 
 if __name__ == "__main__":

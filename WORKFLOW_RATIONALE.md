@@ -58,10 +58,31 @@ promoters" [PLOS ONE]. Our pipeline is, if anything, more rigorous than many pub
 ## 5. Recommended upgrades (evidence-based)
 
 1. **Iterative hard-negative mining (task T33).** The strongest FP-reduction trick in the literature:
-   run the model on the genome, take its highest-scoring false positives, add them as a 5th T14
-   negative class, regenerate T15/T16, retrain T18–T20. We currently use **one-shot** negatives; this
-   directly targets the AT-trap. Implement as a *second pass* of the existing rules with an augmented
-   T14 (it's a loop, so not a new acyclic Snakemake rule). [DeePromoter; Bioinformatics 2025]
+   take the model's highest-scoring false positives, add them as a 5th T14 negative class, regenerate
+   T15/T16, retrain T18–T20. We currently use **one-shot** negatives; this directly targets the AT-trap.
+   **You cannot mine false positives on the target.** *C. butyricum* has no ground-truth TSS, so a
+   high-scoring target window is ambiguous (it may be a real promoter); relabelling it a negative would
+   train the model to reject true promoters. Mine confident negatives where labels exist, and keep the
+   mining and validation genomes **disjoint**:
+   - *Mine from* (a) high-scoring windows on the in-genus genomes we already have TSS for and that are in
+     training (*C. acetobutylicum*/*beijerinckii*, Hocq), far from their known TSS; and (b) high-scoring
+     windows deep inside annotated CDS, far from any gene 5′ end, where annotation (not a TSS) supplies
+     the label — this class is mineable **even on the target itself** and is the most transfer-safe.
+   - *Do not mine from* *C. ljungdahlii*: keep it untouched as the held-out validation genome (we have
+     its 1,245 primary TSS; it is already the genome-scale benchmark). Success = FP peaks fall on
+     *C. ljungdahlii* while recall on its known TSS holds. Validating on a genome you also mined is
+     circular.
+   Caveats: our TSS catalogues are incomplete (mostly primary / intergenic-sense) and deep CDS still
+   contains sparse internal/antisense promoters, so a mined "false positive" is sometimes a real
+   unannotated promoter. The load-bearing mitigation is to **down-weight** mined negatives (as T15 does
+   for silver labels, ~0.3) and keep to 1–2 rounds. Do **not** filter mined negatives by "lacks a clean
+   −10/−35" — the AT-trap negatives look promoter-like by design, so that filter removes the very
+   examples you want; and "far from a gene 5′ end" guards only against primary-promoter leakage, not the
+   internal/antisense promoters that sit mid-gene (better: exclude windows overlapping any dRNA-seq-called
+   internal/antisense TSS where those exist). Transfer to the more AT-rich target (GC ~28–29% vs ~30–31%
+   in the relatives) is imperfect, a further reason to lean on target-side deep-CDS negatives. Implement
+   as a *second pass* of the existing rules with an augmented T14 (a loop, so not a new acyclic Snakemake
+   rule). [DeePromoter; Bioinformatics 2025]
 2. **Restrict the scan region.** Score intergenic + gene-upstream windows rather than *every* window
    (incl. deep CDS) — cuts the search space and the FP denominator, complementing the CDS negatives.
 3. **Grow verified in-genus data** (e.g. Al-Bassam 2018 *C. ljungdahlii* TSS) so in-genus evaluation
