@@ -79,6 +79,22 @@ SWEEP_CONFIG = {
         "n_trials": 25,
         "timeout": 3600,       # 1 h/trial — CNN trains from scratch, fast
     },
+    "cnn_v2": {
+        # Multi-encoding fusion CNN (train_cnn_v2.py). Sweep the training-dynamics params only
+        # (architecture/encoding sweep can come later). --data-dir is REQUIRED by that trainer (no
+        # default, unlike train_cnn.py), so pass it via extra_args. It writes metrics.json/"val_auprc"
+        # and accepts --num-epochs, --sweep-trial, --output-dir — the sweep contract holds.
+        "script": str(REPO / "model-training/T20/train_cnn_v2.py"),
+        "params": {
+            "learning-rate": {"min": 1e-4, "max": 1e-2, "log": True},
+            "batch-size":    {"choices": [32, 64, 128]},
+            "dropout-rate":  {"min": 0.1, "max": 0.5},
+            "weight-decay":  {"min": 0.0, "max": 1e-3},
+        },
+        "n_trials": 25,
+        "timeout": 3600,       # 1 h/trial — from scratch, but ENAC/k-mer featurisation adds overhead
+        "extra_args": ["--data-dir", "results/T16/cnn"],
+    },
 }
 
 
