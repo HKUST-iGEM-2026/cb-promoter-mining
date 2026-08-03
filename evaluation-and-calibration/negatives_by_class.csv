@@ -1,31 +1,36 @@
-Per-negative-class accuracy on the T15 test set (969 positives vs 2354 negatives). Hardest class first.
+Per-negative-class accuracy on the T15 test set, 0.6-clustering retrain (967 positives vs 2351 negatives). Four models. Hardest class first per model.
 
 model,negative_class,n_windows,median_promoter_score,correct_rejection_rate_score_below_0.5,auroc_pos_vs_class,auroc_ci_lo,auroc_ci_hi
-ProkBERT,Intergenic (convergent),432,0.003,0.812,0.91,0.9,0.92
-ProkBERT,SRS (dinucleotide shuffle),650,0.003,0.837,0.924,0.92,0.93
-ProkBERT,Downstream / 3prime,624,0.002,0.902,0.953,0.95,0.96
-ProkBERT,CDS (coding interior),648,0.002,0.971,0.977,0.97,0.98
-NT-LoRA,Intergenic (convergent),432,0.035,0.836,0.89,0.88,0.9
-NT-LoRA,SRS (dinucleotide shuffle),650,0.031,0.88,0.915,0.91,0.92
-NT-LoRA,Downstream / 3prime,624,0.012,0.92,0.949,0.94,0.96
-NT-LoRA,CDS (coding interior),648,0.009,0.969,0.972,0.97,0.98
-CNN,Intergenic (convergent),432,0.22,0.681,0.863,0.85,0.88
-CNN,SRS (dinucleotide shuffle),650,0.111,0.806,0.906,0.9,0.91
-CNN,Downstream / 3prime,624,0.082,0.796,0.909,0.9,0.92
-CNN,CDS (coding interior),648,0.047,0.892,0.941,0.93,0.95
+ProkBERT,SRS (dinucleotide shuffle),611,0.010,0.782,0.906,0.90,0.91
+ProkBERT,Intergenic (convergent),414,0.008,0.773,0.914,0.90,0.92
+ProkBERT,Downstream / 3prime,661,0.005,0.882,0.945,0.94,0.95
+ProkBERT,CDS (coding interior),665,0.004,0.970,0.980,0.98,0.98
+NT-LoRA,Intergenic (convergent),414,0.008,0.865,0.889,0.88,0.90
+NT-LoRA,SRS (dinucleotide shuffle),611,0.008,0.884,0.896,0.89,0.91
+NT-LoRA,Downstream / 3prime,661,0.003,0.912,0.936,0.93,0.94
+NT-LoRA,CDS (coding interior),665,0.003,0.979,0.966,0.96,0.97
+CNN,Intergenic (convergent),414,0.161,0.821,0.868,0.85,0.88
+CNN,Downstream / 3prime,661,0.104,0.846,0.888,0.88,0.90
+CNN,SRS (dinucleotide shuffle),611,0.124,0.882,0.896,0.89,0.91
+CNN,CDS (coding interior),665,0.082,0.925,0.925,0.92,0.93
+CNN-v2,Intergenic (convergent),414,0.299,0.647,0.890,0.88,0.90
+CNN-v2,Downstream / 3prime,661,0.137,0.746,0.916,0.91,0.93
+CNN-v2,SRS (dinucleotide shuffle),611,0.172,0.771,0.924,0.92,0.93
+CNN-v2,CDS (coding interior),665,0.086,0.857,0.950,0.94,0.96
 
 COLUMN DEFINITIONS
 column,meaning
 n_windows,Number of windows of this negative class in the T15 test set.
 median_promoter_score,"Median of the model's 0-1 promoter score over the class. For a negative, lower is better: the model is more confident it is not a promoter."
-correct_rejection_rate_score_below_0.5,Fraction of the class the model correctly scored BELOW the 0.5 cutoff (i.e. called non-promoter). This is the true-negative rate for the class at the 0.5 threshold. Higher is better. (This is the column previously labelled 'rejection@0.5'.) It depends on the 0.5 threshold and will shift after T26 calibration.
+correct_rejection_rate_score_below_0.5,Fraction of the class the model correctly scored BELOW the 0.5 cutoff (its true-negative rate for the class at the 0.5 threshold). Higher is better. Threshold-DEPENDENT: a model whose scores sit systematically higher (CNN-v2) rejects fewer here even when its ranking is good. Will shift after T26 calibration.
 auroc_pos_vs_class,"Probability the model scores a random real promoter above a random window of this class. 1.0 = perfectly separable, 0.5 = chance. Threshold-free and unchanged by calibration, so it is the fairer cross-model comparison."
-auroc_ci_lo / auroc_ci_hi,90% bootstrap confidence interval for the AUROC.
+auroc_ci_lo / auroc_ci_hi,90% bootstrap confidence interval for the AUROC (200 resamples).
 
 NOTES
-Difficulty order is the same for all three models: Intergenic < SRS < Downstream < CDS.
-"Intergenic convergent regions (real AT-rich genomic sequence) are the hardest negative, not SRS."
-"By AUROC: ProkBERT >= NT-LoRA >= CNN on every class. CNN is weakest, especially Intergenic (rejects only 0.681; median score 0.220)."
-"NT-LoRA's higher overall rejection (0.907) is a threshold effect, not better separation; its AUROC is below ProkBERT's on every class."
-Only CDS is genuinely easy to reject (0.94-0.98). Intergenic and SRS (0.86-0.92) are where the model does real motif work and where T33 hard-negative mining would help most.
-"Overall correct-rejection rate across all 2354 negatives: ProkBERT 0.887, NT-LoRA 0.907, CNN 0.804."
+"SRS is the diagnostic class: it is composition-matched (identical base and dinucleotide content, motif destroyed), so separability there can only come from the promoter MOTIF, not base/GC composition."
+"By SRS AUROC (motif learning): CNN-v2 0.924 > ProkBERT 0.906 > NT-LoRA 0.896 = CNN 0.896. CNN-v2's best-in-class SRS score is the strongest evidence any model here learned real motif signal rather than an AT-content shortcut."
+"CDS is the easiest class for every model (AUROC 0.925-0.980); the structured genomic negatives are more separable than SRS, as expected."
+"Overall correct-rejection rate across all 2351 negatives: NT-LoRA 0.915 > CNN 0.873 > ProkBERT 0.862 > CNN-v2 0.766."
+"CNN-v2's low overall rejection@0.5 is a CALIBRATION effect (its scores sit high), NOT weak discrimination: its per-class AUROCs are among the best. The rank-percentile ensemble (T29) is calibration-invariant, so this does not hurt CNN-v2 as an ensemble member."
+"Balanced test AUPRC (context): ProkBERT 0.884 > NT-LoRA 0.854 > CNN-v2 0.848 > CNN 0.804."
+"Source: modular_eval.py on the 0.6 T22 predictions (results/T25b/modular_eval.{md,csv})."
