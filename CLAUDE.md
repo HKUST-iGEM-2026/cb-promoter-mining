@@ -273,7 +273,9 @@ rebalance, so confirm current owners with Oak.
   auto-derives the Locus→record contig-map from the FASTA headers** (chromosome = longest record; DSM 6423's
   12 phage/plasmid TSS drop as unmapped, <1%). Needs the Hocq `.xlsx` (Git-LFS), `openpyxl`, and internet on
   the login node for the genome fetch. Skips LFS pointers / missing inputs gracefully. **In-genus training-positive
-  source (§7).** Al-Bassam supplement still optional/undownloaded. (`data-acquisition-and-curation/T7/`)
+  source (§7).** Al-Bassam 2018 *C. ljungdahlii* TSS have since been downloaded + extracted (1,245 primary TSS,
+  `evaluation-and-calibration/ljungdahlii_holdout_tss.tsv`) but are used as the **held-out** in-genus validation
+  genome (Regime C / T33 validation), deliberately NOT added as training positives. (`data-acquisition-and-curation/T7/`)
 - T8 Normalise RegulonDB+DBTBS → Parquet — Leo — ✅ **4,336** (3,963 RegulonDB + 373 DBTBS), landed on
   `main` (commit `82d9bbb`): `run_t8_pipeline.py` reads the committed `DBTBS_prom.fa` (Sine's 373 σA
   set, 81 bp) + `PromoterS_Set.txt`, asserts both sources non-empty, and reproducibly regenerates
@@ -328,7 +330,7 @@ rebalance, so confirm current owners with Oak.
 - T30 Locus-level peak calling — Ishi — ⬜ (dep T29)
 - T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ⬜ (dep T30; FIMO alone if short on time)
 - T32 FINAL candidate output (TSV/JSONL, PT6 schema) — Ishi+Oak — ⬜ (dep T26,T27,T30,T31)
-- T33 Iterative hard-negative mining (v2 refinement) — Oak+? — ⬜ collect T28's top genomic false-positives → add as a 5th T14 negative class → regenerate T15/T16 → retrain T18–T20. Strongest FP-reduction lever (DeePromoter-style iterative negatives); a 2nd pass, not a new DAG rule. See `WORKFLOW_RATIONALE.md`. (dep T28)
+- T33 Iterative hard-negative mining (v2 refinement) — Oak+? — ⬜ **mine confident false positives where labels EXIST, and keep the mining and validation genomes DISJOINT.** ⚠️ Do NOT relabel the target's (*C. butyricum*) top T28 scores as negatives: with no target TSS a high score is ambiguous (may be a *real* promoter) and would train the model to reject real promoters. **Mine from:** (a) high-scoring windows on the in-genus genomes already in TRAINING that we have TSS for (*C. acetobutylicum/beijerinckii*, Hocq), far from their known TSS; and (b) high-scoring windows deep in annotated CDS far from gene 5′ ends — annotation (not TSS) gives the label, so this class is mineable **even on the target itself** and is the most transfer-safe. Add as a 5th T14 negative class → regenerate T15/T16 → retrain T18–T20. **Do NOT mine from *C. ljungdahlii*** — keep it untouched as the held-out validation genome (we have its 1,245 primary TSS; it is already the Regime-C benchmark). **Validate there:** the retrain must lower FP peaks on *C. ljungdahlii* while holding recall on its TSS (mining AND validating the same genome would be circular). Council caveats: TSS catalogues are incomplete (mostly primary / intergenic-sense) and deep CDS still holds sparse internal/antisense promoters, so a mined "FP" can be a real unannotated promoter. **Load-bearing mitigation = DOWN-WEIGHT mined negatives** (T15 silver-weight style, ~0.3) + keep to 1–2 rounds; do NOT filter them by "has a clean −10/−35" (self-defeating: AT-trap negatives look promoter-like by design), and note "far from a 5′ end" does nothing for mid-gene internal/antisense promoters (better: exclude windows overlapping any dRNA-seq-called internal/antisense TSS where available). Transfer to the more AT-rich target (GC ~28–29% vs relatives ~30–31%) is imperfect — another reason to lean on target-side deep-CDS negatives. Strongest FP-reduction lever (DeePromoter-style); a 2nd pass, not a new DAG rule. See `WORKFLOW_RATIONALE.md`. (dep T28 + a mining-genome scan; validation = held-out *C. ljungdahlii*)
 
 ---
 
@@ -346,8 +348,9 @@ rebalance, so confirm current owners with Oak.
 >    workaround is no longer needed now that T7b exists, and T9's ~51 bp would need poor N-padding.
 > 4. **T10 (_C. difficile_) stays out-of-genus** — re-run + verified (1,746 TSS) but treated as
 >    cross-species-adjacent support, and **not** passed to T15's `--positives`.
-> Remaining (optional): the Al-Bassam 2018 _C. ljungdahlii_ supplement is still undownloaded — extra
-> in-genus positives if added, but not required.
+> Remaining: the Al-Bassam 2018 _C. ljungdahlii_ TSS are downloaded (1,245 primary TSS) but held OUT of
+> training on purpose — they are the clean in-genus validation genome (Regime C, and the T33 validation
+> genome). Adding them as training positives would forfeit that held-out set.
 
 - **ProkBERT base = `neuralbioinfo/prokbert-mini` (NOT `-mini-long`)** — decided 2026-06: the ensemble's
   ProkBERT member (T18) fine-tunes plain **prokbert-mini**. The 81 bp T15 windows are short, so the

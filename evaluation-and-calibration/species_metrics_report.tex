@@ -1,0 +1,131 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Model Performance Across Species\\ \large Three evaluation regimes, from in-distribution discrimination to genome-scale deployment}
+\date{July 23, 2026}
+\author{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This report consolidates results for the three promoter-prediction models (ProkBERT-mini, Nucleotide Transformer (NT) with LoRA, and a from-scratch CNN), broken down by bacterial species and across the three evaluation regimes we run. Each regime answers a different question and is reported separately, because they are not directly comparable. Regime A (in-distribution, heterogeneous negatives) measures ordinary discrimination on training-style data. Regime B (held-out, composition-matched negatives) forces the models to read the motif rather than base composition. Regime C (genome-scale false positives) slides each model across a whole held-out genome to measure what deployment actually looks like. Two findings stand out, and they are largely independent. The first is an in-genus versus out-of-genus split: within genus \emph{Clostridium} the models, and the transformers most clearly, carry motif signal that survives composition matching, whereas on the out-of-genus \emph{C.\ phytofermentans} they lose it (NT drops significantly below chance; the other two are indistinguishable from chance). A per-species breakdown also corrects an earlier reading of NT, whose apparent collapse to chance on the mixed external holdout was an aggregation artifact; once the species are separated, NT is on par with ProkBERT in-genus and fails only out-of-genus. The second finding is that discrimination on the curated test sets does not predict deployment behaviour. At genome scale all three are strong enrichers, hundreds to thousands of times better than random, but they still yield thousands of false positives on a full scan. Restricting the search to gene-upstream regions cuts that burden by roughly a third to two-thirds, and for ProkBERT it roughly doubles precision. NT places second on validation AUPRC (0.853) but is the weakest of the three at genome scale, which shows directly that curated-set metrics can mislead at deployment base rates. The best deployment configuration is ProkBERT with restrict-scan, and the deliverable it implies is an enriched candidate list, not a map.
+\end{abstract}
+
+\section{Purpose}
+Aggregate metrics obscure where a model's performance comes from, and curated-set metrics obscure what happens at genome scale. This report therefore stratifies every result two ways: by species, to separate cross-species from in-genus performance, and by evaluation regime, to separate curated-set discrimination from genome-scale deployment. Because the target, \emph{C.\ butyricum}, has no ground-truth promoters of its own, its in-genus relatives (\emph{C.\ acetobutylicum}, \emph{C.\ beijerinckii}, \emph{C.\ ljungdahlii}) are the best available proxies for how the models will behave when mined on the target.
+
+\section{The three evaluation regimes (read this first)}
+The same model can look very different depending on what it is scored against and at what base rate, so keeping the three regimes distinct is essential to reading the tables correctly. They are ordered below by increasing difficulty and realism.
+
+\begin{itemize}
+\item \textbf{Regime A: in-distribution, heterogeneous negatives (Table~1).} From the T15 held-out test set, each species' verified positives are ranked against the shared pool of training-style negatives (CDS, intergenic, downstream, and dinucleotide-shuffle windows from 166 \emph{Clostridium} genomes). This measures ordinary discrimination on data drawn like the training data, and uses the easiest negatives. Metric: AUROC.
+\item \textbf{Regime B: held-out, composition-matched negatives (Table~2).} From the external T9 holdout, each positive is scored against its own dinucleotide shuffle (identical base and dinucleotide composition, motif destroyed), 1:1. Because the negative is composition-identical to the positive, base composition gives the model no help, so it must read the actual motif. This is the strictest, most diagnostic balanced test, and its positives are a different, harder set (the roughly 51\,bp curated T9 promoters, N-padded to 81\,bp for the CNN) than Regime~A's. Metric: AUROC with 90\% bootstrap CI; chance is 0.5.
+\item \textbf{Regime C: genome-scale false positives (Table~3).} From a whole held-out in-genus genome (\emph{C.\ ljungdahlii}), each model is slid across every window of the genome, where real promoters are only about 0.01\% of positions. This is the only regime that shows the deployment reality, namely how many false positives a real scan produces, which the curated regimes structurally cannot. Metric: false-positive peaks and precision at fixed recall, plus enrichment over random.
+\end{itemize}
+
+\noindent A model can be excellent in A, good in B, and still produce thousands of false positives in C. That is not a contradiction; the three regimes simply answer different questions. A drop from Regime~A to Regime~B for the same species (for example \emph{C.\ acetobutylicum}, from 0.95 to 0.69) reflects both the harder composition-matched negatives and the harder held-out positives. A model that wins in A and B need not win in C either, because C is limited by the genome base rate, not by curated-set discrimination.
+
+\section{Regime A: in-distribution performance by species}
+\begin{table}[h]
+\centering
+\caption{AUROC on the T15 test set, by species, against the shared heterogeneous negative pool. ($n$ = verified positives in the test split; \textbf{bold} = best model per species.)}
+\begin{tabular}{lccc}
+\toprule
+Species ($n_{\text{pos}}$) & ProkBERT & NT-LoRA & CNN \\
+\midrule
+\emph{E.\ coli} (358)              & 0.942 & \textbf{0.956} & 0.932 \\
+\emph{B.\ subtilis} (38)           & \textbf{0.922} & 0.918 & 0.855 \\
+\emph{C.\ acetobutylicum} (152)    & \textbf{0.950} & 0.921 & 0.900 \\
+\emph{C.\ beijerinckii} (421)      & \textbf{0.945} & 0.924 & 0.896 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three models are strong across every species (AUROC 0.85--0.96), so this regime mainly establishes a floor. Two patterns matter for the target. First, ProkBERT's two best species are the in-genus \emph{Clostridium} (0.950 and 0.945), so its in-distribution performance is not carried by the cross-species data, which is a good sign for transfer to \emph{C.\ butyricum}. Second, NT-LoRA shows the opposite pattern: its single best species is \emph{E.\ coli} (0.956), clearly above its in-genus \emph{Clostridium} scores (0.921 and 0.924), so its strength looks specific to \emph{E.\ coli} and not a uniform cross-species advantage. Its lowest score, 0.918, is itself cross-species, on \emph{B.\ subtilis}. The CNN trails both transformers on AUROC for every species. Recall at the 0.5 operating point spans 0.85--0.89 for ProkBERT, 0.71--0.87 for NT, and 0.68--0.91 for the CNN. These ranges overlap, and recall at a fixed threshold is not a discrimination metric, so it is best read alongside AUROC and not as confirmation. Because these are the easiest negatives, strong numbers here are necessary but not sufficient, and Regimes~B and~C do the real discriminating.
+
+\section{Regime B: composition-matched held-out (in-genus versus out-of-genus)}
+\begin{table}[h]
+\centering
+\caption{Held-out T9 promoters against per-positive dinucleotide-shuffle negatives (balanced 1:1, chance = 0.5). AUROC with 90\% bootstrap CI; AUPRC, MCC, F1 at threshold 0.5.}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{llL{2.7cm}ccc}
+\toprule
+Model & Species & AUROC [90\% CI] & AUPRC & MCC & F1 \\
+\midrule
+ProkBERT & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & 0.689 [0.61--0.76] & 0.699 & 0.228 & 0.555 \\
+NT-LoRA  & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & \textbf{0.714 [0.63--0.78]} & 0.700 & 0.281 & 0.620 \\
+CNN      & \emph{C.\ acetobutylicum} (in-genus, $n{=}68$)  & 0.589 [0.49--0.66] & 0.600 & 0.182 & 0.632 \\
+\midrule
+ProkBERT & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.373 [0.26--0.50] & 0.510 & 0.058 & 0.250 \\
+NT-LoRA  & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.179 [0.09--0.30] & 0.361 & $-0.173$ & 0.125 \\
+CNN      & \emph{C.\ phytofermentans} (out-of-genus, $n{=}25$) & 0.403 [0.28--0.55] & 0.509 & $-0.240$ & 0.367 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\emph{C.\ phytofermentans} has been reclassified into \emph{Lachnoclostridium}, a different genus. It is therefore the strictest generalization test in the pipeline. An AUROC below 0.5 means the model ranks the shuffled sequence above the real promoter. In-genus, both transformers clear chance (ProkBERT 0.689, NT 0.714) while the CNN is only borderline (0.589). Out-of-genus, all three collapse, and only NT falls significantly below chance. The Interpretation section develops what this split means.
+
+\section{Regime C: genome-scale false positives (held-out in-genus)}
+Regimes A and B score curated test sets, in which positives are a large, fixed fraction of the windows. Neither shows the deployment reality, where real promoters are only about 0.01--0.07\% of windows (Table~3), so even a strong model produces many false positives per scan. This regime slides each model across a whole held-out in-genus genome (\emph{C.\ ljungdahlii}, Al-Bassam 2018, with 1{,}245 primary TSS and never trained on) and counts false-positive peaks genome-wide, both on the full genome (9.26M windows) and restricted to the gene-upstream and intergenic candidate space (1.77M windows, 19\% of the genome).
+
+\begin{table}[h]
+\centering
+\small
+\caption{Genome-scale FP benchmark on \emph{C.\ ljungdahlii} (both strands; full-scan base rate 0.013\%, restricted 0.070\%). Precision at four recall targets (0.1 is the high-confidence ``shortlist'' point) and false-positive peaks at 50\% recall. \textbf{Bold} = the deployment config.}
+\begin{tabular}{llccccc}
+\toprule
+ & & \multicolumn{4}{c}{Precision @ recall target} & FP peaks \\
+\cmidrule(lr){3-6}
+Model & Scan & 0.1 & 0.5 & 0.7 & 0.9 & @0.5 \\
+\midrule
+ProkBERT & full              & 30.7\% & 19.5\% & 13.7\% & 8.8\%  & 2{,}569 \\
+ProkBERT & \textbf{restrict} & \textbf{56.3\%} & \textbf{45.0\%} & \textbf{36.2\%} & \textbf{24.3\%} & \textbf{760} \\
+NT-LoRA  & full              & 31.2\% & 17.6\% & 13.5\% & 9.0\%  & 2{,}918 \\
+NT-LoRA  & restrict          & 45.8\% & 33.3\% & 28.9\% & 22.9\% & 1{,}250 \\
+CNN      & full              & 49.2\% & 28.8\% & 20.9\% & 10.6\% & 1{,}540 \\
+CNN      & restrict          & 55.3\% & 36.5\% & 32.1\% & 24.0\% & 1{,}083 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Four findings follow from Table~3.
+
+(1) Restricting the scan is the largest low-cost lever, and it helps every model. Scoring only the upstream and intergenic candidate space covers 19\% of the genome and costs just 11 unreachable TSS, leaving a maximum recall of 99.1\%, yet it raises precision across the board. The effect is largest for ProkBERT, whose precision at 50\% recall more than doubles (from 19.5\% to 45.0\%) while its false-positive peaks fall from 2{,}569 to 760; about 70\% of ProkBERT's FP peaks lie outside the retained candidate space, largely in coding sequence, and are removed. NT-LoRA behaves similarly, losing about 57\% of its FP peaks (from 2{,}918 to 1{,}250), while the CNN gains least, at about 30\% removed, because more of its FP peaks already lie inside the candidate space. At 45\% precision the ProkBERT candidate list is roughly 1{,}380 windows, about one in two of them real, against about one in five on the full scan.
+
+(2) The model ranking flips between the full and restricted scans. On the whole genome the CNN is the most precise (28.8\% at 50\% recall), while ProkBERT (19.5\%) and NT (17.6\%) place more false positives outside the candidate space. Within the candidate regions, however, ProkBERT is clearly ahead at mid-recall (45.0\% against 36.5\% for the CNN and 33.3\% for NT at 50\%). Only about 30\% of ProkBERT's FP peaks lie inside the candidate space, against about 70\% of the CNN's. Once the out-of-region noise is removed, ProkBERT is the better discriminator within the regions that matter; the CNN's full-genome advantage came from making fewer scattered errors overall. NT-LoRA is the weakest model in the restricted scan, last at all four recall targets, and it is also last at the 0.5 and 0.7 full-scan targets. ProkBERT falls fractionally lower only at the noisy full-scan endpoints (0.1 and 0.9).
+
+(3) Validation AUPRC does not predict genome-scale precision, and NT-LoRA is the clearest case. NT ranks second on the validation set (AUPRC 0.853, above the CNN's 0.811), yet in the restricted scan it comes last at every recall target. The CNN, lowest on validation AUPRC (0.811), is the most precise on the full genome. Whatever NT learned to lift its validation score does not survive the genome-scale base rate, which is the failure mode a curated-set metric hides and the main reason for running this benchmark. Precision throughout is a lower bound, because the 1{,}245-primary-TSS reference omits the study's 116 internal, 25 antisense, and 125 orphan TSS, so some peaks counted as false are genuine.
+
+(4) The 10\% recall point is the one the wet lab is most likely to use. A lab can test only a limited number of candidates, so the high-confidence end of the curve is the practical operating point. At 10\% recall, ProkBERT with restrict-scan produces a list of about 220 windows (roughly 125 real TSS and 97 FP peaks) that is 56\% real, the highest precision anywhere in the benchmark. The CNN with restrict-scan is comparable (55.3\%), and NT again trails (45.8\%). The restrict-scan advantage and the model ranking are the same here as at 50\% recall.
+
+On this evidence the deployment configuration is ProkBERT with restrict-scan. It has the highest precision at every restricted-scan recall target, by a clear margin at 0.5 and 0.7 and in a near-tie with the CNN at the 0.1 and 0.9 endpoints, and it gives the shortlist most enriched for real promoters. NT-LoRA is the weakest member at genome scale and would not be used for standalone mining. It is kept for now pending an explicit ensemble test: Regime~B shows it is non-degenerate in-genus, but whether it improves the planned mean-rank-percentile ensemble over ProkBERT alone at genome scale has not yet been measured.
+
+\section{Interpretation}\label{sec:interp}
+
+\paragraph{The species split revises the reading of NT-LoRA.} The mixed external holdout previously reported NT at an AUROC of about 0.50, which was read as NT collapsing to chance or relying on composition. That reading was an aggregation artifact. Once the species are separated, NT is on par with ProkBERT in-genus on composition-matched negatives (0.714 against 0.689, with overlapping CIs and both clear of chance), and its apparent chance-level result came entirely from the out-of-genus \emph{C.\ phytofermentans} (0.179). Pooling the two species combines a genus NT reads well (0.714) with one it anti-ranks (0.179), and the cross-group misranking pulls the combined AUROC toward 0.5. NT is therefore genus-specific, not composition-collapsed. That is a more favourable reading than the mixed number implied, though its strongly sub-chance out-of-genus score is still a caution.
+
+\paragraph{In-genus, the motif signal is real.} Composition-matched shuffles force the model to rely on the motif, not on base composition. Against them, both transformers retain real signal (ProkBERT 0.689, NT 0.714, with CIs clear of 0.5), while the CNN is only borderline (0.589, with a CI lower bound of 0.49). The point estimates favour the transformers (about 0.70 against 0.59), but their 90\% CIs overlap the CNN's, so the gap is suggestive, not established. Confirming it would need a paired test on the shared 68 positives, and because those positives are an engineered mutant-library set with sibling constructs, the effective sample is smaller, and the true CIs wider, than $n{=}68$ implies.
+
+\paragraph{Out-of-genus, the signal is gone.} On \emph{C.\ phytofermentans}, NT falls significantly below chance (0.179, with a CI of 0.09--0.30 entirely under 0.5), meaning it ranks the shuffle above the real promoter. ProkBERT (0.373 [0.26--0.50], its CI reaching chance only at the upper bound) and the CNN (0.403 [0.28--0.55], its CI bracketing chance) are not distinguishable from chance, though all three point estimates sit at or below 0.5. None recognises a foreign-genus promoter above chance. This is directional evidence only, based on 25 positives from a single engineered library in one study, that generalization does not extend past the genus. It is consistent with what one expects of a genus-restricted tool, but it should not be over-read from a single dataset.
+
+\paragraph{Genome scale is the deployment reality, and it reorders the models.} Regimes A and B measure discrimination on curated test sets. Regime C measures what happens when a model is run across a 4.6\,Mb genome in which promoters are about 0.01\% of windows, and the two do not agree. Curated-set skill does not survive the base rate. NT-LoRA ranks second on validation AUPRC (0.853) but produces the most false positives of the three and the lowest restricted-scan precision. The CNN ranks lowest on validation AUPRC (0.811) yet is the most precise on a raw full-genome scan. The ranking that matters for deployment is precision in the gene-upstream candidate space where promoters actually occur, and there ProkBERT is first (45\% at half recall, 56\% at the shortlist). True TSS lie in the retained candidate space for every model, but ProkBERT's false positives fall disproportionately outside it and are removed by the restriction. Two levers account for most of the improvement, and neither is a change of model. Restricting the search space is worth about 25 precision points for ProkBERT at 50\% recall, in exchange for only 0.9\% of recall. Moving to the 10\% recall shortlist then lifts ProkBERT precision from 45\% to 56\%, about a third fewer false calls per true promoter. Even so, the best configuration still returns a list that is roughly half false. This is what the phrase ``enriched candidate list, not a map'' is meant to capture: a few-hundred-fold enrichment over blind guessing that a wet lab can test, not a finished annotation.
+
+\paragraph{What it means for the target.} \emph{C.\ butyricum} is in-genus, so the relevant discrimination evidence is the in-genus results, which are strong and motif-driven in Regimes A and B, with ProkBERT the most reliable and NT a non-degenerate in-genus contributor whose ensemble value is not yet quantified. Regime C sets the expectations for the actual mine: score the target with ProkBERT over the restricted candidate space, expect a shortlist that is roughly one in two real at moderate recall and better at the high-confidence end, and treat the output as a ranked list to validate, not a definitive map. The practical takeaway is to trust the in-genus numbers and let the genome-scale precision set how large a wet-lab shortlist to expect; out-of-genus behaviour is out of scope.
+
+\section{Caveats}
+\begin{itemize}
+\item \emph{C.\ phytofermentans} has only 25 positives (50 rows including its shuffles), so its CIs are wide, its point estimates are directional, and the 200-resample bootstrap is thin. As described in the Interpretation, only NT is significantly sub-chance here; ProkBERT and the CNN are indistinguishable from chance, with all three point estimates sitting at or below 0.5.
+\item The two curated-set regimes (A and B) use different positives for \emph{C.\ acetobutylicum}. Regime A uses T7b empirical dRNA-seq TSS (81\,bp, natural), whereas Regime B uses T9 engineered mutant-library promoters (about 51\,bp) fed to the transformers at their native length, which does not match the 81\,bp training windows (only the CNN path pads to 81). The gap from A to B therefore conflates harder negatives, shorter and synthetic positives, and a train/eval length mismatch, and is not a clean comparison. In addition, the natural in-genus positives (T7b) are only ever scored against Regime~A's easy heterogeneous negatives, while the composition-matched test in-genus (Regime~B) rests solely on the synthetic \emph{C.\ acetobutylicum} library, so the statement that in-genus motif signal is real applies strictly to that one engineered set.
+\item Regime C rests on a single held-out genome and one study's TSS calls, graded with a 40\,bp match tolerance and reported without CIs, and its precision is a lower bound because non-primary TSS are excluded, as noted above. Two of ProkBERT's restricted-scan wins, at recall 0.1 and 0.9, are within about one point of the CNN and are effectively ties. Because the excluded non-primary TSS may be distributed unevenly across models, the ranking itself, not only the absolute precision, could shift, and it should be reconfirmed on a second in-genus genome before being treated as settled.
+\item The regimes are not interchangeable: Regime A's heterogeneous negatives are the easiest, Regime B's composition-matched shuffle is the strictest balanced negative, and Regime C is the only one at the true genome base rate. Each should be read for the question it answers, not as a competing estimate of one number.
+\end{itemize}
+
+\end{document}

@@ -38,6 +38,18 @@ from sklearn.metrics import (roc_auc_score, average_precision_score,
 NT_ID = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
 
 
+def _load_v2_module():
+    """Import model-training/T20/train_cnn_v2.py as a module (for its model +
+    inference helpers)."""
+    import importlib.util
+    here = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(here, "..", "..", "model-training", "T20", "train_cnn_v2.py")
+    spec = importlib.util.spec_from_file_location("train_cnn_v2", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
 def load_test(data_dir, model):
     """Return (encoded_inputs, y_true) for the T16 test split of this model."""
     if model == "cnn":
@@ -46,6 +58,12 @@ def load_test(data_dir, model):
             raise ValueError(f"expected CNN X (N,81,4), got {z['X'].shape}")
         X = np.transpose(z["X"], (0, 2, 1)).astype("float32")   # (N,81,4) -> (N,4,81) for Conv1d
         return {"X": X}, z["label"].astype(int)
+    if model == "cnn_v2":
+        # v2 needs raw sequences (it computes one-hot/ENAC/k-mer features itself).
+        # Reuse the SAME T16/cnn one-hot npz as the prod CNN, reconstructed to strings.
+        z = np.load(f"{data_dir}/test.npz", allow_pickle=False)
+        seqs = _load_v2_module().reconstruct_sequences_from_onehot(z["X"])
+        return {"seqs": seqs}, z["label"].astype(int)
     df = pd.read_parquet(f"{data_dir}/test.parquet")
     ids = torch.tensor([list(map(int, x)) for x in df["input_ids"]], dtype=torch.long)
     am = torch.tensor([list(map(int, x)) for x in df["attention_mask"]], dtype=torch.long)
@@ -97,8 +115,8 @@ def build_cnn(model_path, device):
 
 def main():
     ap = argparse.ArgumentParser(description="T22 inference + full metric suite for one final model")
-    ap.add_argument("--model", required=True, choices=["prokbert", "nt", "cnn"])
-    ap.add_argument("--model-path", required=True, help="HF dir (prokbert) / adapter dir (nt) / best_model.pt (cnn)")
+    ap.add_argument("--model", required=True, choices=["prokbert", "nt", "cnn", "cnn_v2"])
+    ap.add_argument("--model-path", required=True, help="HF dir (prokbert) / adapter dir (nt) / best_model.pt (cnn, cnn_v2)")
     ap.add_argument("--base-model", default=NT_ID, help="base checkpoint for the NT LoRA adapter")
     ap.add_argument("--data-dir", required=True, help="T16 dir for this model (has test.parquet or test.npz)")
     ap.add_argument("--out", default="results/T22")
@@ -112,6 +130,16 @@ def main():
     if args.model == "cnn":
         model = build_cnn(args.model_path, device)
         probs = probs_cnn(model, enc["X"], device)
+    elif args.model == "cnn_v2":
+        v2 = _load_v2_module()
+        cfg = {}
+        cfg_path = os.path.join(os.path.dirname(args.model_path), "config.json")
+        if os.path.exists(cfg_path):
+            cfg = json.load(open(cfg_path))
+        model = v2.build_model_from_config(cfg, device=str(device))
+        model.load_state_dict(torch.load(args.model_path, map_location=device))
+        probs = v2.predict_proba(model, enc["seqs"], str(device),
+                                 enac_window=int(cfg.get("enac_window", 5)))
     elif args.model == "prokbert":
         from transformers import AutoModelForSequenceClassification
         model = AutoModelForSequenceClassification.from_pretrained(
