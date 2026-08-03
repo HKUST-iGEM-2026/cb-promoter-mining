@@ -545,9 +545,27 @@ def build_model_from_config(cfg: Dict, device: str = "cpu") -> "MultiEncodingPro
     return model.to(device)
 
 
-def _featurize_batch(seqs: List[str], enac_window: int):
+def _fit_to_window(seq: str, window: int) -> str:
+    """Center-pad with 'N' or center-crop a sequence to exactly `window` bp, matching
+    the CNN one-hot convention (one_hot_81) so the trained window is preserved at
+    inference and ragged inputs (e.g. variable-length external-holdout promoters) batch
+    cleanly. A no-op when len(seq) == window (the T16 / genome-window case)."""
+    s = seq.upper()
+    if len(s) < window:
+        pad = window - len(s)
+        s = ("N" * (pad // 2)) + s + ("N" * (pad - pad // 2))
+    elif len(s) > window:
+        off = (len(s) - window) // 2
+        s = s[off:off + window]
+    return s
+
+
+def _featurize_batch(seqs: List[str], enac_window: int, window: int = 81):
     """Turn a list of sequences into the four model-input tensors (all four are
-    built regardless of active encodings; unused ones are ignored by forward)."""
+    built regardless of active encodings; unused ones are ignored by forward). Each
+    sequence is first normalized to `window` bp so ragged inputs batch cleanly and
+    match the trained length."""
+    seqs = [_fit_to_window(s, window) for s in seqs]
     x1 = torch.tensor(np.stack([one_hot_encode_sequence(s).T for s in seqs]),
                       dtype=torch.float32)                                    # (B,4,L)
     x2 = torch.tensor(np.stack([kmer_frequencies(s, 2, DINUC_INDEX) for s in seqs]),

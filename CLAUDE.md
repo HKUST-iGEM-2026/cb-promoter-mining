@@ -313,13 +313,13 @@ rebalance, so confirm current owners with Oak.
 - T17 Finalise fine-tuning recipe — **Sanaa** — 🟡 via the T21 sweep (template defaults = starting recipe; sweep tunes them). T19's slight overfit-after-epoch-2 ⇒ its LR has room to drop.
 - T18 ProkBERT-mini fine-tune — **Sanaa** — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.876 / test 0.872, weighted, full 40,442-row train.** `model-training/T18/train_prokbert.py`. Session bug-fixes: v5 `warmup_ratio` (feature-detect), `remove_unused_columns=False` (the `weight` KeyError). (dep T4,T16)
 - T19 NT v2 250M LoRA fine-tune — Sanaa — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.853 / test 0.841, weighted, LoRA 0.507% trainable.** Runs on the **`nt-tf4x`** (transformers 4.57) env, NOT 5.3.0 (`infrastructure/T4/NT_ENV.md`); `--no-grad-checkpoint`. `model-training/T19/train_nt_lora.py`. (dep T4,T16)
-- T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.811 / test 0.818, weighted.** `model-training/T20/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on by default; `--data-dir` defaults to `results/T16/cnn`). (dep T4,T16)
+- T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4: 0.9 val AUPRC 0.811; 0.6 retrain val 0.784 / test 0.804.** `model-training/T20/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on; `--data-dir` defaults to `results/T16/cnn`). **+ CNN-v2 (2026-08): multi-encoding fusion (one-hot+ENAC+di/tri-nuc) `model-training/T20/train_cnn_v2.py`, 0.6 val 0.827 / test 0.848 — a 4th ensemble model; reads T16/cnn one-hot (reconstructs seqs), wired through T22/modular_eval/genome_inference/T24; scores are optimistic → needs T26 calibration.** (dep T4,T16)
 - T21 Hyperparameter sweep — Sanaa+Oak — 🟡 **ready, wired for the two-env split** (`model-training/T21/hyperparameter_sweep.py`): resumable sqlite study, `--sweep-epochs` cheap proxy, budget by COMPLETED trials, live-streamed trial logs, per-model `extra_args` (NT auto-gets `--no-grad-checkpoint`). Run as **2 jobs** — `--models prokbert,cnn` on 5.3.0 + `--models nt_lora` on `nt-tf4x`, same `--out`. (dep T18,T19,T20)
 
 **Phase D — evaluation & calibration**
-- T22 Metrics suite (AUROC/AUPRC/MCC/F1) — Yany — ⬜ (dep PT3,T18,T19,T20)
+- T22 Metrics suite (AUROC/AUPRC/MCC/F1) — Yany — 🟡 **4-model test predictions + metrics run at 0.6** (`T22/predict_and_score.py` → `results/T22`), plus `modular_eval.py` negatives-by-class → `results/T25b`; consolidated into the 3-regime `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv` (council-audited). (dep PT3,T18,T19,T20)
 - T23 Cluster-level 5-fold CV — Yany — 📄 `evaluation-and-calibration/T23/` (dep T15,T18-20)
-- T24 Cross-species external holdout — Yany — 📄 `evaluation-and-calibration/T24/` (dep T9,T18-20)
+- T24 Cross-species external holdout — Yany — 🟡 **cnn_v2 wired in (`--models …,cnn_v2`, `--cnn-v2-model-path`); 4-model 0.6 refresh of the T9 + out-of-genus *C. phytofermentans* composition-matched holdout queued on HPC4** (the report's Regime-B out-of-genus numbers are still pre-0.6 until this runs). `evaluation-and-calibration/T24/` (dep T9,T18-20)
 - T25 Sigma-factor-stratified eval — Seonyu+Oak — ⬜ (dep T10,T22)
 - T26 Calibration regressor (AT covariate) — Ishi — ⬜ (dep PT4,T9,T22)
 - T27 Empirical FDR via SRS null → q-values — Ishi — ⬜ (dep PT4,T14,T26)
@@ -369,10 +369,13 @@ rebalance, so confirm current owners with Oak.
   StratifiedKFold — otherwise near-identical sequences leak across train/test and inflate scores.
 - **Splits ~50/50 positive/negative**, cluster-disjoint (T15).
 - **T15 split hyperparameters — sane defaults, NOT derived optima; sweepable by the T15 owner:**
-  - `cdhit_identity = 0.9` (config) — CD-HIT-est threshold; seqs ≥90% identical share a cluster and whole
-    clusters stay on one split side (the anti-leakage guard). 0.9 is the middle ground: ≥0.95 lets
-    90–95%-similar near-duplicates leak; ≤0.8 over-merges genuinely distinct promoters. Empirically modest
-    (~8% merged: 35,785 clusters from 38,944 seqs). Validate by sweeping 0.85–0.95 + checking CV stability.
+  - `cdhit_identity = 0.6` (config, **changed from 0.9 → 0.6 on a reviewer's rec, 2026-08**) — clustering identity;
+    seqs ≥ this share a cluster and whole clusters stay on one split side (the anti-leakage guard). **CD-HIT-est
+    cannot cluster DNA below ~0.8 (word-size floor), so `cdhit_splits.py` auto-routes <0.8 to MMseqs2**
+    (`easy-cluster --min-seq-id 0.6 -c 0.8 --cov-mode 1`; `mmseqs2` added to the env). At 0.6 the 47,088-row set
+    formed 39,278 clusters; val/test stayed healthy and the leakage check passed. The stricter threshold barely
+    moved balanced AUPRC vs 0.9 (so the old scores were not leakage-inflated) but did shift the genome-scale ranking
+    (see §10 / the species report). Validate further by sweeping 0.6–0.9 + checking CV stability.
   - `silver_weight = 0.3` — T13 inferred positives weighted 0.3 vs 1.0 for verified. T13 is inferred through
     3 stacked assumptions and the −10-crop check found ~⅓ of windows don't frame the promoter, so at full
     weight the ~14k AT-rich windows would teach "AT-rich = promoter" (the §1 trap). 0.3 balances the
@@ -466,16 +469,28 @@ select by **product description**, not the gene-symbol field.
 
 ## 10. Status snapshot
 
-**Solid (done + run/verified on HPC4, 2026-07):** T1–T16 + PT3/PT5, AND **all three Phase-C models trained +
-verified:** **T18 ProkBERT val AUPRC 0.876**, **T19 NT-LoRA 0.853** (on the `nt-tf4x` 4.57 env), **T20 CNN 0.811**
-— all `weighted`, full 40,442-row train / 3,323 verified-only val (29% pos), test≈val (no leakage), healthy
-curves. Verification was AI-council-audited (no truncation/leakage/metric-inflation). §7 decision **resolved**.
-**Frontier: T21 hyperparameter sweep (Phase C→D).** Wired for the two-env split (prokbert/cnn on 5.3.0, NT on
-`nt-tf4x`); run it, retrain winners at full epochs, then Phase D (T22–T27 eval/calibration) + Phase E (T28+ mining).
-**Two envs now (`infrastructure/T4/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
-**Needs attention:** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS table · **nt_len=67**
-tokenisation (higher than a typical 6-mer NT tok — sanity-check with Leo; not an inflation) · this session's
-edits (T18/T19/T20/T21 fixes + `NT_ENV.md`) committed from the Mac; the shared `/project` clone had a local
-commit (`ceb9783`) — keep the shared clone **pull-only** so it stops diverging.
+**Solid (done + run/verified on HPC4):** T1–T16 + PT3/PT5, **all Phase-C models retrained at the 0.6 clustering
+(MMseqs2, reviewer rec), and Phase-D evaluation regenerated for four models across three regimes.**
+- **0.6 four-model balanced numbers** (weighted, full 40,451-row train / 3,318 verified-only test): **ProkBERT
+  val 0.878 / test AUPRC 0.884**, **NT-LoRA 0.855 / 0.854** (`nt-tf4x` env), **CNN 0.784 / 0.804**, and a **new
+  4th model CNN-v2** (multi-encoding fusion, `model-training/T20/train_cnn_v2.py`) **val 0.827 / test 0.848**.
+  0.6 barely moved the balanced numbers vs the old 0.9 splits → the earlier scores were not leakage-inflated.
+- **CNN-v2 is the round's standout:** best composition-matched SRS AUROC (0.924, cleanest motif-learning signal)
+  AND best restricted genome-scale precision at recall 0.5–0.9. It reads the T16/cnn one-hot data (reconstructs
+  sequences) and is wired into T22/modular_eval/genome_inference/T24. **Ensemble decision: keep all FOUR** (Oak,
+  2026-08); the two CNNs are correlated, flagged for T29 weighting.
+- **Deployment finding flip (see `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv`,
+  regenerated + council-audited):** at genome scale (Regime C, held-out *C. ljungdahlii*, restricted scan) the **CNN
+  family leads, CNN-v2 best at practical recall**; **NT is weakest at genome scale despite 2nd-best balanced AUPRC**;
+  and **ProkBERT's restricted precision@0.5 dropped ~45%→33% vs the pre-0.6 model** while its balanced AUPRC held —
+  a model-specific genome-scale regression, **flagged not proven** (confirmation re-scan of `results/T18/best_model` queued).
+**Frontier (Phase D→E):** two HPC4 confirmations pending — (1) re-scan old T18 ProkBERT to confirm the drop;
+(2) refresh Regime B out-of-genus (T24 on 4 models, `--include-in-genus`). Then the rest of Phase D (T25 sigma-strat,
+T26 calibration — note CNN-v2 needs it, T27 FDR) + Phase E (T28 mining on the target, T29 four-model rank-percentile
+ensemble which is calibration-invariant, T30–T32). Runbook: `evaluation-and-calibration/REGEN_EVAL_0.6.md`.
+**Two envs (`infrastructure/T4/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
+**Needs attention:** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS table · Regime B out-of-genus numbers
+in the report are still pre-0.6 (refresh queued) · CNN-v2 genome scan is slow (per-window Python featurisation; bump
+`--step` or vectorise if needed) · keep the shared `/project` clone **pull-only**.
 **When in doubt:** confirm owners/decisions with Oak; verify tool usage and accessions against
 the literature; keep changes surgical and within your task.

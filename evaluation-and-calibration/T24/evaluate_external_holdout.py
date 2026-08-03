@@ -191,6 +191,28 @@ def load_cnn_model(cnn_model_path: Path, device: torch.device):
     return model
 
 
+def load_cnn_v2_model(cnn_v2_model_path: Path, device: torch.device):
+    """Load the multi-encoding CNN-v2. Returns (module, model, enac_window); the module
+    exposes predict_proba, which takes raw sequences (v2 computes its own features)."""
+    import importlib.util
+
+    repo = Path(__file__).resolve().parents[2]
+    path = (repo / "model-training" / "T20" / "train_cnn_v2.py").resolve()
+    spec = importlib.util.spec_from_file_location("train_cnn_v2", str(path))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    cfg = {}
+    cfg_path = cnn_v2_model_path.parent / "config.json"
+    if cfg_path.exists():
+        cfg = json.loads(cfg_path.read_text())
+
+    model = mod.build_model_from_config(cfg, device=str(device))
+    model.load_state_dict(torch.load(cnn_v2_model_path, map_location=device))
+    model.eval()
+    return mod, model, int(cfg.get("enac_window", 5))
+
+
 def metric_dict(y: np.ndarray, prob: np.ndarray, threshold: float) -> Dict[str, float]:
     pred = (prob >= threshold).astype(int)
     m = {
@@ -239,6 +261,7 @@ def evaluate_all(
     prokbert_model_path: Path | None,
     nt_adapter_path: Path | None,
     cnn_model_path: Path | None,
+    cnn_v2_model_path: Path | None,
     out_dir: Path,
     nt_base_model: str,
     threshold: float,
@@ -290,6 +313,15 @@ def evaluate_all(
         probs_by_model["cnn"] = prob_cnn
         metrics["cnn"] = metric_dict(y, prob_cnn, threshold)
 
+    # CNN-v2 (multi-encoding fusion; computes its own features from raw sequences)
+    if "cnn_v2" in models:
+        if cnn_v2_model_path is None:
+            raise ValueError("cnn_v2 requested but --cnn-v2-model-path was not provided")
+        v2mod, model_cnn_v2, enac_w = load_cnn_v2_model(cnn_v2_model_path, device)
+        prob_cnn_v2 = v2mod.predict_proba(model_cnn_v2, seqs, str(device), enac_window=enac_w)
+        probs_by_model["cnn_v2"] = prob_cnn_v2
+        metrics["cnn_v2"] = metric_dict(y, prob_cnn_v2, threshold)
+
     # Save PER-MODEL predictions, overall metrics, and species breakdown. Per-model files mean that
     # running this script twice into the same --out (prokbert,cnn in one env, then nt_lora in the
     # nt-tf4x env) ACCUMULATES results instead of the second run clobbering the first.
@@ -340,7 +372,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--threshold", type=float, default=0.5)
 
     p.add_argument("--models", default="prokbert,nt_lora,cnn",
-                   help="Comma-separated subset to evaluate: prokbert, nt_lora, cnn")
+                   help="Comma-separated subset to evaluate: prokbert, nt_lora, cnn, cnn_v2")
 
     p.add_argument("--prokbert-model-path",
                    help="Path to T18/T21 ProkBERT model dir (contains config + weights).")
@@ -348,6 +380,8 @@ def parse_args() -> argparse.Namespace:
                    help="Path to T19/T21 NT LoRA adapter dir.")
     p.add_argument("--cnn-model-path",
                    help="Path to T20/T21 CNN best_model.pt.")
+    p.add_argument("--cnn-v2-model-path",
+                   help="Path to T21_final/cnn_v2 best_model.pt (config.json read from same dir).")
     p.add_argument("--nt-base-model", default=NT_ID)
 
     p.add_argument("--out", default="results/T24")
@@ -357,7 +391,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     models = [m.strip() for m in args.models.split(",") if m.strip()]
-    valid = {"prokbert", "nt_lora", "cnn"}
+    valid = {"prokbert", "nt_lora", "cnn", "cnn_v2"}
     bad = [m for m in models if m not in valid]
     if bad:
         raise ValueError(f"Unknown model(s): {bad}. Choose from {sorted(valid)}")
@@ -400,6 +434,7 @@ def main() -> None:
         prokbert_model_path=(Path(args.prokbert_model_path) if args.prokbert_model_path else None),
         nt_adapter_path=(Path(args.nt_adapter_path) if args.nt_adapter_path else None),
         cnn_model_path=(Path(args.cnn_model_path) if args.cnn_model_path else None),
+        cnn_v2_model_path=(Path(args.cnn_v2_model_path) if args.cnn_v2_model_path else None),
         out_dir=out_dir,
         nt_base_model=args.nt_base_model,
         threshold=args.threshold,
