@@ -121,6 +121,8 @@ def parse_gff3(path, skips):
     cds = []
     with open(path) as fh:
         for line in fh:
+            if line.startswith("##FASTA"):
+                break  # GFF3 sequence section: everything after is FASTA, not features
             if line.startswith("#") or not line.strip():
                 continue
             p = line.rstrip("\n").split("\t")
