@@ -1,0 +1,3 @@
+genome_prefix	source_strain	convergent_pairs_found	convergent_valid_regions	convergent_windows	cds_total	cds_usable	cds_windows
+CACE	acetobutylicum	443	77	369	3881	3831	59418
+CPHY	phytofermentans	413	255	765	4077	4004	67393
