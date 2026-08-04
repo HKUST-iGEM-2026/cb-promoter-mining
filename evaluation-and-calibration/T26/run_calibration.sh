@@ -51,11 +51,11 @@ echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transfor
 
 echo "=== [1/3] ProkBERT calibration ==="
 python "$REPO/evaluation-and-calibration/T26/prokbert_calib.py" \
-    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG"
+    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/prokbert
 
 echo "=== [2/3] CNN calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
-    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG"
+    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/cnn
 
 conda deactivate
 
@@ -67,7 +67,7 @@ echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transfor
 
 echo "=== [3/3] NT calibration ==="
 python "$REPO/evaluation-and-calibration/T26/nt_calib.py" \
-    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG"
+    --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/nt
 
 conda deactivate
 echo "=== T26 done — see evaluation-and-calibration/T26/out/{prokbert,cnn,nt}/ ==="
