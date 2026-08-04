@@ -31,7 +31,7 @@ CONV_NEG="$REPO/evaluation-and-calibration/T26/convergent_intergenic_negatives.t
 CDS_NEG="$REPO/evaluation-and-calibration/T26/cds_negatives.tsv"
 
 # --- shared HF / hygiene (both envs) -----------------------------------------
-export HF_HOME=/project/igem2026/hf_cache
+export HF_HOME=/project/igem2026/hf_shared
 export HF_HUB_OFFLINE=1            # compute nodes are offline — models must be pre-staged
 export PYTHONNOUSERSITE=1          # ignore ~/.local so a stray user-site pkg can't shadow the env
 
