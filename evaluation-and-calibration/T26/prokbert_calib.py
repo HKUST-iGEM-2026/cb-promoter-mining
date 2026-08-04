@@ -18,7 +18,7 @@ What it does
    GPU, and takes the positive-class logit difference (logits[:,1] - logits[:,0]) as the calibration
    score; AT fraction is the second covariate. (softmax(...)[:,1] is kept only for the raw
    before/after report — the LOGIT, not the squashed prob, is what feeds the calibrator.)
-4. Platt scaling WITH the AT covariate, selecting unregularized vs L2 by stratified K-fold
+4. Platt scaling WITH the AT covariate, selecting unregularized vs L2 by repeated stratified K-fold
    cross-validation: every sample gets an out-of-fold (OOF) calibrated prediction, the two settings
    are compared on OOF log loss + Brier, the simpler/better one is chosen (L2 must beat unregularized
    by > --tol log loss, else the simpler model wins), then REFIT on the full calibration set. Raw vs
@@ -86,19 +86,20 @@ def score_block(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int) -> dict:
     }
 
 
-def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins):
-    """Pick unregularized vs L2 Platt calibrator by stratified-K-fold out-of-fold (OOF) predictions.
+def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins, n_repeats):
+    """Pick unregularized vs L2 Platt calibrator by REPEATED stratified-K-fold out-of-fold (OOF) preds.
 
-    For each candidate the data is split into `n_splits` stratified folds; the calibrator is fit on
-    the training folds and predicts the held-out fold, until every sample has one OOF prediction.
-    Candidates are compared on OOF log loss (primary) and Brier score; the L2 model must beat the
-    unregularized one by more than `tol` in log loss to be chosen, otherwise the simpler unregularized
-    model wins. The chosen calibrator is then REFIT on the full (X, y) and returned ready to persist.
+    For each candidate, `n_repeats` independent stratified K-fold passes (seeds seed, seed+1, ...) each
+    give every sample one held-out prediction; the per-pass OOF metrics are averaged (mean +/- std) so
+    the choice does not hinge on a single fold split. Candidates are compared on MEAN OOF log loss
+    (primary) and Brier; the L2 model must beat unregularized by more than `tol` in mean log loss to be
+    chosen, otherwise the simpler unregularized model wins. The chosen calibrator is REFIT on all (X, y).
 
     Each candidate is StandardScaler -> LogisticRegression so the L2 penalty acts on a common scale
-    (the scaler is a no-op for the unregularized MLE but keeps the two artifacts identical in form).
+    (a no-op for the unregularized MLE, but keeps both artifacts identical in form). The returned OOF
+    probabilities are averaged across the repeats.
 
-    Returns (chosen_name, refit_estimator, oof_prob_of_chosen, report_dict).
+    Returns (chosen_name, refit_estimator, mean_oof_prob_of_chosen, report_dict).
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold
@@ -110,25 +111,41 @@ def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins):
               else LogisticRegression(penalty=None, max_iter=1000))
         return make_pipeline(StandardScaler(), lr)
 
-    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
-    oof, report = {}, {}
+    oof, report, ll_std = {}, {}, {}
     for name in ("unregularized", "l2"):
-        p = np.zeros(len(y), dtype=float)
-        for tr, te in skf.split(X, y):
-            p[te] = make(name).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
-        oof[name] = p
-        report[name] = score_block(y, p, n_bins)   # carries log_loss + brier (+ auroc/auprc/ece)
+        oof_sum = np.zeros(len(y), dtype=float)
+        per_pass = []
+        for r in range(n_repeats):
+            skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed + r)
+            p = np.zeros(len(y), dtype=float)
+            for tr, te in skf.split(X, y):
+                p[te] = make(name).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
+            per_pass.append(score_block(y, p, n_bins))
+            oof_sum += p
+        oof[name] = oof_sum / n_repeats                 # mean OOF prob across repeats
+        agg = {}
+        for m in per_pass[0]:                           # mean +/- std of each metric across repeats
+            vals = [d[m] for d in per_pass]
+            agg[m] = float(np.mean(vals))
+            agg[m + "_std"] = float(np.std(vals))
+        report[name] = agg
+        ll_std[name] = agg["log_loss_std"]
 
     ll_u, ll_r = report["unregularized"]["log_loss"], report["l2"]["log_loss"]
+    su, sr = ll_std["unregularized"], ll_std["l2"]
+    span = f"over {n_repeats}x{n_splits}-fold"
     if ll_r < ll_u - tol:
         chosen = "l2"
-        reason = f"L2 OOF log_loss {ll_r:.4f} beats unregularized {ll_u:.4f} by > tol {tol}"
+        reason = (f"L2 mean OOF log_loss {ll_r:.4f}+/-{sr:.4f} beats unregularized "
+                  f"{ll_u:.4f}+/-{su:.4f} by > tol {tol} {span}")
     else:
         chosen = "unregularized"
-        reason = (f"unregularized chosen (simpler): OOF log_loss {ll_u:.4f} vs L2 {ll_r:.4f} "
-                  f"(L2 not better by tol {tol})")
+        reason = (f"unregularized chosen (simpler): mean OOF log_loss {ll_u:.4f}+/-{su:.4f} vs L2 "
+                  f"{ll_r:.4f}+/-{sr:.4f} {span} (L2 not better by tol {tol})")
     refit = make(chosen).fit(X, y)
-    return chosen, refit, oof[chosen], {"candidates": report, "chosen": chosen, "reason": reason}
+    return (chosen, refit, oof[chosen],
+            {"candidates": report, "chosen": chosen, "reason": reason,
+             "n_repeats": n_repeats, "n_splits": n_splits})
 
 
 # ------------------------------------------------------------------ data loading (identical to nt_calib.py)
@@ -232,6 +249,8 @@ def main() -> None:
                     help="tokenizer max_length cap in TOKENS (default 128 — safely above the ~52–81 bp "
                          "windows so nothing real is truncated; padding is attention-masked)")
     ap.add_argument("--cv-folds", type=int, default=5, help="stratified CV folds for calibrator selection")
+    ap.add_argument("--cv-repeats", type=int, default=5,
+                    help="repeated-CV passes with seeds seed..seed+R-1; decision uses mean OOF (1 = single split)")
     ap.add_argument("--l2-C", type=float, default=1.0, help="inverse L2 strength for the regularized calibrator")
     ap.add_argument("--tol", type=float, default=0.005,
                     help="L2 must beat unregularized by > tol in OOF log loss to be chosen (else simpler wins)")
@@ -299,7 +318,7 @@ def main() -> None:
         die(f"a class has fewer than --cv-folds={args.cv_folds} samples "
             f"(pos={int((y==1).sum())}, neg={int((y==0).sum())}); lower --cv-folds or add data.")
     chosen, calibrator, oof_prob, selection = cv_select(
-        X_logit_at, y, args.cv_folds, args.seed, args.l2_C, args.tol, args.ece_bins)
+        X_logit_at, y, args.cv_folds, args.seed, args.l2_C, args.tol, args.ece_bins, args.cv_repeats)
 
     metrics = {
         "raw": score_block(y, raw_prob, args.ece_bins),
@@ -326,6 +345,7 @@ def main() -> None:
         "n_convergent": args.n_convergent,
         "n_cds": args.n_cds,
         "cv_folds": args.cv_folds,
+        "cv_repeats": args.cv_repeats,
         "l2_C": args.l2_C,
         "tol": args.tol,
         "chosen": chosen,
@@ -355,7 +375,7 @@ def main() -> None:
     print(f"sequences        : {len(data)}  (pos={int((data['label']==1).sum())}, "
           f"neg={int((data['label']==0).sum())}: {args.n_convergent} convergent + {args.n_cds} CDS)")
     print(f"model output     : (batch, {out_cols})")
-    print(f"CV               : {args.cv_folds}-fold stratified | chosen: {chosen} ({selection['reason']})")
+    print(f"CV               : {args.cv_folds}-fold x {args.cv_repeats} repeats stratified | chosen: {chosen} ({selection['reason']})")
     print("\nPlatt+AT calibrator selection (out-of-fold):")
     print(f"metric        unregularized     L2(C={args.l2_C:g})")
     for m in ("log_loss", "brier", "auroc", "auprc", "ece"):
