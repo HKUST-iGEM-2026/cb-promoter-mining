@@ -491,10 +491,19 @@ select by **product description**, not the gene-symbol field.
 - **Deployment finding flip (see `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv`,
   regenerated + council-audited):** at genome scale (Regime C, held-out *C. ljungdahlii*, restricted scan) the **CNN
   family leads, CNN-v2 best at practical recall**; **NT is weakest at genome scale despite 2nd-best balanced AUPRC**;
-  and **ProkBERT's restricted precision@0.5 dropped ~45%→33% vs the pre-0.6 model** while its balanced AUPRC held —
-  a model-specific genome-scale regression, **flagged not proven** (confirmation re-scan of `results/T18/best_model` queued).
-**Frontier (Phase D→E):** two HPC4 confirmations pending — (1) re-scan old T18 ProkBERT to confirm the drop;
-(2) refresh Regime B out-of-genus (T24 on 4 models, `--include-in-genus`). Then the rest of Phase D (T25 sigma-strat,
+  and **ProkBERT's restricted precision@0.5 dropped 45%→33% vs the pre-0.6 model (T18, val 0.876)** while its balanced
+  AUPRC held — a genome-scale regression now **CONFIRMED** (re-scanned T18 through the identical pipeline → reproduced
+  45.0% / 760 FP@0.5). Confound: T18 differs from the 0.6 model in both clustering threshold AND swept hyperparams, so it's
+  "the retrain as a whole," not 0.6 alone. **RESOLVED (2026-08): cnn_v2 is threshold-robust** — retrained at 0.9 its
+  genome-scale precision is ~unchanged (40% @0.5 vs 0.6's 44%; balanced 0.838/0.836 vs 0.827/0.848), i.e. UNLIKE ProkBERT
+  it pays no genome-scale penalty for 0.6 (it reads real motif signal, not near-duplicates). cnn_v2@0.6 already matches
+  old 0.9 ProkBERT genome-scale (44%≈45%) with no leakage exposure → **deploy cnn_v2@0.6, don't revert ProkBERT to 0.9.**
+- **Regime B refreshed on 0.6 (T24, in+out-genus):** in-genus composition-matched AUROC ProkBERT 0.736 > cnn_v2 0.659 >
+  CNN 0.629 > **NT 0.440 (collapsed to chance from its pre-0.6 best 0.71)**; out-of-genus all fail (ProkBERT anti-ranks 0.17).
+  **NT is the 0.6-round weak link on every deployment axis** (genome-scale worst AND in-genus motif at chance) despite 2nd-best
+  balanced AUPRC — the CNN family carries the ensemble.
+**Frontier (Phase D→E):** evaluation regeneration COMPLETE (all regimes, 4 models, 0.6 + the 0.9 robustness check).
+Next: the rest of Phase D (T25 sigma-strat,
 T26 calibration — note CNN-v2 needs it, T27 FDR) + Phase E (T28 mining on the target, T29 four-model rank-percentile
 ensemble which is calibration-invariant, T30–T32). Runbook: `evaluation-and-calibration/REGEN_EVAL_0.6.md`.
 **Two envs (`infrastructure/T4/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
