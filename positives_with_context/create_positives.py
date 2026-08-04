@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Consolidated script to create positive promoter datasets with genomic context.
-Strictly enforces a uniform context size (250bp) for all records.
+Strictly enforces the pipeline schema contract:
+ - sequence: Fixed 81 bp core promoter sequence
+ - sequence_context: Fixed-length genomic window (multiple of 128, e.g., 384 bp)
+ - core_offset: Integer offset of the 81 bp core within sequence_context
 """
 
 import pandas as pd
@@ -13,32 +16,39 @@ import sys
 import argparse
 
 def load_data():
-    """Load both verified and T13 upstream datasets"""
-    possible_paths = [
-        "/project/igem2026/cb-promoter-mining/dataset-construction",
-        "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results"
-    ]
+    """Load and combine positive datasets from T13, T7, and T8 directories"""
     frames = []
-    for base in possible_paths:
-        t13 = os.path.join(base, "T13", "upstream_regions.tsv")
-        if os.path.exists(t13):
-            df = pd.read_csv(t13, sep='\t')
-            df['source_type'] = 'upstream_region'
-            frames.append(df)
-            break
-            
-    for base in possible_paths:
-        for v_name in ["verified_positives.tsv", "hocq_tss.tsv"]:
-            v_path = os.path.join(base, v_name)
-            if os.path.exists(v_path):
-                df = pd.read_csv(v_path, sep='\t')
-                df['source_type'] = 'verified_positive'
-                frames.append(df)
-                
+    
+    # 1. Load T13 upstream regions
+    t13_path = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T13/upstream_regions.tsv"
+    if os.path.exists(t13_path):
+        df_t13 = pd.read_csv(t13_path, sep='\t')
+        df_t13['source_type'] = 'upstream_region'
+        frames.append(df_t13)
+        print(f"📥 Loaded T13: {len(df_t13)} rows")
+
+    # 2. Load T7 / T8 datasets
+    t7_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T7/T7 - all.csv"
+    if os.path.exists(t7_path):
+        df_t7 = pd.read_csv(t7_path)
+        df_t7['source_type'] = 't7_master_curated'
+        frames.append(df_t7)
+        print(f"📥 Loaded T7: {len(df_t7)} rows")
+
+    t8_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T8/curated_positive_promoters.parquet"
+    if os.path.exists(t8_path):
+        df_t8 = pd.read_parquet(t8_path)
+        df_t8['source_type'] = 't8_curated_positive'
+        frames.append(df_t8)
+        print(f"📥 Loaded T8: {len(df_t8)} rows")
+
     if not frames:
-        print("❌ No input datasets found!")
+        print("❌ No input datasets found in T13, T7, or T8!")
         return None
-    return pd.concat(frames, ignore_index=True)
+        
+    combined_df = pd.concat(frames, ignore_index=True)
+    print(f"✅ Successfully combined all datasets. Total rows: {len(combined_df)}")
+    return combined_df
 
 def load_all_genomes():
     """Load all Bakta genome files into a global contig dictionary"""
@@ -58,120 +68,93 @@ def load_all_genomes():
     print(f"✅ Successfully indexed {len(genome_dict)} unique contigs.")
     return genome_dict
 
-def process_record(row, genome_dict, mode='full', context_size=250, target_length=128):
-    # Support 'upstream_sequence' or standard sequence column names
-    seq_col = next((col for col in ['upstream_sequence', 'sequence', 'seq'] if col in row and pd.notna(row[col])), None)
-    sequence = str(row[seq_col]) if seq_col else ''
+def process_record(row, genome_dict, core_length=81, total_context_len=384):
+    """
+    Extracts genomic context if coordinates are available, 
+    otherwise falls back gracefully to native sequence data.
+    """
+    seq_col = next((col for col in ['upstream_sequence', 'sequence', 'seq', 'promoter_sequence'] if col in row and pd.notna(row[col])), None)
+    raw_fallback_seq = str(row[seq_col]) if seq_col else ''
     
-    contig = str(row.get('contig', ''))
-    start = row.get('start', None)
-    end = row.get('stop', row.get('end', None))
-    strand = row.get('strand', '+')
+    contig = str(row.get('contig', row.get('Locus', '')))
+    start = row.get('start', row.get('Genome_position', row.get('position_start', None)))
+    end = row.get('stop', row.get('end', row.get('position_end', start)))
+    strand = row.get('strand', row.get('Strand', '+'))
     
-    # Fallback if no genomic context mapping is possible
-    if not contig or contig not in genome_dict or start is None or pd.isna(start):
-        if mode == '128bp':
-            seq = sequence[:target_length] if len(sequence) >= target_length else sequence + 'N' * (target_length - len(sequence))
-            return {
-                'promoter_128bp': seq,
-                'length': len(seq),
-                'contig': contig,
-                'position_start': start,
-                'position_end': end,
-                'strand': strand,
-                'window_size': context_size,
-                'has_genomic_context': False
-            }
-        else:
-            return {
-                'promoter_sequence': sequence,
-                'full_context': sequence,
-                'upstream_context': 'N' * min(context_size, len(sequence)),
-                'downstream_context': 'N' * min(context_size, len(sequence)),
-                'contig': contig,
-                'position_start': start,
-                'position_end': end,
-                'strand': strand,
-                'window_size': context_size,
-                'has_genomic_context': False
-            }
-            
-    contig_seq = genome_dict[contig]
-    start_pos = int(start)
-    end_pos = int(end) if end is not None and not pd.isna(end) else start_pos + len(sequence)
+    half_context = total_context_len // 2
+    half_core = core_length // 2
     
-    if mode == '128bp':
-        promoter_len = max(len(sequence), end_pos - start_pos)
-        half_target = target_length // 2
-        u_needed = max(0, half_target - promoter_len // 2)
-        d_needed = max(0, target_length - promoter_len - u_needed)
-        
-        u_start = max(0, start_pos - u_needed)
-        d_end = min(len(contig_seq), end_pos + d_needed)
-        
-        raw_u = contig_seq[u_start:start_pos]
-        raw_p = contig_seq[start_pos:end_pos] if start_pos < len(contig_seq) else sequence
-        raw_d = contig_seq[end_pos:d_end]
-        
-        if str(strand) in ['-', '-1', 'reverse']:
-            full_seq = str(Seq(raw_d + raw_p + raw_u).reverse_complement())
-        else:
-            full_seq = raw_u + raw_p + raw_d
-            
-        if len(full_seq) < target_length:
-            full_seq += 'N' * (target_length - len(full_seq))
-        elif len(full_seq) > target_length:
-            full_seq = full_seq[:target_length]
-            
-        return {
-            'promoter_128bp': full_seq,
-            'length': len(full_seq),
-            'contig': contig,
-            'position_start': start_pos,
-            'position_end': end_pos,
-            'strand': strand,
-            'window_size': context_size,
-            'has_genomic_context': True
-        }
+    matched_contig = None
+    if contig in genome_dict:
+        matched_contig = contig
     else:
-        # STRICTLY ENFORCE UNIFORM 250bp CONTEXT
-        u_start = max(0, start_pos - context_size)
-        d_end = min(len(contig_seq), end_pos + context_size)
-        
-        raw_u = contig_seq[u_start:start_pos]
-        raw_p = contig_seq[start_pos:end_pos] if start_pos < len(contig_seq) else sequence
-        raw_d = contig_seq[end_pos:d_end]
-        
-        if str(strand) in ['-', '-1', 'reverse']:
-            upstream_context = str(Seq(raw_d).reverse_complement())
-            downstream_context = str(Seq(raw_u).reverse_complement())
-            promoter_sequence = str(Seq(raw_p).reverse_complement()) if raw_p else str(Seq(sequence).reverse_complement())
-            full_context = upstream_context + promoter_sequence + downstream_context
-        else:
-            upstream_context = raw_u
-            downstream_context = raw_d
-            promoter_sequence = raw_p if raw_p else sequence
-            full_context = upstream_context + promoter_sequence + downstream_context
-            
+        for g_id in genome_dict.keys():
+            if contig and (contig in g_id or g_id in contig):
+                matched_contig = g_id
+                break
+
+    # Fallback mode for rows without genome coordinates (like T8 sequence sets)
+    if not matched_contig or start is None or pd.isna(start):
+        padded_seq = raw_fallback_seq[:total_context_len].ljust(total_context_len, 'N')
+        core_seq = raw_fallback_seq[:core_length].ljust(core_length, 'N')
         return {
-            'promoter_sequence': promoter_sequence,
-            'upstream_context': upstream_context,
-            'downstream_context': downstream_context,
-            'full_context': full_context,
-            'contig': contig,
-            'position_start': start_pos,
-            'position_end': end_pos,
-            'strand': strand,
-            'window_size': context_size,
-            'has_genomic_context': True
+            'sequence': core_seq,
+            'sequence_context': padded_seq,
+            'core_offset': half_context - half_core,
+            'contig': contig if contig else 'unknown',
+            'position_start': 0,
+            'position_end': 0,
+            'strand': strand if strand else '+',
+            'has_genomic_context': False
         }
+            
+    contig_seq = genome_dict[matched_contig]
+    start_pos = int(float(start))
+    
+    core_start = max(0, start_pos - half_core)
+    core_end = core_start + core_length
+    
+    center_pos = start_pos
+    context_start = max(0, center_pos - half_context)
+    context_end = min(len(contig_seq), center_pos + half_context)
+    
+    raw_context = contig_seq[context_start:context_end]
+    raw_core = contig_seq[core_start:core_end]
+    
+    if len(raw_context) < total_context_len:
+        if context_start == 0:
+            raw_context = 'N' * (total_context_len - len(raw_context)) + raw_context
+        else:
+            raw_context = raw_context + 'N' * (total_context_len - len(raw_context))
+            
+    if len(raw_core) < core_length:
+        raw_core = raw_core.ljust(core_length, 'N')
+
+    if str(strand) in ['-', '-1', 'reverse', 'R']:
+        sequence_context = str(Seq(raw_context).reverse_complement())
+        sequence = str(Seq(raw_core).reverse_complement())
+        core_offset = total_context_len - (core_end - context_start)
+    else:
+        sequence_context = raw_context
+        sequence = raw_core
+        core_offset = core_start - context_start
+
+    return {
+        'sequence': sequence,
+        'sequence_context': sequence_context,
+        'core_offset': core_offset,
+        'contig': matched_contig,
+        'position_start': start_pos,
+        'position_end': end,
+        'strand': strand,
+        'has_genomic_context': True
+    }
 
 def main():
-    parser = argparse.ArgumentParser(description="Create positives with genomic context.")
-    parser.add_argument('--mode', type=str, choices=['full', '128bp'], default='full', help='Output mode')
+    parser = argparse.ArgumentParser(description="Create positives with genomic context matching NTv3 contract.")
     args = parser.parse_args()
     
-    print(f"🚀 Running Positive Construction in [{args.mode.upper()}] mode (Strict 250bp context limit)")
+    print("🚀 Running Positive Construction with NTv3 128-multiple Schema Compliance")
     data = load_data()
     if data is None:
         sys.exit(1)
@@ -180,20 +163,19 @@ def main():
     
     results = []
     for idx, row in data.iterrows():
-        res = process_record(row, genome_dict, mode=args.mode, context_size=250)
+        res = process_record(row, genome_dict)
         if res:
             for col in ['genome', 'locus_tag', 'gene', 'product', 'hk_category', 'tier', 'source_type']:
                 if col in row:
                     res[col] = row[col]
             results.append(res)
             
-    output_dir = Path("/project/igem2026/cb-promoter-mining/positives_with_context/output" if args.mode == 'full' else "/project/igem2026/cb-promoter-mining/positives_with_context/output_128bp")
+    output_dir = Path("/project/igem2026/cb-promoter-mining/positives_with_context/output")
     output_dir.mkdir(parents=True, exist_ok=True)
     
     result_df = pd.DataFrame(results)
-    suffix = "positives_with_context" if args.mode == 'full' else "positives_128bp"
-    result_df.to_parquet(output_dir / f"{suffix}.parquet")
-    result_df.to_csv(output_dir / f"{suffix}.csv", index=False)
+    result_df.to_parquet(output_dir / "positives_with_context.parquet", index=False)
+    result_df.to_csv(output_dir / "positives_with_context.csv", index=False)
     
     print(f"✅ Finished! Processed {len(results)} records. Saved to {output_dir}")
 
