@@ -11,21 +11,22 @@ What it does
    — a whole AutoModelForSequenceClassification dir, NOT a LoRA adapter like NT). The tokenizer loads
    from the BASE id `neuralbioinfo/prokbert-mini` (T18 trains plain prokbert-mini and its save dir does
    NOT ship tokenizer files — same as the T24 convention "load ProkBERT tokenizer from base").
-2. Builds the calibration dataset = T9 positives (label 1) + a balanced sample of T14 negatives
-   (label 0). Default 1:1, SRS class. Both the ratio (--neg-per-pos) and classes (--neg-classes) are flags.
+2. Builds the calibration dataset = 93 T9 positives (label 1) + 186 curated genomic negatives
+   (label 0): 130 convergent-intergenic + 56 CDS-interior windows from extract_negatives.py (this
+   dir). Counts (--n-convergent / --n-cds) and paths are flags.
 3. Tokenises with the ProkBERT tokenizer (attention-masked padding handles variable length), scores on
-   GPU, and takes the positive-class logit difference (logits[:,1] - logits[:,0]) as the 1-D
-   calibration feature. (softmax(...)[:,1] is kept only for the raw before/after report — the LOGIT,
-   not the squashed prob, is what feeds the calibrator.)
-4. Splits stratified (fixed seed) into a calibration-fit subset and a held-out test subset, fits a
-   1-D LogisticRegression (Platt scaling, penalty=None), applies it ONLY to the held-out logits, and
-   compares raw vs calibrated probabilities (Brier / log-loss / AUROC / AUPRC / ECE). A second
-   calibrator adds the AT covariate (logit + AT) and is reported alongside.
+   GPU, and takes the positive-class logit difference (logits[:,1] - logits[:,0]) as the calibration
+   score; AT fraction is the second covariate. (softmax(...)[:,1] is kept only for the raw
+   before/after report — the LOGIT, not the squashed prob, is what feeds the calibrator.)
+4. Platt scaling WITH the AT covariate, selecting unregularized vs L2 by stratified K-fold
+   cross-validation: every sample gets an out-of-fold (OOF) calibrated prediction, the two settings
+   are compared on OOF log loss + Brier, the simpler/better one is chosen (L2 must beat unregularized
+   by > --tol log loss, else the simpler model wins), then REFIT on the full calibration set. Raw vs
+   calibrated (Brier / log-loss / AUROC / AUPRC / ECE) is reported.
 
 NOTE: run on the main `promoter-mining-hpc4` env (transformers 5.3.0) — ProkBERT loads clean there
-(unlike NT, which needs the nt-tf4x env). Calibration is prevalence-dependent: a 1:1 set calibrates to
-a balanced operating point, not genome-wide promoter prevalence (set --neg-per-pos to the deployment
-base rate if needed).
+(unlike NT, which needs the nt-tf4x env). Calibration is prevalence-dependent: this 93:186 (1:2) set
+calibrates to that operating point, not genome-wide promoter prevalence.
 
 HPC4 model path: /project/igem2026/cb-promoter-mining/results/T21/prokbert/trial_12/best_model
 Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
@@ -85,6 +86,51 @@ def score_block(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int) -> dict:
     }
 
 
+def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins):
+    """Pick unregularized vs L2 Platt calibrator by stratified-K-fold out-of-fold (OOF) predictions.
+
+    For each candidate the data is split into `n_splits` stratified folds; the calibrator is fit on
+    the training folds and predicts the held-out fold, until every sample has one OOF prediction.
+    Candidates are compared on OOF log loss (primary) and Brier score; the L2 model must beat the
+    unregularized one by more than `tol` in log loss to be chosen, otherwise the simpler unregularized
+    model wins. The chosen calibrator is then REFIT on the full (X, y) and returned ready to persist.
+
+    Each candidate is StandardScaler -> LogisticRegression so the L2 penalty acts on a common scale
+    (the scaler is a no-op for the unregularized MLE but keeps the two artifacts identical in form).
+
+    Returns (chosen_name, refit_estimator, oof_prob_of_chosen, report_dict).
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
+    def make(name):
+        lr = (LogisticRegression(penalty="l2", C=l2_C, max_iter=1000) if name == "l2"
+              else LogisticRegression(penalty=None, max_iter=1000))
+        return make_pipeline(StandardScaler(), lr)
+
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed)
+    oof, report = {}, {}
+    for name in ("unregularized", "l2"):
+        p = np.zeros(len(y), dtype=float)
+        for tr, te in skf.split(X, y):
+            p[te] = make(name).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
+        oof[name] = p
+        report[name] = score_block(y, p, n_bins)   # carries log_loss + brier (+ auroc/auprc/ece)
+
+    ll_u, ll_r = report["unregularized"]["log_loss"], report["l2"]["log_loss"]
+    if ll_r < ll_u - tol:
+        chosen = "l2"
+        reason = f"L2 OOF log_loss {ll_r:.4f} beats unregularized {ll_u:.4f} by > tol {tol}"
+    else:
+        chosen = "unregularized"
+        reason = (f"unregularized chosen (simpler): OOF log_loss {ll_u:.4f} vs L2 {ll_r:.4f} "
+                  f"(L2 not better by tol {tol})")
+    refit = make(chosen).fit(X, y)
+    return chosen, refit, oof[chosen], {"candidates": report, "chosen": chosen, "reason": reason}
+
+
 # ------------------------------------------------------------------ data loading (identical to nt_calib.py)
 def load_positives(path: Path) -> pd.DataFrame:
     if not path.is_file():
@@ -101,34 +147,30 @@ def load_positives(path: Path) -> pd.DataFrame:
     return out
 
 
-def load_negatives(path: Path, neg_classes: str, n_needed: int, seed: int) -> pd.DataFrame:
+def _sample_negatives(path: Path, n: int, flag: str, seed: int) -> pd.DataFrame:
+    """Sample `n` rows from one extract_negatives.py TSV (label=0). Uses all rows if fewer exist."""
     if not path.is_file():
-        die(f"negatives file not found: {path}  (--negatives; expected T14 results/T14/negative_set.tsv)")
+        die(f"negatives file not found: {path}  ({flag})")
     df = pd.read_csv(path, sep="\t")
     if "sequence" not in df.columns:
         die(f"negatives file {path} has no 'sequence' column; got {list(df.columns)}")
-    wanted = [c.strip() for c in neg_classes.split(",") if c.strip()]
-    if "all" not in [w.lower() for w in wanted]:
-        if "negative_class" not in df.columns:
-            die(f"negatives file {path} has no 'negative_class' column but --neg-classes={neg_classes} "
-                f"was requested; got {list(df.columns)}")
-        avail = set(df["negative_class"].unique())
-        missing = [w for w in wanted if w not in avail]
-        if missing:
-            die(f"requested negative class(es) {missing} not in {path}; available: {sorted(avail)}")
-        df = df[df["negative_class"].isin(wanted)]
-    if len(df) == 0:
-        die(f"no negatives left after filtering to classes {wanted} in {path}")
-    if len(df) < n_needed:
-        print(f"WARNING: only {len(df)} negatives available for classes {wanted}, "
-              f"fewer than the {n_needed} requested — using all of them.")
+    if len(df) < n:
+        print(f"WARNING: only {len(df)} rows in {path}, fewer than the {n} requested — using all of them.")
         sample = df
     else:
-        sample = df.sample(n=n_needed, random_state=seed)
-    out = pd.DataFrame({"sequence": sample["sequence"].astype(str)})
-    out["label"] = 0
-    out["source"] = sample.get("negative_class", pd.Series(["negative"] * len(sample))).values
-    return out.reset_index(drop=True)
+        sample = df.sample(n=n, random_state=seed)
+    src = sample["negative_type"] if "negative_type" in sample.columns else pd.Series([path.stem] * len(sample))
+    return pd.DataFrame({"sequence": sample["sequence"].astype(str).values,
+                         "label": 0,
+                         "source": src.astype(str).values}).reset_index(drop=True)
+
+
+def load_negatives(convergent_path: Path, cds_path: Path, n_convergent: int, n_cds: int,
+                   seed: int) -> pd.DataFrame:
+    """Curated genomic negatives: n_convergent convergent-intergenic + n_cds CDS-interior windows."""
+    conv = _sample_negatives(convergent_path, n_convergent, "--convergent-negatives", seed)
+    cds = _sample_negatives(cds_path, n_cds, "--cds-negatives", seed + 1)
+    return pd.concat([conv, cds], ignore_index=True)
 
 
 def validate_sequences(seqs: pd.Series) -> None:
@@ -175,18 +217,24 @@ def main() -> None:
                     help="trained full-model dir (default: <repo>/results/T21/prokbert/trial_12/best_model)")
     ap.add_argument("--positives", type=Path, default=None,
                     help="T9 positives tsv (default: <repo>/data-acquisition-and-curation/T9/literature_promoters.tsv)")
-    ap.add_argument("--negatives", type=Path, default=None,
-                    help="T14 negatives tsv (default: <repo>/results/T14/negative_set.tsv)")
-    ap.add_argument("--neg-classes", default="SRS",
-                    help="comma list of T14 negative_class values, or 'all' (default: SRS)")
-    ap.add_argument("--neg-per-pos", type=float, default=1.0,
-                    help="negatives sampled per positive (default 1.0 = balanced 50/50)")
+    ap.add_argument("--convergent-negatives", type=Path, default=None,
+                    help="convergent-intergenic negatives tsv "
+                         "(default: <repo>/evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv)")
+    ap.add_argument("--cds-negatives", type=Path, default=None,
+                    help="CDS-interior negatives tsv "
+                         "(default: <repo>/evaluation-and-calibration/T26/cds_negatives.tsv)")
+    ap.add_argument("--n-convergent", type=int, default=130,
+                    help="convergent-intergenic negatives to sample (default 130)")
+    ap.add_argument("--n-cds", type=int, default=56, help="CDS-interior negatives to sample (default 56)")
     ap.add_argument("--out-dir", type=Path, default=None,
                     help="output dir (default: <repo>/evaluation-and-calibration/T26/out/prokbert)")
     ap.add_argument("--max-length", type=int, default=128,
                     help="tokenizer max_length cap in TOKENS (default 128 — safely above the ~52–81 bp "
                          "windows so nothing real is truncated; padding is attention-masked)")
-    ap.add_argument("--test-size", type=float, default=0.3)
+    ap.add_argument("--cv-folds", type=int, default=5, help="stratified CV folds for calibrator selection")
+    ap.add_argument("--l2-C", type=float, default=1.0, help="inverse L2 strength for the regularized calibrator")
+    ap.add_argument("--tol", type=float, default=0.005,
+                    help="L2 must beat unregularized by > tol in OOF log loss to be chosen (else simpler wins)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--ece-bins", type=int, default=10)
@@ -195,13 +243,13 @@ def main() -> None:
     repo = args.repo_root.resolve()
     model_dir = (args.model_dir or repo / "results/T21/prokbert/trial_12/best_model").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
-    negatives_path = (args.negatives or repo / "results/T14/negative_set.tsv").resolve()
+    convergent_path = (args.convergent_negatives
+                       or repo / "evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv").resolve()
+    cds_path = (args.cds_negatives or repo / "evaluation-and-calibration/T26/cds_negatives.tsv").resolve()
     out_dir = (args.out_dir or repo / "evaluation-and-calibration/T26/out/prokbert").resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
     import torch  # deferred: torch/CUDA init is slow; do it after arg/path validation, not for --help
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.model_selection import train_test_split
     import joblib
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -211,8 +259,7 @@ def main() -> None:
 
     # --- dataset ---
     pos = load_positives(positives_path)
-    n_needed = int(round(args.neg_per_pos * len(pos)))
-    neg = load_negatives(negatives_path, args.neg_classes, n_needed, args.seed)
+    neg = load_negatives(convergent_path, cds_path, args.n_convergent, args.n_cds, args.seed)
     data = pd.concat([pos, neg], ignore_index=True)
     data["at_fraction"] = data["sequence"].map(at_fraction)
 
@@ -245,64 +292,44 @@ def main() -> None:
     data["raw_logit"] = logit_diff
     data["raw_prob"] = raw_prob
 
-    # --- stratified calib/test split (fixed seed) ---
-    idx = np.arange(len(data))
-    calib_idx, test_idx = train_test_split(
-        idx, test_size=args.test_size, random_state=args.seed, stratify=data["label"].values)
-    data["split"] = "calib"
-    data.loc[test_idx, "split"] = "test"
-
-    y_calib = data["label"].values[calib_idx]
-    y_test = data["label"].values[test_idx]
-    if len(set(y_calib)) < 2 or len(set(y_test)) < 2:
-        die("stratified split produced a single-class calib or test subset — "
-            "increase the dataset size or adjust --test-size/--neg-per-pos.")
-
-    # --- fit calibrators on the CALIB subset only ---
-    Xc_logit = logit_diff[calib_idx].reshape(-1, 1)                 # (N, 1) per spec
-    Xc_logit_at = np.column_stack([logit_diff[calib_idx], data["at_fraction"].values[calib_idx]])
-    # penalty=None -> unregularized logistic regression (Platt scaling); the supported way to fit a
-    # plain logistic calibrator (kept identical across the three T26 scripts).
-    cal_logit = LogisticRegression(penalty=None).fit(Xc_logit, y_calib)
-    cal_logit_at = LogisticRegression(penalty=None).fit(Xc_logit_at, y_calib)
-
-    # --- apply to the HELD-OUT test logits only ---
-    Xt_logit = logit_diff[test_idx].reshape(-1, 1)
-    Xt_logit_at = np.column_stack([logit_diff[test_idx], data["at_fraction"].values[test_idx]])
-    calib_prob = cal_logit.predict_proba(Xt_logit)[:, 1]
-    calib_prob_at = cal_logit_at.predict_proba(Xt_logit_at)[:, 1]
+    # --- Platt scaling with AT covariate: select unregularized vs L2 by stratified-CV OOF ---
+    y = data["label"].values
+    X_logit_at = np.column_stack([logit_diff, data["at_fraction"].values])   # [score, AT covariate]
+    if int(min(np.bincount(y))) < args.cv_folds:
+        die(f"a class has fewer than --cv-folds={args.cv_folds} samples "
+            f"(pos={int((y==1).sum())}, neg={int((y==0).sum())}); lower --cv-folds or add data.")
+    chosen, calibrator, oof_prob, selection = cv_select(
+        X_logit_at, y, args.cv_folds, args.seed, args.l2_C, args.tol, args.ece_bins)
 
     metrics = {
-        "raw": score_block(y_test, raw_prob[test_idx], args.ece_bins),
-        "calibrated_logit": score_block(y_test, calib_prob, args.ece_bins),
-        "calibrated_logit_at": score_block(y_test, calib_prob_at, args.ece_bins),
+        "raw": score_block(y, raw_prob, args.ece_bins),
+        "cv_unregularized": selection["candidates"]["unregularized"],
+        "cv_l2": selection["candidates"]["l2"],
+        "calibrated_logit_at_oof": score_block(y, oof_prob, args.ece_bins),  # == chosen candidate's OOF
     }
 
-    # --- write CSV (test rows get calibrated probs; calib rows NaN, per "apply only to held-out") ---
-    data["calib_prob"] = np.nan
-    data["calib_prob_at"] = np.nan
-    data.loc[test_idx, "calib_prob"] = calib_prob
-    data.loc[test_idx, "calib_prob_at"] = calib_prob_at
+    # --- write CSV (every row carries its out-of-fold calibrated prob) ---
+    data["calib_prob_at"] = oof_prob
     csv_path = out_dir / "prokbert_calibration_predictions.csv"
     data[["sequence", "label", "source", "at_fraction",
-          "raw_logit", "raw_prob", "calib_prob", "calib_prob_at", "split"]].to_csv(csv_path, index=False)
+          "raw_logit", "raw_prob", "calib_prob_at"]].to_csv(csv_path, index=False)
 
-    # --- save calibrators + metrics ---
-    cal_path = out_dir / "prokbert_calibrator.joblib"
+    # --- save the selected calibrator (refit on the FULL set) + metrics ---
     cal_at_path = out_dir / "prokbert_calibrator_at.joblib"
-    joblib.dump(cal_logit, cal_path)
-    joblib.dump(cal_logit_at, cal_at_path)
+    joblib.dump(calibrator, cal_at_path)
     metrics_path = out_dir / "prokbert_calibration_metrics.json"
     metrics_path.write_text(json.dumps({
         "device": str(device),
         "n_total": int(len(data)),
         "n_positive": int((data["label"] == 1).sum()),
         "n_negative": int((data["label"] == 0).sum()),
-        "neg_classes": args.neg_classes,
-        "neg_per_pos": args.neg_per_pos,
-        "n_calib": int(len(calib_idx)),
-        "n_test": int(len(test_idx)),
-        "test_size": args.test_size,
+        "n_convergent": args.n_convergent,
+        "n_cds": args.n_cds,
+        "cv_folds": args.cv_folds,
+        "l2_C": args.l2_C,
+        "tol": args.tol,
+        "chosen": chosen,
+        "selection_reason": selection["reason"],
         "seed": args.seed,
         "max_length": args.max_length,
         "model_output_shape": [int(len(data)), out_cols],
@@ -312,8 +339,8 @@ def main() -> None:
             "tokenizer_id": args.tokenizer_id,
             "model_dir": str(model_dir),
             "positives": str(positives_path),
-            "negatives": str(negatives_path),
-            "calibrator": str(cal_path),
+            "convergent_negatives": str(convergent_path),
+            "cds_negatives": str(cds_path),
             "calibrator_at": str(cal_at_path),
             "predictions_csv": str(csv_path),
             "metrics_json": str(metrics_path),
@@ -326,15 +353,20 @@ def main() -> None:
     print(f"tokenizer        : {args.tokenizer_id}")
     print(f"device           : {device}")
     print(f"sequences        : {len(data)}  (pos={int((data['label']==1).sum())}, "
-          f"neg={int((data['label']==0).sum())} from {args.neg_classes})")
+          f"neg={int((data['label']==0).sum())}: {args.n_convergent} convergent + {args.n_cds} CDS)")
     print(f"model output     : (batch, {out_cols})")
-    print(f"calib / test     : {len(calib_idx)} / {len(test_idx)}")
-    print("\nmetric        raw        cal(logit)   cal(logit+AT)")
+    print(f"CV               : {args.cv_folds}-fold stratified | chosen: {chosen} ({selection['reason']})")
+    print("\nPlatt+AT calibrator selection (out-of-fold):")
+    print(f"metric        unregularized     L2(C={args.l2_C:g})")
+    for m in ("log_loss", "brier", "auroc", "auprc", "ece"):
+        print(f"{m:<12} {selection['candidates']['unregularized'][m]:>12.4f}   "
+              f"{selection['candidates']['l2'][m]:>12.4f}")
+    print("\nraw vs calibrated (OOF, chosen calibrator):")
+    print("metric        raw          cal(logit+AT)")
     for m in ("brier", "log_loss", "auroc", "auprc", "ece"):
-        print(f"{m:<12} {metrics['raw'][m]:>8.4f}   {metrics['calibrated_logit'][m]:>8.4f}   "
-              f"{metrics['calibrated_logit_at'][m]:>8.4f}")
+        print(f"{m:<12} {metrics['raw'][m]:>8.4f}   {metrics['calibrated_logit_at_oof'][m]:>12.4f}")
     print("\noutputs:")
-    for p in (cal_path, cal_at_path, csv_path, metrics_path):
+    for p in (cal_at_path, csv_path, metrics_path):
         print(f"  {p}")
 
 

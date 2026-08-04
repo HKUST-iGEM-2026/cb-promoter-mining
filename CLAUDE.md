@@ -321,7 +321,16 @@ rebalance, so confirm current owners with Oak.
 - T23 Cluster-level 5-fold CV — Yany — 📄 `evaluation-and-calibration/T23/` (dep T15,T18-20)
 - T24 Cross-species external holdout — Yany — 🟡 **cnn_v2 wired in (`--models …,cnn_v2`, `--cnn-v2-model-path`); 4-model 0.6 refresh of the T9 + out-of-genus *C. phytofermentans* composition-matched holdout queued on HPC4** (the report's Regime-B out-of-genus numbers are still pre-0.6 until this runs). `evaluation-and-calibration/T24/` (dep T9,T18-20)
 - T25 Sigma-factor-stratified eval — Seonyu+Oak — ⬜ (dep T10,T22)
-- T26 Calibration regressor (AT covariate) — Ishi — ⬜ (dep PT4,T9,T22)
+- T26 Calibration regressor (AT covariate) — Ishi — 🟡 **three per-model Platt(+AT) calibration scripts
+  wired for CV model-selection (not yet run on HPC4)**: `calibrate_cnn.py` / `prokbert_calib.py` /
+  `nt_calib.py` now calibrate on **93 T9 positives + 186 curated genomic negatives** (130
+  convergent-intergenic + 56 CDS-interior from `extract_negatives.py`, read from the T26 dir by default;
+  counts/paths are `--n-convergent`/`--n-cds`/`--convergent-negatives`/`--cds-negatives`). The single
+  train/test split is replaced by **stratified K-fold CV that picks unregularized vs L2 Platt+AT on OOF
+  log-loss+Brier (simpler wins unless L2 beats by >`--tol`=0.005; `--l2-C`=1.0), then refits the chosen
+  calibrator on the full set** (StandardScaler→LogisticRegression pipeline; one artifact
+  `<model>_calibrator_at.joblib`). `run_calibration.sh` updated to the new flags (SRS-negative step
+  dropped). Not run yet — needs the trained models + the two negative TSVs staged on HPC4. (dep PT4,T9,T22)
 - T27 Empirical FDR via SRS null → q-values — Ishi — ⬜ (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**
