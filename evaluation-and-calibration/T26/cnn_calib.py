@@ -288,7 +288,7 @@ def main() -> None:
     repo_default = Path(__file__).resolve().parents[2]
     ap = argparse.ArgumentParser(description="T26 CNN Platt calibration (T21 trial 12)")
     ap.add_argument("--repo-root", type=Path, default=repo_default)
-    ap.add_argument("--trial-dir", type=Path, default=None,
+    ap.add_argument("--model-dir", type=Path, default=None,
                     help="dir with best_model.pt + params.json (default: <repo>/results/T21/cnn/trial_12)")
     ap.add_argument("--train-cnn", type=Path, default=None,
                     help="path to train_cnn.py (default: <repo>/model-training/T20/train_cnn.py)")

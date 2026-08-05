@@ -50,7 +50,7 @@ activate () {                     # activate a prefix + set torch's libstdc++ pa
 activate "$MAIN_ENV"
 echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transformers", transformers.__version__)') ==="
 
-echo "=== [1/3] ProkBERT calibration ==="
+echo "=== [1/4] ProkBERT calibration ==="
 python "$REPO/evaluation-and-calibration/T26/prokbert_calib.py" \
     --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_06/prokbert
 

@@ -287,7 +287,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="T26 NT Platt calibration (T21 trial 14)")
     ap.add_argument("--repo-root", type=Path, default=repo_default)
     ap.add_argument("--base-id", default=NT_ID, help=f"NT backbone HF id (default: {NT_ID})")
-    ap.add_argument("--adapter-dir", type=Path, default=None,
+    ap.add_argument("--model-dir", type=Path, default=None,
                     help="trained LoRA adapter dir (default: <repo>/results/T21/nt_lora/trial_14/best_adapter)")
     ap.add_argument("--positives", type=Path, default=None,
                     help="T9 positives tsv (default: <repo>/data-acquisition-and-curation/T9/literature_promoters.tsv)")
