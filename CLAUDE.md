@@ -314,7 +314,7 @@ rebalance, so confirm current owners with Oak.
 - T18 ProkBERT-mini fine-tune — **Sanaa** — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.876 / test 0.872, weighted, full 40,442-row train.** `model-training/T18/train_prokbert.py`. Session bug-fixes: v5 `warmup_ratio` (feature-detect), `remove_unused_columns=False` (the `weight` KeyError). (dep T4,T16)
 - T19 NT v2 250M LoRA fine-tune — Sanaa — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.853 / test 0.841, weighted, LoRA 0.507% trainable.** Runs on the **`nt-tf4x`** (transformers 4.57) env, NOT 5.3.0 (`infrastructure/T4/NT_ENV.md`); `--no-grad-checkpoint`. `model-training/T19/train_nt_lora.py`. (dep T4,T16)
 - T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4: 0.9 val AUPRC 0.811; 0.6 retrain val 0.784 / test 0.804.** `model-training/T20/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on; `--data-dir` defaults to `results/T16/cnn`). **+ CNN-v2 (2026-08): multi-encoding fusion (one-hot+ENAC+di/tri-nuc) `model-training/T20/train_cnn_v2.py`, 0.6 val 0.827 / test 0.848 — a 4th ensemble model; reads T16/cnn one-hot (reconstructs seqs), wired through T22/modular_eval/genome_inference/T24; scores are optimistic → needs T26 calibration.** (dep T4,T16)
-- T21 Hyperparameter sweep — Sanaa+Oak — 🟡 **ready, wired for the two-env split** (`model-training/T21/hyperparameter_sweep.py`): resumable sqlite study, `--sweep-epochs` cheap proxy, budget by COMPLETED trials, live-streamed trial logs, per-model `extra_args` (NT auto-gets `--no-grad-checkpoint`). Run as **2 jobs** — `--models prokbert,cnn` on 5.3.0 + `--models nt_lora` on `nt-tf4x`, same `--out`. (dep T18,T19,T20)
+- T21 Hyperparameter sweep — Sanaa+Oak — ✅ **run on 0.6 for all 4 models (2026-08)** incl. cnn_v2 (now in `SWEEP_CONFIG`; `--data-dir` via extra_args). `results/T21_06/{model}/best_params.json`, 15 trials × `--sweep-epochs 4` proxy, two-env split. Winners retrained at full epochs → `results/T21_final_06`. **Key result: the earlier sweep was on 0.9 data, so T21_final ran 0.9-tuned knobs; re-sweeping recovered ~⅔ of ProkBERT's genome-scale drop (see §10) → adopt `T21_final_06/prokbert`.** (`model-training/T21/hyperparameter_sweep.py`; dep T18,T19,T20)
 
 **Phase D — evaluation & calibration**
 - T22 Metrics suite (AUROC/AUPRC/MCC/F1) — Yany — 🟡 **4-model test predictions + metrics run at 0.6** (`T22/predict_and_score.py` → `results/T22`), plus `modular_eval.py` negatives-by-class → `results/T25b`; consolidated into the 3-regime `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv` (council-audited). (dep PT3,T18,T19,T20)
@@ -502,6 +502,13 @@ select by **product description**, not the gene-symbol field.
   CNN 0.629 > **NT 0.440 (collapsed to chance from its pre-0.6 best 0.71)**; out-of-genus all fail (ProkBERT anti-ranks 0.17).
   **NT is the 0.6-round weak link on every deployment axis** (genome-scale worst AND in-genus motif at chance) despite 2nd-best
   balanced AUPRC — the CNN family carries the ensemble.
+- **0.6 hyperparameter sweep + swept-ProkBERT recovery (2026-08):** the T21 sweep had been run on 0.9 data; the 0.6 models
+  (T21_final) inherited 0.9-tuned knobs. Re-swept on 0.6 (all 4 models incl. cnn_v2, `results/T21_06/*/best_params.json`) +
+  retrained (`results/T21_final_06`). Balanced barely moved (ProkBERT 0.884→0.887; cnn_v2/NT slightly DOWN = proxy noise, keep
+  their current versions). **Decisive: the 0.6-swept ProkBERT's genome-scale restricted precision@0.5 recovered 33%→40.8%
+  (905 FP), i.e. ~⅔ of the 45%→33% drop was STALE HYPERPARAMETERS, ~⅓ (40.8 vs 45) is intrinsic to 0.6 clustering.**
+  → **ADOPT the 0.6-swept ProkBERT (`T21_final_06/prokbert`)** over T21_final's; it beats it on both balanced AND genome scale,
+  and gets most of the 0.9 benefit with the clean leakage-safe protocol (kills the "revert to 0.9" question for good).
 **Frontier (Phase D→E):** evaluation regeneration COMPLETE (all regimes, 4 models, 0.6 + the 0.9 robustness check).
 Next: the rest of Phase D (T25 sigma-strat,
 T26 calibration — note CNN-v2 needs it, T27 FDR) + Phase E (T28 mining on the target, T29 four-model rank-percentile
