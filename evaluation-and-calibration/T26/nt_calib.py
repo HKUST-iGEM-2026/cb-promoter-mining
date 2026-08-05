@@ -224,7 +224,7 @@ def load_nt_model(base_id: str, adapter_dir: Path, device):
     from peft import PeftModel
 
     if not adapter_dir.is_dir():
-        die(f"NT adapter dir not found: {adapter_dir}  (--adapter-dir)\n"
+        die(f"NT adapter dir not found: {adapter_dir}  (--model-dir)\n"
             f"       expected the LoRA adapter T19 saved via model.save_pretrained(.../best_adapter)")
     if not (adapter_dir / "adapter_config.json").is_file():
         die(f"{adapter_dir} has no adapter_config.json — not a PEFT/LoRA adapter dir. If this is a full "
@@ -317,7 +317,7 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    adapter_dir = (args.adapter_dir or repo / "results/T21/nt_lora/trial_14/best_adapter").resolve()
+    adapter_dir = (args.model_dir or repo / "results/T21/nt_lora/trial_14/best_adapter").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
                        or repo / "evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv").resolve()

@@ -320,7 +320,7 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    trial_dir = (args.trial_dir or repo / "results/T21/cnn/trial_12").resolve()
+    trial_dir = (args.model_dir or repo / "results/T21/cnn/trial_12").resolve()
     train_cnn_path = (args.train_cnn or repo / "model-training/T20/train_cnn.py").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
@@ -341,7 +341,7 @@ def main() -> None:
     # --- params.json (swept hyperparams only) ---
     params_path = trial_dir / "params.json"
     if not params_path.is_file():
-        die(f"params.json not found: {params_path}  (--trial-dir)")
+        die(f"params.json not found: {params_path}  (--model-dir)")
     try:
         params = json.loads(params_path.read_text())
     except json.JSONDecodeError as e:
@@ -351,7 +351,7 @@ def main() -> None:
     # --- checkpoint ---
     ckpt_path = trial_dir / "best_model.pt"
     if not ckpt_path.is_file():
-        die(f"checkpoint not found: {ckpt_path}  (--trial-dir)")
+        die(f"checkpoint not found: {ckpt_path}  (--model-dir)")
     try:
         state_dict = torch.load(ckpt_path, map_location=device, weights_only=True)
     except Exception as e:  # noqa: BLE001 - corrupt/unreadable/pickled-model file
