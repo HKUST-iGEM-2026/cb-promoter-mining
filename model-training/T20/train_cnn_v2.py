@@ -285,6 +285,7 @@ class CNNConfig:
     conv3_filters: int = 256
     fusion_dim: int = 256
     enac_window: int = 5
+    sequence_col: str = "sequence"
 
 
 def parse_encodings(encodings: str) -> Set[str]:
@@ -320,13 +321,25 @@ def reconstruct_sequences_from_onehot(X: np.ndarray) -> List[str]:
     return seqs
 
 
-def load_split(data_dir: str, split: str) -> Tuple[List[str], np.ndarray, np.ndarray]:
+def load_split(data_dir: str, split: str, sequence_col: str = "sequence") -> Tuple[List[str], np.ndarray, np.ndarray]:
     """Load a split as (sequences, labels, weights).
 
-    Accepts either raw-sequence npz keys ('seq'/'sequence') or the T16 one-hot 'X'
-    (N,L,4), which is reconstructed to strings so v2's multi-encoding features can be
-    computed. label/weight carry the T15 silver-aware per-sample weight.
+    Accepts, in order: a T15 `{split}.parquet` (reads `sequence_col` — use `sequence_context`
+    to train on the wide 384 bp window, `sequence` for the 81 bp core), a raw-sequence npz
+    ('seq'/'sequence'), or the T16 one-hot 'X' (N,L,4) reconstructed to strings. The model's
+    AdaptiveMaxPool branches handle any window length, so nothing else needs to change to train
+    on a wider context. label/weight carry the T15 silver-aware per-sample weight.
     """
+    pq = Path(data_dir) / f"{split}.parquet"
+    if pq.exists():
+        import pandas as pd
+        df = pd.read_parquet(pq)
+        if sequence_col not in df.columns:
+            raise ValueError(f"{pq}: no column '{sequence_col}'. Have: {list(df.columns)}")
+        seqs = df[sequence_col].astype(str).str.upper().tolist()
+        y = df["label"].to_numpy()
+        w = df["weight"].to_numpy() if "weight" in df.columns else np.ones(len(df), np.float32)
+        return seqs, y.astype(np.int64), w.astype(np.float32)
     path = Path(data_dir) / f"{split}.npz"
     z = np.load(path, allow_pickle=False)
     if "seq" in z:
@@ -345,9 +358,10 @@ def load_split(data_dir: str, split: str) -> Tuple[List[str], np.ndarray, np.nda
 
 
 def build_loaders(config: CNNConfig):
-    train_seq, train_y, train_w = load_split(config.data_dir, "train")
-    val_seq, val_y, val_w = load_split(config.data_dir, "val")
-    test_seq, test_y, test_w = load_split(config.data_dir, "test")
+    sc = getattr(config, "sequence_col", "sequence")
+    train_seq, train_y, train_w = load_split(config.data_dir, "train", sc)
+    val_seq, val_y, val_w = load_split(config.data_dir, "val", sc)
+    test_seq, test_y, test_w = load_split(config.data_dir, "test", sc)
 
     train_ds = MultiEncodingSequenceDataset(
         train_seq, train_y, train_w, enac_window=config.enac_window
@@ -619,6 +633,9 @@ def parse_args() -> CNNConfig:
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--enac-window", type=int, default=5)
+    ap.add_argument("--sequence-col", type=str, default="sequence",
+                    help="column to train on when --data-dir holds T15 parquets: "
+                         "'sequence' (81 bp core) or 'sequence_context' (wide window).")
     ap.add_argument(
         "--no-batch-norm", dest="use_batch_norm", action="store_false", default=True
     )
