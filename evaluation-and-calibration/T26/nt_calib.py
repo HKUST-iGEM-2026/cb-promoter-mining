@@ -86,7 +86,7 @@ def score_block(y_true: np.ndarray, y_prob: np.ndarray, n_bins: int) -> dict:
     }
 
 
-def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins, n_repeats):
+def cv_select(X, y, feature_sets, n_splits, seed, l2_C, tol, n_bins, n_repeats):
     """Pick unregularized vs L2 Platt calibrator by REPEATED stratified-K-fold out-of-fold (OOF) preds.
 
     For each candidate, `n_repeats` independent stratified K-fold passes (seeds seed, seed+1, ...) each
@@ -99,53 +99,63 @@ def cv_select(X, y, n_splits, seed, l2_C, tol, n_bins, n_repeats):
     (a no-op for the unregularized MLE, but keeps both artifacts identical in form). The returned OOF
     probabilities are averaged across the repeats.
 
-    Returns (chosen_name, refit_estimator, mean_oof_prob_of_chosen, report_dict).
+    Returns (chosen_name, chosen_cols, refit_estimator, mean_oof_prob_of_chosen, report_dict).
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
 
-    def make(name):
-        lr = (LogisticRegression(penalty="l2", C=l2_C, max_iter=1000) if name == "l2"
+    def make(penalty):
+        lr = (LogisticRegression(penalty="l2", C=l2_C, max_iter=1000) if penalty == "l2"
               else LogisticRegression(penalty=None, max_iter=1000))
-        return make_pipeline(StandardScaler(), lr)
+        return make_pipeline(StandardScaler(), lr)  # StandardScaler -> L2 penalises STANDARDIZED coefs
 
-    oof, report, ll_std = {}, {}, {}
-    for name in ("unregularized", "l2"):
+    order, cand_meta = [], {}
+    for fname, cols in feature_sets:                # simplest -> richest, then unreg before L2
+        for penalty in ("unregularized", "l2"):
+            name = f"{fname} / {penalty}"
+            order.append(name)
+            cand_meta[name] = (tuple(cols), penalty)
+
+    oof, report = {}, {}
+    for name in order:
+        cols, penalty = cand_meta[name]
+        Xc = X[:, list(cols)]
         oof_sum = np.zeros(len(y), dtype=float)
         per_pass = []
         for r in range(n_repeats):
             skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=seed + r)
             p = np.zeros(len(y), dtype=float)
-            for tr, te in skf.split(X, y):
-                p[te] = make(name).fit(X[tr], y[tr]).predict_proba(X[te])[:, 1]
+            for tr, te in skf.split(Xc, y):
+                p[te] = make(penalty).fit(Xc[tr], y[tr]).predict_proba(Xc[te])[:, 1]
             per_pass.append(score_block(y, p, n_bins))
             oof_sum += p
-        oof[name] = oof_sum / n_repeats                 # mean OOF prob across repeats
+        oof[name] = oof_sum / n_repeats             # mean OOF prob across repeats
         agg = {}
-        for m in per_pass[0]:                           # mean +/- std of each metric across repeats
+        for m in per_pass[0]:                       # mean +/- std of each metric across repeats
             vals = [d[m] for d in per_pass]
             agg[m] = float(np.mean(vals))
             agg[m + "_std"] = float(np.std(vals))
+        agg["features"] = [int(c) for c in cols]
+        agg["penalty"] = penalty
         report[name] = agg
-        ll_std[name] = agg["log_loss_std"]
 
-    ll_u, ll_r = report["unregularized"]["log_loss"], report["l2"]["log_loss"]
-    su, sr = ll_std["unregularized"], ll_std["l2"]
-    span = f"over {n_repeats}x{n_splits}-fold"
-    if ll_r < ll_u - tol:
-        chosen = "l2"
-        reason = (f"L2 mean OOF log_loss {ll_r:.4f}+/-{sr:.4f} beats unregularized "
-                  f"{ll_u:.4f}+/-{su:.4f} by > tol {tol} {span}")
-    else:
-        chosen = "unregularized"
-        reason = (f"unregularized chosen (simpler): mean OOF log_loss {ll_u:.4f}+/-{su:.4f} vs L2 "
-                  f"{ll_r:.4f}+/-{sr:.4f} {span} (L2 not better by tol {tol})")
-    refit = make(chosen).fit(X, y)
-    return (chosen, refit, oof[chosen],
-            {"candidates": report, "chosen": chosen, "reason": reason,
-             "n_repeats": n_repeats, "n_splits": n_splits})
+    # simpler-wins walk: adopt a richer candidate only if it beats the incumbent by > tol OOF log loss
+    incumbent, steps = order[0], []
+    for name in order[1:]:
+        ll_inc, ll_cand = report[incumbent]["log_loss"], report[name]["log_loss"]
+        if ll_cand < ll_inc - tol:
+            steps.append(f"{name} {ll_cand:.4f} beats {incumbent} {ll_inc:.4f} by > tol {tol} -> adopt")
+            incumbent = name
+        else:
+            steps.append(f"{name} {ll_cand:.4f} not better than {incumbent} {ll_inc:.4f} by tol {tol} -> keep simpler")
+    chosen = incumbent
+    chosen_cols = list(cand_meta[chosen][0])
+    refit = make(cand_meta[chosen][1]).fit(X[:, chosen_cols], y)
+    return (chosen, chosen_cols, refit, oof[chosen],
+            {"candidates": report, "chosen": chosen, "reason": "; ".join(steps),
+             "order": order, "n_repeats": n_repeats, "n_splits": n_splits})
 
 
 # ------------------------------------------------------------------ data loading (identical to calibrate_cnn.py)
@@ -360,18 +370,20 @@ def main() -> None:
 
     # --- Platt scaling with AT covariate: select unregularized vs L2 by stratified-CV OOF ---
     y = data["label"].values
-    X_logit_at = np.column_stack([logit_diff, data["at_fraction"].values])   # [score, AT covariate]
+    X_all = np.column_stack([logit_diff, data["at_fraction"].values])   # col 0 = score (logit), col 1 = AT
+    feature_sets = [("score", [0]), ("score+AT", [0, 1])]               # ordered simplest -> richest
     if int(min(np.bincount(y))) < args.cv_folds:
         die(f"a class has fewer than --cv-folds={args.cv_folds} samples "
             f"(pos={int((y==1).sum())}, neg={int((y==0).sum())}); lower --cv-folds or add data.")
-    chosen, calibrator, oof_prob, selection = cv_select(
-        X_logit_at, y, args.cv_folds, args.seed, args.l2_C, args.tol, args.ece_bins, args.cv_repeats)
+    chosen, chosen_cols, calibrator, oof_prob, selection = cv_select(
+        X_all, y, feature_sets, args.cv_folds, args.seed, args.l2_C, args.tol, args.ece_bins, args.cv_repeats)
+    chosen_feature_names = [["logit", "at_fraction"][c] for c in chosen_cols]
 
     metrics = {
         "raw": score_block(y, raw_prob, args.ece_bins),
-        "cv_unregularized": selection["candidates"]["unregularized"],
-        "cv_l2": selection["candidates"]["l2"],
-        "calibrated_logit_at_oof": score_block(y, oof_prob, args.ece_bins),  # == chosen candidate's OOF
+        "candidates": selection["candidates"],
+        "calibrated_oof": score_block(y, oof_prob, args.ece_bins),           # chosen calibrator's OOF (deployed)
+        "calibrated_logit_at_oof": score_block(y, oof_prob, args.ece_bins),  # back-compat alias == calibrated_oof
     }
 
     # --- write CSV (every row carries its out-of-fold calibrated prob) ---
@@ -396,6 +408,7 @@ def main() -> None:
         "l2_C": args.l2_C,
         "tol": args.tol,
         "chosen": chosen,
+        "chosen_features": chosen_feature_names,
         "selection_reason": selection["reason"],
         "seed": args.seed,
         "max_length": args.max_length,
@@ -422,16 +435,20 @@ def main() -> None:
     print(f"sequences        : {len(data)}  (pos={int((data['label']==1).sum())}, "
           f"neg={int((data['label']==0).sum())}: {args.n_convergent} convergent + {args.n_cds} CDS)")
     print(f"model output     : (batch, {out_cols})")
-    print(f"CV               : {args.cv_folds}-fold x {args.cv_repeats} repeats stratified | chosen: {chosen} ({selection['reason']})")
-    print("\nPlatt+AT calibrator selection (out-of-fold):")
-    print(f"metric        unregularized     L2(C={args.l2_C:g})")
-    for m in ("log_loss", "brier", "auroc", "auprc", "ece"):
-        print(f"{m:<12} {selection['candidates']['unregularized'][m]:>12.4f}   "
-              f"{selection['candidates']['l2'][m]:>12.4f}")
+    print(f"CV               : {args.cv_folds}-fold x {args.cv_repeats} repeats stratified")
+    print(f"chosen           : {chosen}  (features={chosen_feature_names})")
+    print(f"selection        : {selection['reason']}")
+    print("\ncandidate selection (out-of-fold, mean over repeats):")
+    print(f"{'candidate':<26}{'log_loss':>10}{'brier':>9}{'auroc':>9}{'auprc':>9}{'ece':>9}")
+    for name in selection["order"]:
+        c = selection["candidates"][name]
+        mark = "  <-- chosen" if name == chosen else ""
+        print(f"{name:<26}{c['log_loss']:>10.4f}{c['brier']:>9.4f}{c['auroc']:>9.4f}"
+              f"{c['auprc']:>9.4f}{c['ece']:>9.4f}{mark}")
     print("\nraw vs calibrated (OOF, chosen calibrator):")
-    print("metric        raw          cal(logit+AT)")
+    print("metric        raw          calibrated")
     for m in ("brier", "log_loss", "auroc", "auprc", "ece"):
-        print(f"{m:<12} {metrics['raw'][m]:>8.4f}   {metrics['calibrated_logit_at_oof'][m]:>12.4f}")
+        print(f"{m:<12} {metrics['raw'][m]:>8.4f}   {metrics['calibrated_oof'][m]:>12.4f}")
     print("\noutputs:")
     for p in (cal_at_path, csv_path, metrics_path):
         print(f"  {p}")
