@@ -55,11 +55,11 @@ python "$REPO/evaluation-and-calibration/T26/prokbert_calib.py" \
 
 echo "=== [2/4] CNN calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/cnn
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn
 
 echo "=== [3/4] CNN-v2 calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn-v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/cnn
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn-v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn
 
 conda deactivate
 
@@ -71,7 +71,7 @@ echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transfor
 
 echo "=== [4/4] NT calibration ==="
 python "$REPO/evaluation-and-calibration/T26/nt_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/nt_lora/best_adapter --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/nt
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/nt_lora/best_adapter --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/nt_lora
 
 conda deactivate
 echo "=== T26 done — see evaluation-and-calibration/T26/out/{prokbert,cnn,nt}/ ==="
