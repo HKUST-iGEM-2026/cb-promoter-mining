@@ -27,13 +27,15 @@ def load_data():
         frames.append(df_t13)
         print(f"📥 Loaded T13: {len(df_t13)} rows")
 
-    # 2. Load T7 / T8 datasets
-    t7_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T7/T7 - all.csv"
+    # 2. Load T7b published TSS positives (Hocq 2022, in-genus verified, ~5,759 rows).
+    #    NB: "T7 - all.csv" is the 47-run literature-search CATALOG (SRA accessions + citations),
+    #    NOT promoters — that was the bug that gave 47 rows. The real positives are the parquet below.
+    t7_path = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/inputs/published_tss_promoters.parquet"
     if os.path.exists(t7_path):
-        df_t7 = pd.read_csv(t7_path)
-        df_t7['source_type'] = 't7_master_curated'
+        df_t7 = pd.read_parquet(t7_path)
+        df_t7['source_type'] = 't7b_published_tss'
         frames.append(df_t7)
-        print(f"📥 Loaded T7: {len(df_t7)} rows")
+        print(f"📥 Loaded T7b: {len(df_t7)} rows")
 
     t8_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T8/curated_positive_promoters.parquet"
     if os.path.exists(t8_path):
