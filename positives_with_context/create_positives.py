@@ -34,6 +34,16 @@ def load_data():
     if os.path.exists(t7_path):
         df_t7 = pd.read_parquet(t7_path)
         df_t7['source_type'] = 't7b_published_tss'
+        # T7b coordinates are ENCODED in promoter_id: "{source}_{contig}_{pos}_{strand}".
+        # The contig itself can contain '_' (e.g. NC_003030.1), so take the first token as
+        # source, the last as strand, the 2nd-last as position, and everything between as the
+        # contig. Adding contig/start columns lets process_record pull REAL context instead of N-padding.
+        def _pid_coords(pid):
+            parts = str(pid).split('_')
+            if len(parts) >= 4:
+                return pd.Series({'contig': '_'.join(parts[1:-2]), 'start': parts[-2]})
+            return pd.Series({'contig': '', 'start': None})
+        df_t7[['contig', 'start']] = df_t7['promoter_id'].apply(_pid_coords)
         frames.append(df_t7)
         print(f"📥 Loaded T7b: {len(df_t7)} rows")
 
