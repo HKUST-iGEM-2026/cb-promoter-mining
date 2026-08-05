@@ -44,7 +44,7 @@ activate () {                     # activate a prefix + set torch's libstdc++ pa
 }
 
 # =============================================================================
-# Main env (transformers 5.3.0): SRS negatives + ProkBERT + CNN
+# Main env (transformers 5.3.0): ProkBERT + CNN
 # =============================================================================
 activate "$MAIN_ENV"
 echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transformers", transformers.__version__)') ==="
