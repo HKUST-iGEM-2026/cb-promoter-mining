@@ -28,8 +28,11 @@ $RES/T21_final/cnn/best_model.pt       # CNN       (+ metrics.json in same dir)
 $RES/T21_final/cnn_v2/best_model.pt    # CNN-v2    (+ config.json in same dir)
 ```
 
-`T21_final` = the deployed 0.6 models. Also present: `T21_final_06` (re-swept on 0.6) and
-`T18/best_model` (the pre-0.6 / 0.9 ProkBERT). Same loading code, different path.
+**Use `$RES/models_deployed/` — that is the best-of-each set** (symlinks): ProkBERT points at the
+0.6-swept model (`T21_final_06/prokbert`, better on balanced AND genome scale), while NT/CNN/CNN-v2
+point at the current 0.6 models (`T21_final/...`, where the re-sweep did not help). Do NOT point at a
+single raw folder: `T21_final` has the older ProkBERT, `T21_final_06` has worse NT/CNN/CNN-v2. Also
+present for reference: `T18/best_model` (the pre-0.6 / 0.9 ProkBERT). Same loading code, different path.
 
 ## Fastest path: reuse the repo's scorers (don't reinvent)
 

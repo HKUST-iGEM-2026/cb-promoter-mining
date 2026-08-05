@@ -31,7 +31,9 @@ import numpy as np
 
 # Repo root = this file's directory, so it works from any clone.
 REPO = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_MODELS_DIR = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final"
+# The DEPLOYED best-of-each set (symlinks): ProkBERT = the 0.6-swept model (T21_final_06),
+# NT/CNN/CNN-v2 = the current 0.6 models (T21_final). See LOADING_MODELS.md. Override with --models-dir.
+DEFAULT_MODELS_DIR = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/models_deployed"
 NT_BASE = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
 
 
