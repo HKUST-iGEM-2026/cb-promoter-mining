@@ -13,3 +13,8 @@
 export HF_HOME=/project/igem2026/hf_shared
 export HF_HUB_OFFLINE=1
 export HF_TOKEN_PATH=/tmp/hf_notoken_$USER   # steer HF away from any token file (avoids the shared-token PermissionError)
+
+# Make everything created by a job that sources this file group-readable (files 640, dirs 750),
+# so teammates can read results/checkpoints without a manual chmod. SLURM jobs don't source
+# ~/.bashrc, so setting umask here is what actually covers job outputs.
+umask 0027
