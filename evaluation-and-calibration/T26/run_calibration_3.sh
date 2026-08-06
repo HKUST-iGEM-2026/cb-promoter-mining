@@ -51,7 +51,7 @@ echo "=== env: $CONDA_PREFIX | $(python -c 'import transformers; print("transfor
 
 echo "=== [1/4] ProkBERT calibration ==="
 python "$REPO/evaluation-and-calibration/T26/prokbert_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/prokbert/best_model --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_2/prokbert
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/prokbert/best_model --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/prokbert
 
 echo "=== [2/4] CNN calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
@@ -59,7 +59,7 @@ python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
 
 echo "=== [3/4] CNN-v2 calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_v2_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn_v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn_v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn_v2
 
 conda deactivate
 
