@@ -9,11 +9,11 @@ What it does
 ------------
 1. Imports PromoterCNN straight from model-training/T20/train_cnn.py (by file path — the dir is
    hyphenated and not importable as a package).
-2. Loads results/T21/cnn/trial_12/params.json (the SWEPT hyperparams: learning-rate, batch-size,
-   dropout-rate) and reconstructs the *architecture* by INFERRING it from the checkpoint tensor
-   shapes — because the CNN sweep never varied conv filters / kernel_size / batch-norm, params.json
-   does NOT carry them (train_cnn.py defaults were used). load_state_dict(strict=True) then confirms
-   the reconstruction is exact.
+2. Loads best_model.pt from --model-dir (default: the 0.6 final retrain T21_final_06/cnn) and
+   reconstructs the *architecture* by INFERRING it from the checkpoint tensor shapes. params.json
+   (swept hyperparams) is read only for the dropout rate IF present, but is OPTIONAL — dropout is
+   inert under model.eval(), so a final-retrain dir that ships only best_model.pt calibrates fine.
+   load_state_dict(strict=True) then confirms the reconstruction is exact.
 3. Builds the calibration dataset = 93 T9 positives (label 1) + 186 curated genomic negatives
    (label 0): 130 convergent-intergenic + 56 CDS-interior windows from extract_negatives.py (this
    dir). Counts (--n-convergent / --n-cds) and paths are flags.
@@ -289,7 +289,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="T26 CNN Platt calibration (T21 trial 12)")
     ap.add_argument("--repo-root", type=Path, default=repo_default)
     ap.add_argument("--model-dir", type=Path, default=None,
-                    help="dir with best_model.pt + params.json (default: <repo>/results/T21/cnn/trial_12)")
+                    help="dir with best_model.pt (params.json optional) — default the 0.6 final retrain: "
+                         "<repo>/infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn)")
     ap.add_argument("--train-cnn", type=Path, default=None,
                     help="path to train_cnn.py (default: <repo>/model-training/T20/train_cnn.py)")
     ap.add_argument("--positives", type=Path, default=None,
@@ -320,7 +321,8 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    trial_dir = (args.model_dir or repo / "results/T21/cnn/trial_12").resolve()
+    trial_dir = (args.model_dir
+                 or repo / "infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn").resolve()
     train_cnn_path = (args.train_cnn or repo / "model-training/T20/train_cnn.py").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
@@ -338,15 +340,21 @@ def main() -> None:
     # --- model class ---
     PromoterCNN, model_class_path = import_promoter_cnn(train_cnn_path)
 
-    # --- params.json (swept hyperparams only) ---
+    # --- params.json (swept hyperparams — OPTIONAL) ---
+    # Only the dropout rate is read from here, and dropout is INERT under model.eval() (identity at
+    # inference); the architecture is inferred from the checkpoint tensor shapes, not from params.json.
+    # So a final-retrain dir (e.g. T21_final_06/cnn) that ships only best_model.pt calibrates fine.
     params_path = trial_dir / "params.json"
-    if not params_path.is_file():
-        die(f"params.json not found: {params_path}  (--model-dir)")
-    try:
-        params = json.loads(params_path.read_text())
-    except json.JSONDecodeError as e:
-        die(f"params.json is not valid JSON ({params_path}): {e}")
-    dropout = float(params.get("dropout-rate", params.get("dropout_rate", 0.3)))
+    if params_path.is_file():
+        try:
+            params = json.loads(params_path.read_text())
+        except json.JSONDecodeError as e:
+            die(f"params.json is not valid JSON ({params_path}): {e}")
+        dropout = float(params.get("dropout-rate", params.get("dropout_rate", 0.3)))
+    else:
+        dropout = 0.3
+        print(f"NOTE: no params.json in {trial_dir} — using dropout={dropout} (inert at eval; the "
+              f"architecture is inferred from the checkpoint, so scoring is unaffected).")
 
     # --- checkpoint ---
     ckpt_path = trial_dir / "best_model.pt"

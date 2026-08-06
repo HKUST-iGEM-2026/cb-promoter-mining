@@ -241,7 +241,7 @@ def main() -> None:
     ap.add_argument("--repo-root", type=Path, default=repo_default)
     ap.add_argument("--model-dir", type=Path, default=None,
                     help="dir with best_model.pt + config.json "
-                         "(default: <repo>/infrastructure/T3/snakemake_scaffold/result/T21_final_06/cnn_v2 "
+                         "(default: <repo>/infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2 "
                          "— the 0.6-clustering final retrain)")
     ap.add_argument("--train-cnn-v2", type=Path, default=None,
                     help="path to train_cnn_v2.py (default: <repo>/model-training/T20/train_cnn_v2.py)")
@@ -276,7 +276,7 @@ def main() -> None:
 
     repo = args.repo_root.resolve()
     model_dir = (args.model_dir
-                 or repo / "infrastructure/T3/snakemake_scaffold/result/T21_final_06/cnn_v2").resolve()
+                 or repo / "infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2").resolve()
     train_cnn_v2_path = (args.train_cnn_v2 or repo / "model-training/T20/train_cnn_v2.py").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
@@ -465,4 +465,4 @@ if __name__ == "__main__":
 # --- run on one GPU (HPC4 / SuperPOD) -------------------------------------------------------------
 # srun --account=igem2026 --partition=preempt --gpus-per-node=1 --requeue \
 #      python evaluation-and-calibration/T26/cnn_v2_calib.py \
-#        --model-dir infrastructure/T3/snakemake_scaffold/result/T21_final_06/cnn_v2
+#        --model-dir infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2

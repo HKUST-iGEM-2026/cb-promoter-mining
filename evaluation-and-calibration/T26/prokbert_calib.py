@@ -7,8 +7,9 @@ model loading.
 
 What it does
 ------------
-1. Loads the FULL fine-tuned ProkBERT classifier T18/T21 saved (results/T21/prokbert/trial_12/best_model
-   — a whole AutoModelForSequenceClassification dir, NOT a LoRA adapter like NT). The tokenizer loads
+1. Loads the FULL fine-tuned ProkBERT classifier from --model-dir (default: the 0.6 final retrain
+   T21_final_06/prokbert/best_model — a whole AutoModelForSequenceClassification dir, NOT a LoRA
+   adapter like NT). The tokenizer loads
    from the BASE id `neuralbioinfo/prokbert-mini` (T18 trains plain prokbert-mini and its save dir does
    NOT ship tokenizer files — same as the T24 convention "load ProkBERT tokenizer from base").
 2. Builds the calibration dataset = 93 T9 positives (label 1) + 186 curated genomic negatives
@@ -28,7 +29,7 @@ NOTE: run on the main `promoter-mining-hpc4` env (transformers 5.3.0) — ProkBE
 (unlike NT, which needs the nt-tf4x env). Calibration is prevalence-dependent: this 93:186 (1:2) set
 calibrates to that operating point, not genome-wide promoter prevalence.
 
-HPC4 model path: /project/igem2026/cb-promoter-mining/results/T21/prokbert/trial_12/best_model
+HPC4 model path (0.6 final retrain): /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model
 Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
 """
 import argparse
@@ -241,7 +242,8 @@ def main() -> None:
     ap.add_argument("--tokenizer-id", default=PROKBERT_ID,
                     help=f"ProkBERT tokenizer HF id — the BASE, not the fine-tuned dir (default: {PROKBERT_ID})")
     ap.add_argument("--model-dir", type=Path, default=None,
-                    help="trained full-model dir (default: <repo>/results/T21/prokbert/trial_12/best_model)")
+                    help="trained full-model dir (default the 0.6 final retrain: "
+                         "<repo>/infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model)")
     ap.add_argument("--positives", type=Path, default=None,
                     help="T9 positives tsv (default: <repo>/data-acquisition-and-curation/T9/literature_promoters.tsv)")
     ap.add_argument("--convergent-negatives", type=Path, default=None,
@@ -270,7 +272,8 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    model_dir = (args.model_dir or repo / "results/T21/prokbert/trial_12/best_model").resolve()
+    model_dir = (args.model_dir
+                 or repo / "infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
                        or repo / "evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv").resolve()

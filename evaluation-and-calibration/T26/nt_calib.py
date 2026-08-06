@@ -7,8 +7,8 @@ Owner: Ishi.  NT analog of calibrate_cnn.py — same calibration logic, differen
 What it does
 ------------
 1. Loads the NT backbone `InstaDeepAI/nucleotide-transformer-v2-250m-multi-species` and layers the
-   TRAINED LoRA adapter (results/T21/nt_lora/trial_14/best_adapter — what T19 saved via
-   model.save_pretrained) back on with PeftModel. The adapter also carries the classifier head
+   TRAINED LoRA adapter from --model-dir (default: the 0.6 final retrain T21_final_06/nt_lora/best_adapter
+   — what T19 saved via model.save_pretrained) back on with PeftModel. The adapter also carries the classifier head
    (T19 used modules_to_save=["classifier"]), so this reconstructs the exact fine-tuned classifier.
    Uses the SAME v5-compat shim + config backfill as train_nt_lora.py so it loads identically.
 2. Builds the calibration dataset = 93 T9 positives (label 1) + 186 curated genomic negatives
@@ -28,7 +28,7 @@ v4-era (infrastructure/T4/NT_ENV.md). The compat shims below are guarded so it A
 NT was trained + validated on 4.57. Calibration is prevalence-dependent: this 93:186 (1:2) set
 calibrates to that operating point, not genome-wide promoter prevalence.
 
-HPC4 adapter path: /project/igem2026/cb-promoter-mining/results/T21/nt_lora/trial_14/best_adapter
+HPC4 adapter path (0.6 final retrain): /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter
 Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
 """
 import argparse
@@ -288,7 +288,8 @@ def main() -> None:
     ap.add_argument("--repo-root", type=Path, default=repo_default)
     ap.add_argument("--base-id", default=NT_ID, help=f"NT backbone HF id (default: {NT_ID})")
     ap.add_argument("--model-dir", type=Path, default=None,
-                    help="trained LoRA adapter dir (default: <repo>/results/T21/nt_lora/trial_14/best_adapter)")
+                    help="trained LoRA adapter dir (default the 0.6 final retrain: "
+                         "<repo>/infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter)")
     ap.add_argument("--positives", type=Path, default=None,
                     help="T9 positives tsv (default: <repo>/data-acquisition-and-curation/T9/literature_promoters.tsv)")
     ap.add_argument("--convergent-negatives", type=Path, default=None,
@@ -317,7 +318,8 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    adapter_dir = (args.model_dir or repo / "results/T21/nt_lora/trial_14/best_adapter").resolve()
+    adapter_dir = (args.model_dir
+                   or repo / "infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
     convergent_path = (args.convergent_negatives
                        or repo / "evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv").resolve()
