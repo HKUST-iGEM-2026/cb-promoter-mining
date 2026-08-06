@@ -321,7 +321,7 @@ def main() -> None:
     args = ap.parse_args()
 
     repo = args.repo_root.resolve()
-    trial_dir = (args.model_dir
+    model_dir = (args.model_dir
                  or repo / "infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn").resolve()
     train_cnn_path = (args.train_cnn or repo / "model-training/T20/train_cnn.py").resolve()
     positives_path = (args.positives or repo / "data-acquisition-and-curation/T9/literature_promoters.tsv").resolve()
@@ -344,7 +344,7 @@ def main() -> None:
     # Only the dropout rate is read from here, and dropout is INERT under model.eval() (identity at
     # inference); the architecture is inferred from the checkpoint tensor shapes, not from params.json.
     # So a final-retrain dir (e.g. T21_final_06/cnn) that ships only best_model.pt calibrates fine.
-    params_path = trial_dir / "params.json"
+    params_path = model_dir / "params.json"
     if params_path.is_file():
         try:
             params = json.loads(params_path.read_text())
@@ -353,11 +353,11 @@ def main() -> None:
         dropout = float(params.get("dropout-rate", params.get("dropout_rate", 0.3)))
     else:
         dropout = 0.3
-        print(f"NOTE: no params.json in {trial_dir} — using dropout={dropout} (inert at eval; the "
+        print(f"NOTE: no params.json in {model_dir} — using dropout={dropout} (inert at eval; the "
               f"architecture is inferred from the checkpoint, so scoring is unaffected).")
 
     # --- checkpoint ---
-    ckpt_path = trial_dir / "best_model.pt"
+    ckpt_path = model_dir / "best_model.pt"
     if not ckpt_path.is_file():
         die(f"checkpoint not found: {ckpt_path}  (--model-dir)")
     try:
