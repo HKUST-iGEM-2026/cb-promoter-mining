@@ -59,7 +59,7 @@ python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
 
 echo "=== [3/4] CNN-v2 calibration ==="
 python "$REPO/evaluation-and-calibration/T26/cnn_calib.py" \
-    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn-v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn
+    --model-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn_v2 --positives "$POSITIVES" --convergent-negatives "$CONV_NEG" --cds-negatives "$CDS_NEG" --out-dir /project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/cnn
 
 conda deactivate
 
