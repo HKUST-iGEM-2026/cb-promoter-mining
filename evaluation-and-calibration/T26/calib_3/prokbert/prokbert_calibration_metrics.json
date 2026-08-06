@@ -1,0 +1,126 @@
+{
+  "device": "cuda",
+  "n_total": 279,
+  "n_positive": 93,
+  "n_negative": 186,
+  "n_convergent": 130,
+  "n_cds": 56,
+  "cv_folds": 5,
+  "cv_repeats": 5,
+  "l2_C": 1.0,
+  "tol": 0.005,
+  "chosen": "score+AT / unregularized",
+  "chosen_features": [
+    "logit",
+    "at_fraction"
+  ],
+  "selection_reason": "score / l2 0.5872 not better than score / unregularized 0.5872 by tol 0.005 -> keep simpler; score+AT / unregularized 0.5173 beats score / unregularized 0.5872 by > tol 0.005 -> adopt; score+AT / l2 0.5167 not better than score+AT / unregularized 0.5173 by tol 0.005 -> keep simpler",
+  "seed": 42,
+  "max_length": 128,
+  "model_output_shape": [
+    279,
+    2
+  ],
+  "tokenizer_id": "neuralbioinfo/prokbert-mini",
+  "metrics": {
+    "raw": {
+      "brier": 0.28530396952388537,
+      "log_loss": 1.2779243824963586,
+      "auroc": 0.6914094114926581,
+      "auprc": 0.5604772203412633,
+      "ece": 0.29210010769047573
+    },
+    "candidates": {
+      "score / unregularized": {
+        "brier": 0.19988212919604892,
+        "brier_std": 0.0004648783694502296,
+        "log_loss": 0.5872468643465594,
+        "log_loss_std": 0.000922008665684304,
+        "auroc": 0.6771187420511042,
+        "auroc_std": 0.005636344499196729,
+        "auprc": 0.532706835325144,
+        "auprc_std": 0.0036885133457708478,
+        "ece": 0.029331681560723244,
+        "ece_std": 0.0028479297161490605,
+        "features": [
+          0
+        ],
+        "penalty": "unregularized"
+      },
+      "score / l2": {
+        "brier": 0.19984281053945563,
+        "brier_std": 0.0004507381554496247,
+        "log_loss": 0.587186592473986,
+        "log_loss_std": 0.0008932749665979815,
+        "auroc": 0.6772574864146144,
+        "auroc_std": 0.00575661401299394,
+        "auprc": 0.532804889743281,
+        "auprc_std": 0.0034883142304145223,
+        "ece": 0.03282238439770482,
+        "ece_std": 0.0032266514233433006,
+        "features": [
+          0
+        ],
+        "penalty": "l2"
+      },
+      "score+AT / unregularized": {
+        "brier": 0.17265720665070172,
+        "brier_std": 0.0009214772418569166,
+        "log_loss": 0.5173227689711846,
+        "log_loss_std": 0.0033384788769225435,
+        "auroc": 0.7963579604578565,
+        "auroc_std": 0.003326088865230734,
+        "auprc": 0.631524490226569,
+        "auprc_std": 0.005064402567782974,
+        "ece": 0.0582649854776812,
+        "ece_std": 0.009718070890506813,
+        "features": [
+          0,
+          1
+        ],
+        "penalty": "unregularized"
+      },
+      "score+AT / l2": {
+        "brier": 0.17254304544122606,
+        "brier_std": 0.0008844462073422704,
+        "log_loss": 0.516707677618222,
+        "log_loss_std": 0.00309140992317317,
+        "auroc": 0.7963810845184415,
+        "auroc_std": 0.003162252274829773,
+        "auprc": 0.6312919194397739,
+        "auprc_std": 0.005385438618412822,
+        "ece": 0.056175547260082205,
+        "ece_std": 0.005149754121917128,
+        "features": [
+          0,
+          1
+        ],
+        "penalty": "l2"
+      }
+    },
+    "calibrated_oof": {
+      "brier": 0.17238351427213924,
+      "log_loss": 0.5164309990191347,
+      "auroc": 0.7955254942767951,
+      "auprc": 0.6297031392063149,
+      "ece": 0.05556545612947033
+    },
+    "calibrated_logit_at_oof": {
+      "brier": 0.17238351427213924,
+      "log_loss": 0.5164309990191347,
+      "auroc": 0.7955254942767951,
+      "auprc": 0.6297031392063149,
+      "ece": 0.05556545612947033
+    }
+  },
+  "paths": {
+    "tokenizer_id": "neuralbioinfo/prokbert-mini",
+    "model_dir": "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/prokbert/best_model",
+    "positives": "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T9/literature_promoters.tsv",
+    "convergent_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/convergent_intergenic_negatives.tsv",
+    "cds_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/cds_negatives.tsv",
+    "calibrator_at": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/prokbert/prokbert_calibrator_at.joblib",
+    "predictions_csv": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/prokbert/prokbert_calibration_predictions.csv",
+    "metrics_json": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/T26/calib_3/prokbert/prokbert_calibration_metrics.json"
+  }
+}
