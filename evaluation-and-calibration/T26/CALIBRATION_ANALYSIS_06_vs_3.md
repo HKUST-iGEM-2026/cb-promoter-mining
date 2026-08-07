@@ -215,7 +215,7 @@ final target scan it means: **calibrated scores will systematically under-rank l
    SRS-null q-values in T27 are computed on a score distribution; if a model scores real promoters near 0
    (transformers, §5) the null and signal overlap badly until calibrated. **Calibrate before T27**, and prefer
    the checkpoints with healthier raw rankers so the AT term is a top-up not a crutch (§4).
-3. **Recommended calibrated checkpoints (calibration-evidence view; confirm with Oak):**
+3. **Recommended calibrated checkpoints (calibration-evidence view):**
    - **prokbert → `T21_final_06` (calib_06)** — better raw + marginally better calibrated; matches §10.
    - **nt_lora → `T21_final_06` (calib_06)** — the 0.9-swept nt is sub-chance raw; 0.6 is the only defensible
      nt. (It remains the weakest member on every axis — §10's "weak link" — lean on the CNN family.)

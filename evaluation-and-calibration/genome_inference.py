@@ -5,11 +5,15 @@ for genome_fp_benchmark.py. Fine-tuned counterpart of PT5, and the seed of T28.
 
 Scans PER CONTIG (multi-replicon safe) and per strand, streaming batches to CSV. Output columns:
     contig, start, end, strand, promoter_score   (0-based genome coords; reverse windows mapped back).
+    With --emit-logit, two extra columns are written — `logit` (logit1 - logit0) and `at_fraction` —
+    the exact features the T26 calibrators were fit on (apply_calibrator.py consumes both from the
+    track directly: no prob->logit inversion, no FASTA needed downstream).
 
-Handles all three ensemble members:
+Handles all four ensemble members:
   * ProkBERT (T18)  — full HF model.        --model-path results/T18/best_model  --model-id neuralbioinfo/prokbert-mini
   * NT (T19)        — LoRA adapter (auto).   --model-path results/T19/best_adapter --model-id InstaDeepAI/nucleotide-transformer-v2-250m-multi-species  (nt-tf4x env)
   * CNN (T20)       — from-scratch, one-hot. --model-path results/T20/best_model.pt  --model-type cnn
+  * CNN-v2          - from-scratch, ENAC + dri/trinucleotide.  
 Model type is auto-detected (a `.pt` path => cnn; an `adapter_config.json` => LoRA; else full HF).
 
 HPC4: export HF_HOME=/project/igem2026/hf_cache ; HF_HUB_OFFLINE=1 ; request a GPU.
@@ -49,8 +53,10 @@ def transformer_scorer(tok, model, device, max_length):
                   max_length=max_length, return_tensors="pt")
         enc = {k: v.to(device) for k, v in enc.items()}
         with torch.no_grad():
-            logits = model(**enc).logits
-        return torch.softmax(logits, dim=1)[:, 1].float().cpu().numpy()
+            logits = model(**enc).logits.float()
+        prob = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
+        logit = (logits[:, 1] - logits[:, 0]).cpu().numpy()   # exact T26-calibrator feature
+        return prob, logit
     return score
 
 
@@ -84,8 +90,10 @@ def cnn_scorer(model, device, window):
                 if k is not None:
                     X[i, k, j] = 1.0
         with torch.no_grad():
-            logits = model(torch.from_numpy(X).to(device))
-        return torch.softmax(logits.float(), dim=1)[:, 1].cpu().numpy()
+            logits = model(torch.from_numpy(X).to(device)).float()
+        prob = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
+        logit = (logits[:, 1] - logits[:, 0]).cpu().numpy()   # exact T26-calibrator feature
+        return prob, logit
     return score
 
 
@@ -114,26 +122,40 @@ def load_cnn_v2(model_path, device):
 
 def cnn_v2_scorer(mod, model, device, enac_window):
     def score(wins):
-        return mod.predict_proba(model, list(wins), str(device),
-                                 enac_window=enac_window, batch_size=len(wins))
+        # mirror mod.predict_proba's featurisation (window defaults to 81, the trained length) so the
+        # prob is byte-identical, but keep the raw logits to expose the exact T26-calibrator feature.
+        x1, x2, x3, x4 = mod._featurize_batch(list(wins), enac_window)
+        with torch.no_grad():
+            logits = model(x1.to(device), x2.to(device), x3.to(device), x4.to(device)).float()
+        prob = torch.softmax(logits, dim=1)[:, 1].cpu().numpy()
+        logit = (logits[:, 1] - logits[:, 0]).cpu().numpy()
+        return prob, logit
     return score
 
 
 # --------------------------------------------------------------------------- scan
-def scan_contig(rec_id, seq, strand, window, step, scorer, batch_size, out_handle, write_header):
+def scan_contig(rec_id, seq, strand, window, step, scorer, batch_size, out_handle, write_header,
+                emit_logit=False):
     L = len(seq)
     scan = seq if strand == "+" else str(Seq(seq).reverse_complement())
     starts = range(0, L - window + 1, step)
+    cols = ["contig", "start", "end", "strand", "promoter_score"] + (
+        ["logit", "at_fraction"] if emit_logit else [])
     n = 0
     for i in range(0, len(starts), batch_size):
         bs = starts[i:i + batch_size]
-        scores = scorer([scan[s:s + window] for s in bs])
+        wins = [scan[s:s + window] for s in bs]
+        scores, logits = scorer(wins)
         recs = []
-        for s, sc in zip(bs, scores):
+        for j, s in enumerate(bs):
             g0, g1 = (s, s + window) if strand == "+" else (L - (s + window), L - s)
-            recs.append((rec_id, g0, g1, strand, float(sc)))
-        pd.DataFrame(recs, columns=["contig", "start", "end", "strand", "promoter_score"]).to_csv(
-            out_handle, header=write_header, index=False)
+            row = (rec_id, g0, g1, strand, float(scores[j]))
+            if emit_logit:
+                w = wins[j].upper()                              # AT is strand-invariant (RC has same A+T)
+                at = (w.count("A") + w.count("T")) / max(len(w), 1)
+                row = row + (float(logits[j]), at)
+            recs.append(row)
+        pd.DataFrame(recs, columns=cols).to_csv(out_handle, header=write_header, index=False)
         write_header = False
         n += len(recs)
     return write_header, n
@@ -152,6 +174,11 @@ def main():
     ap.add_argument("--batch-size", type=int, default=512)
     ap.add_argument("--contigs", default=None)
     ap.add_argument("--strands", default="+,-")
+    ap.add_argument("--emit-logit", action="store_true",
+                    help="also write the T26 calibrator's input features per window: `logit` "
+                         "(logit1 - logit0) and `at_fraction`. apply_calibrator.py then reads both "
+                         "straight from the track — no prob->logit inversion, no FASTA re-derivation. "
+                         "promoter_score is unchanged.")
     a = ap.parse_args()
 
     mtype = a.model_type
@@ -186,7 +213,7 @@ def main():
             seq = str(rec.seq)
             for strand in strands:
                 write_header, n = scan_contig(rec.id, seq, strand, a.window, a.step, scorer,
-                                              a.batch_size, out_handle, write_header)
+                                              a.batch_size, out_handle, write_header, a.emit_logit)
                 total += n
                 print(f"  {rec.id} {strand}: {n:,} windows", file=sys.stderr)
     print(f"Wrote {total:,} scored windows -> {a.out}")
