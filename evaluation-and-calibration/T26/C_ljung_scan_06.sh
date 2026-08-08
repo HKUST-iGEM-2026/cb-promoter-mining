@@ -30,7 +30,7 @@ MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4          # prokbert + cnn +
 NT_ENV=/project/igem2026/envs/nt-tf4x                         # NT only (transformers 4.57)
 CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
 
-OUTDIR=$DIR/RegimeC                                           # tracks + fp_* + analysis land here
+OUTDIR=$DIR/regimeC                                           # tracks + fp_* + analysis land here
 TRUTH=$EVAL/ljungdahlii_holdout_tss.tsv                       # 1,245 held-out primary TSS (committed)
 REGIONS=$OUTDIR/clj_candidate_regions.bed                     # model-independent; reused
 ANALYSIS=$OUTDIR/regimeC_calibrated_analysis_06.md
