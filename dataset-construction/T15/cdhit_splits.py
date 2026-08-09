@@ -380,9 +380,16 @@ def main():
     #    selecting / early-stopping on them would reward the AT-trap (§1). So any CLUSTER holding a
     #    silver positive is pinned to TRAIN, and only verified-positive + negative clusters are eligible
     #    for val/test. Splitting at the cluster level keeps the leakage guarantee intact.
-    silver_clusters = set(df.loc[(df.label == 1) & (df.source == "T13_inferred"), "cluster_id"])
+    #    ALSO pin CROSS-SPECIES (in_genus=False) positives to TRAIN: the target C. butyricum is
+    #    in-genus, so val/test must measure IN-GENUS performance. Leaving E. coli/B. subtilis/Bacillus/
+    #    Ruminiclostridium promoters in val/test distorts the deployment metric (and did so silently for
+    #    T8 before this). So any cluster holding a silver OR cross-species positive is train-pinned;
+    #    val/test hold only in-genus verified positives + negatives.
+    train_pin = set(df.loc[(df.label == 1) &
+                           ((df.source == "T13_inferred") | (~df["in_genus"].astype(bool))),
+                           "cluster_id"])
     df["split"] = "train"
-    elig = df[~df["cluster_id"].isin(silver_clusters)]
+    elig = df[~df["cluster_id"].isin(train_pin)]
     sgkf = StratifiedGroupKFold(n_splits=10, shuffle=True, random_state=args.seed)
     fold = np.full(len(elig), -1, dtype=int)
     for k, (_, te) in enumerate(sgkf.split(elig, elig["label"], groups=elig["cluster_id"])):
