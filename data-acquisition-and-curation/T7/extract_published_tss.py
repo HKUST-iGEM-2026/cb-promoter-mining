@@ -87,6 +87,9 @@ def main():
     ap.add_argument("--filter-vals", default=None,
                     help="comma-separated values to KEEP for --filter-col (e.g. intergenic_sense)")
     ap.add_argument("--sigma-col", default=None, help="optional sigma-factor column")
+    ap.add_argument("--out-of-genus", action="store_true",
+                    help="tag these positives as cross-species (in_genus=False), e.g. Bacillus / "
+                    "Ruminiclostridium. Default (omitted) = in-genus Clostridium.")
     ap.add_argument("--out", required=True, help="output parquet")
     args = ap.parse_args()
 
@@ -142,7 +145,7 @@ def main():
             "sigma_factor": (str(r[args.sigma_col])
                              if args.sigma_col and args.sigma_col in tss.columns else "Unknown"),
             "source_db": args.source,
-            "in_genus": True,           # genus Clostridium (taxon 1485) — the whole point
+            "in_genus": not args.out_of_genus,   # default True (genus Clostridium); --out-of-genus flips it
             "label": 1,
         })
 
