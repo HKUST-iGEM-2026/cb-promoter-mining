@@ -29,7 +29,7 @@ NT_ENV=/project/igem2026/envs/nt-tf4x
 
 POSITIVES="$REPO/data-acquisition-and-curation/T9/literature_promoters.tsv"
 CONV_NEG="$REPO/evaluation-and-calibration/T26/negative_generation/convergent_intergenic_negatives.tsv"
-CDS_NEG="$REPO/evaluation-and-calibration/T26/negative/generation/cds_negatives.tsv"
+CDS_NEG="$REPO/evaluation-and-calibration/T26/negative_generation/cds_negatives.tsv"
 
 # --- shared HF / hygiene (both envs) -----------------------------------------
 export HF_HOME=/project/igem2026/hf_shared
