@@ -81,6 +81,42 @@ echo "=== preflight ==="
 for M in "${MODELS[@]}"; do
     [[ -f "$(calib_path "$M")" ]] || { echo "ERROR: calibrator missing for $M: $(calib_path "$M")"; exit 1; }
 done
+
+# --- contig-consistency guard (the silent-0%-recall trap) ------------------------------------------
+# The scan writes the FASTA's record id into the track's `contig` column, but the truth TSS and the
+# candidate-regions BED both use the RefSeq id (e.g. NC_014328.1). A Bakta-renamed FASTA (`contig_1`)
+# joins to NEITHER -> genome_fp_benchmark reports 0% recall (full) and aborts (restricted). Detect the
+# mismatch here and, for a single-replicon genome, force the emitted contig to the truth id.
+TRUTH_CONTIG=$(awk -F'\t' 'NR>1{print $1}' "$TRUTH" | sort -u)
+NTC=$(printf '%s\n' "$TRUTH_CONTIG" | grep -c .)
+FASTA_IDS=$(grep '^>' "$CLJ_FASTA" | sed 's/^>//; s/[[:space:]].*//')
+NFR=$(printf '%s\n' "$FASTA_IDS" | grep -c .)
+CONTIG_ARG=""
+if [[ "$NTC" -eq 1 ]]; then
+    if printf '%s\n' "$FASTA_IDS" | grep -qx "$TRUTH_CONTIG"; then
+        echo "contig  : FASTA carries truth id '$TRUTH_CONTIG' — no override."
+    elif [[ "$NFR" -eq 1 ]]; then
+        echo "contig  : WARNING FASTA id '$FASTA_IDS' != truth '$TRUTH_CONTIG' (single-replicon) -> forcing --contig-name."
+        CONTIG_ARG="--contig-name $TRUTH_CONTIG"
+    else
+        echo "ERROR: FASTA has $NFR records, none match truth contig '$TRUTH_CONTIG' — wrong assembly? ($(printf '%s ' $FASTA_IDS))"; exit 1
+    fi
+else
+    echo "contig  : truth has $NTC contigs; skipping single-replicon override — verify track/truth ids match."
+fi
+
+# --- calibrators load in MAIN_ENV (nt calibrator was fit under nt-tf4x -> catch sklearn skew now) ---
+conda activate "$MAIN_ENV"
+for M in "${MODELS[@]}"; do
+    python - "$(calib_path "$M")" <<'PY' || { echo "ERROR: calibrator failed to load in MAIN_ENV (sklearn version skew?): $(calib_path "$M")"; exit 1; }
+import sys, joblib
+cal = joblib.load(sys.argv[1])
+n = getattr(cal, "n_features_in_", None)
+assert n in (1, 2), f"unexpected n_features_in_={n} for {sys.argv[1]}"
+print(f"calib   : loaded {sys.argv[1]} (n_features_in_={n})")
+PY
+done
+
 echo "HF_HOME : $HF_HOME"
 echo "FASTA   : $CLJ_FASTA"
 echo "truth   : $TRUTH"
@@ -89,10 +125,16 @@ echo "outdir  : $OUTDIR"
 
 # =========================================================================== 1) SCAN (GPU, --emit-logit)
 # Full-genome scan once per model. NT runs in its own env; the rest in MAIN_ENV.
+# RESUME-SAFE: an existing non-empty track is kept (delete it to force a rescan) so a preempt requeue
+# doesn't redo completed GPU scans.
 for M in "${MODELS[@]}"; do
+    if [[ -s "$OUTDIR/clj_${M}_track.csv" ]]; then
+        echo "=== scan $M: track exists — skipping (rm $OUTDIR/clj_${M}_track.csv to force rescan) ==="
+        continue
+    fi
     conda activate "$(env_for "$M")"
     echo "=== scan $M  (env $(env_for "$M")) ==="
-    python "$EVAL/genome_inference.py" --genome "$CLJ_FASTA" $(scan_args "$M") \
+    python "$EVAL/genome_inference.py" --genome "$CLJ_FASTA" $(scan_args "$M") $CONTIG_ARG \
         --emit-logit --window 81 --step 1 --out "$OUTDIR/clj_${M}_track.csv"
 done
 

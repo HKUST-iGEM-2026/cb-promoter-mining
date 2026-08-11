@@ -152,6 +152,15 @@ def main():
 
     finite = np.sort(truth_best[np.isfinite(truth_best)])[::-1]     # detectable TSS best-scores, descending
     detectable = len(finite)
+    if detectable == 0:
+        # 0 TSS covered by any window is never a real result — it means the track and truth don't
+        # join (contig id / strand / coordinate mismatch). Fail loud instead of writing a nan table.
+        raise SystemExit(
+            f"0 of {n_truth:,} known TSS are covered by any scored window — the score track and truth "
+            f"table do not join. Check that their contig ids and strands match.\n"
+            f"  track contigs : {sorted(set(wctg))[:5]}\n"
+            f"  truth contigs : {sorted(set(tctg))[:5]}\n"
+            f"  strand-aware  : {use_strand} (track strands {sorted(set(wstr))}, truth strands {sorted(set(tstr))})")
     base_rate = n_truth / n_win
 
     rows, md = [], []

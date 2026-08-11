@@ -49,7 +49,10 @@ def load_transformer(model_id, model_path, device):
 
 def transformer_scorer(tok, model, device, max_length):
     def score(wins):
-        enc = tok([w.upper() for w in wins], padding="max_length", truncation=True,
+        # pad to the longest sequence IN THE BATCH, not a fixed max_length: padding is attention-masked
+        # so the real-token logits are identical, but NT tokenises an 81 bp window to far fewer tokens
+        # than 81 (6-mers), so fixed max_length=81 wastes ~5x compute on the slowest model.
+        enc = tok([w.upper() for w in wins], padding="longest", truncation=True,
                   max_length=max_length, return_tensors="pt")
         enc = {k: v.to(device) for k, v in enc.items()}
         with torch.no_grad():
@@ -173,6 +176,10 @@ def main():
     ap.add_argument("--max-length", type=int, default=81)
     ap.add_argument("--batch-size", type=int, default=512)
     ap.add_argument("--contigs", default=None)
+    ap.add_argument("--contig-name", default=None,
+                    help="override the emitted 'contig' id (single-replicon genomes only). Use when the "
+                         "FASTA header differs from the truth/regions contig id — e.g. a Bakta-renamed "
+                         "'contig_1' vs the RefSeq 'NC_014328.1'. Errors if the FASTA has >1 record.")
     ap.add_argument("--strands", default="+,-")
     ap.add_argument("--emit-logit", action="store_true",
                     help="also write the T26 calibrator's input features per window: `logit` "
@@ -205,17 +212,20 @@ def main():
 
     keep = set(a.contigs.split(",")) if a.contigs else None
     strands = [s for s in a.strands.split(",") if s]
+    if a.contig_name and sum(1 for _ in SeqIO.parse(a.genome, "fasta")) > 1:
+        raise SystemExit("--contig-name is only valid for a single-record FASTA; this genome has >1 record.")
     write_header, total = True, 0
     with open(a.out, "w") as out_handle:
         for rec in SeqIO.parse(a.genome, "fasta"):
             if keep and rec.id not in keep:
                 continue
+            rec_id = a.contig_name or rec.id
             seq = str(rec.seq)
             for strand in strands:
-                write_header, n = scan_contig(rec.id, seq, strand, a.window, a.step, scorer,
+                write_header, n = scan_contig(rec_id, seq, strand, a.window, a.step, scorer,
                                               a.batch_size, out_handle, write_header, a.emit_logit)
                 total += n
-                print(f"  {rec.id} {strand}: {n:,} windows", file=sys.stderr)
+                print(f"  {rec_id} {strand}: {n:,} windows", file=sys.stderr)
     print(f"Wrote {total:,} scored windows -> {a.out}")
 
 
