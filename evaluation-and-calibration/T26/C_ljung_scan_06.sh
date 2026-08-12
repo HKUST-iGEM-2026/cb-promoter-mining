@@ -162,8 +162,8 @@ done
 
 # =========================================================================== 4) ANALYSIS (md + tex)
 # Collated by the standalone analyzer, which re-reads the apply_*.log + fp_*/ outputs written above.
-# It is re-runnable on these outputs WITHOUT a re-scan, and emits BOTH markdown and LaTeX (via the
-# shared md2tex renderer). To regenerate/retune the report later without re-scanning, just run:
+# It is re-runnable on these outputs WITHOUT a re-scan, and emits BOTH markdown and LaTeX (via its
+# built-in md->tex renderer). To regenerate/retune the report later without re-scanning, just run:
 #   python "$EVAL/T26/analyze_regimeC.py" --regime-dir "$OUTDIR" --truth "$TRUTH" --label "0.6 retrain"
 python "$EVAL/T26/analyze_regimeC.py" --regime-dir "$OUTDIR" --truth "$TRUTH" \
     --models "$(IFS=,; echo "${MODELS[*]}")" --label "0.6 retrain" --recalls "$RECALLS" \
