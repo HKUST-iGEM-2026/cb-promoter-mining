@@ -1,44 +1,80 @@
-import torch
+#!/usr/bin/env python3
+"""
+extract_embeddings_evo2.py — mean-pool Evo2 embeddings for the T15 splits, for a frozen-embedding
+sklearn probe (evo2_promoter_classifier.py). NOT fine-tuning: the 7B backbone is frozen.
+
+WHY THIS FILE CHANGED (2026-08): the committed version wrote to a PERSONAL dir
+(/project/igem2026/xzhangjj/embeddings) while the classifier read from the SHARED
+/project/igem2026/cb-promoter-mining/evo2_embeddings — so the two never lined up, and it dropped the
+T15 `weight` column that every other model (T18/T19/T20) trains on. Both are fixed here; paths are
+now flags with shared defaults, and `weight` is carried through so the probe trains on the SAME
+distribution as the ensemble.
+
+Reads {train,val,test}.parquet with columns: `sequence` (81 bp core) or `sequence_context` (long
+window), `label`, and `weight`. Emits {split}_{X,y,w}.npy to --out-dir.
+
+  # 81 bp core (apples-to-apples with ProkBERT/CNN/NT — the default):
+  python extract_embeddings_evo2.py --data-dir <T15_ctx> --out-dir <shared>/evo2_embeddings
+  # or exploit Evo2's long context:
+  python extract_embeddings_evo2.py --sequence-col sequence_context ...
+"""
+import argparse
+import os
+import sys
 import numpy as np
 import pandas as pd
-from evo2 import Evo2
 
-# Load model
-evo2_model = Evo2('evo2_7b')
-layer_name = 'blocks.28.mlp.l3'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from evo2_common import embed_sequences
 
-data_dir = '/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx'
-out_dir = '/project/igem2026/xzhangjj/embeddings'
 
-import os
-os.makedirs(out_dir, exist_ok=True)
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--data-dir",
+                    default="/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx",
+                    help="dir with {train,val,test}.parquet (the CURRENT xs split, so the probe is comparable).")
+    ap.add_argument("--out-dir", default="/project/igem2026/cb-promoter-mining/evo2_embeddings",
+                    help="SHARED output dir the classifier reads (must match evo2_promoter_classifier.py --emb-dir).")
+    ap.add_argument("--model", default="evo2_7b")
+    ap.add_argument("--layer", default="blocks.28.mlp.l3",
+                    help="7B intermediate layer (upstream default). Re-index if you change model size.")
+    ap.add_argument("--sequence-col", default="sequence",
+                    help="'sequence' = 81 bp core (comparable to the other 4 models); "
+                         "'sequence_context' = long window (uses Evo2's long-context strength).")
+    ap.add_argument("--pool", default="mean", choices=["mean", "last", "max"],
+                    help="pool per-nucleotide embeddings to one vector. 'last' = final position "
+                         "(has seen the whole causal context); worth benchmarking vs mean.")
+    ap.add_argument("--batch-size", type=int, default=16,
+                    help="windows per Evo2 forward (auto-falls back to 1 if Vortex rejects B>1).")
+    a = ap.parse_args()
 
-for split in ['train', 'val', 'test']:
-    print(f'\nProcessing {split}...')
-    df = pd.read_parquet(f'{data_dir}/{split}.parquet')
-    sequences = df['sequence'].tolist()
-    y = df['label'].values
+    from evo2 import Evo2
+    evo2_model = Evo2(a.model)
+    os.makedirs(a.out_dir, exist_ok=True)
 
-    X = []
-    for i, seq in enumerate(sequences):
-        input_ids = torch.tensor(
-            evo2_model.tokenizer.tokenize(seq),
-            dtype=torch.int,
-        ).unsqueeze(0).to('cuda:0')
+    for split in ("train", "val", "test"):
+        df = pd.read_parquet(f"{a.data_dir}/{split}.parquet")
+        if a.sequence_col not in df.columns:
+            raise SystemExit(f"{split}: no column '{a.sequence_col}'. Have: {list(df.columns)}")
+        seqs = df[a.sequence_col].astype(str).tolist()
+        y = df["label"].to_numpy()
+        if "weight" in df.columns:
+            w = df["weight"].to_numpy()
+        else:
+            print(f"  WARNING: no 'weight' column in {split} — probe will train UNWEIGHTED "
+                  f"(silver T13 at full weight = AT-trap risk; not comparable to T18/T19/T20).")
+            w = np.ones(len(y))
 
-        _, embeddings = evo2_model(
-            input_ids, return_embeddings=True, layer_names=[layer_name]
-        )
+        print(f"\n{split}: {len(seqs)} seqs, col='{a.sequence_col}', pool='{a.pool}', batch={a.batch_size}")
+        X = embed_sequences(evo2_model, seqs, a.layer, a.pool, a.batch_size)
 
-        vec = embeddings[layer_name].float().mean(dim=1).squeeze(0).cpu().numpy()
-        X.append(vec)
+        np.save(f"{a.out_dir}/{split}_X.npy", X)
+        np.save(f"{a.out_dir}/{split}_y.npy", y)
+        np.save(f"{a.out_dir}/{split}_w.npy", w)
+        print(f"  wrote {split}_{{X,y,w}}.npy  X={X.shape}  pos={int(y.sum())}/{len(y)}")
 
-        if i % 500 == 0:
-            print(f'  {i}/{len(sequences)}')
+    print(f"\nDone -> {a.out_dir}  (next: evo2_promoter_classifier.py --emb-dir {a.out_dir})")
 
-    X = np.array(X)
-    np.save(f'{out_dir}/{split}_X.npy', X)
-    np.save(f'{out_dir}/{split}_y.npy', y)
-    print(f'  Done. X shape: {X.shape}')
 
-print('\nAll splits complete.')
+if __name__ == "__main__":
+    main()
