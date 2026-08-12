@@ -18,6 +18,7 @@ export HF_HUB_OFFLINE=1
 export PYTHONNOUSERSITE=1
 
 EVO2=/project/igem2026/cb-promoter-mining/model-training/Evo2
-# default --data-dir (current xs T15_ctx) and --out-dir (shared evo2_embeddings) are baked into the script.
+# default --data-dir = T15_xs (the deployed cross-species split, 44,085 rows) and --out-dir = shared
+# evo2_embeddings/ are baked into the extractor. Override with --data-dir only for a different split.
 # add --sequence-col sequence_context to embed the long window instead of the 81 bp core.
 python "$EVO2/extract_embeddings_evo2.py"

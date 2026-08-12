@@ -31,8 +31,10 @@ from evo2_common import embed_sequences
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir",
-                    default="/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx",
-                    help="dir with {train,val,test}.parquet (the CURRENT xs split, so the probe is comparable).")
+                    default="/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_xs",
+                    help="dir with {train,val,test}.parquet. Default T15_xs (44,085 rows) = the "
+                         "cross-species-augmented split the DEPLOYED T21_xs models trained on, so the probe "
+                         "is comparable to the deployed ensemble. (NOT T15_ctx=stale, T15=0.6 non-xs, T15_09=0.9.)")
     ap.add_argument("--out-dir", default="/project/igem2026/cb-promoter-mining/evo2_embeddings",
                     help="SHARED output dir the classifier reads (must match evo2_promoter_classifier.py --emb-dir).")
     ap.add_argument("--model", default="evo2_7b")
