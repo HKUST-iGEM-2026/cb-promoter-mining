@@ -22,18 +22,22 @@
 # SUBMIT:  sbatch mining-and-motif-annotation/T28/scan_ensemble.sbatch
 set -eo pipefail
 
-# ============================ EDIT THIS BLOCK, THEN sbatch ============================
+# ==================== CONFIG: override any of these from the submit line ====================
+# Each is env-overridable, so you drive it per-genome WITHOUT editing this file (keeps the /project
+# clone pull-only). e.g.:
+#   TAG=clj FASTA=$RC/clj.fna REGIONS=$RC/clj_candidate_regions.bed TRUTH=$EVAL/ljungdahlii_holdout_tss.tsv \
+#     sbatch mining-and-motif-annotation/T28/scan_ensemble.sbatch
 REPO=/project/igem2026/cb-promoter-mining
-TAG=clj                                          # short genome tag -> goes in every output filename
-FASTA=$REPO/PATH/TO/genome.fna                   # the genome to scan (single- or multi-record FASTA)
-REGIONS=$REPO/PATH/TO/candidate_regions.bed      # make_candidate_regions.py output (restrict-scan space)
-TRUTH=""                                         # OPTIONAL known-TSS (contig,pos,strand, tab-sep).
+TAG=${TAG:-clj}                                  # short genome tag -> goes in every output filename
+FASTA=${FASTA:-$REPO/PATH/TO/genome.fna}         # the genome to scan (single- or multi-record FASTA)
+REGIONS=${REGIONS:-$REPO/PATH/TO/candidate_regions.bed}  # make_candidate_regions.py output (restrict-scan space)
+TRUTH=${TRUTH:-}                                 # OPTIONAL known-TSS (contig,pos,strand, tab-sep).
                                                  #   set a path  -> validation mode (benchmark ON)
-                                                 #   leave ""     -> target-mine mode (shortlist only, no benchmark)
-STEP=1                                           # 1 = every position. Bump to 3-5 to speed the big target mine (cnn_v2 is the slow one).
-CONTIG_OVERRIDE=""                               # e.g.  --contig-name NC_014328.1  if Bakta renamed the sole contig; else leave ""
-RECALLS=0.1,0.5,0.7,0.9
-# =====================================================================================
+                                                 #   leave unset  -> target-mine mode (shortlist only, no benchmark)
+STEP=${STEP:-1}                                  # 1 = every position. Bump to 3-5 to speed the scan (cnn_v2 is the slow one).
+CONTIG_OVERRIDE=${CONTIG_OVERRIDE:-}             # e.g.  --contig-name NC_014328.1  if Bakta renamed the sole contig; else leave unset
+RECALLS=${RECALLS:-0.1,0.5,0.7,0.9}
+# ===========================================================================================
 
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
