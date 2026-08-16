@@ -39,7 +39,8 @@ OUT=${OUT:-$DIR/ntv3_ctx_classifier}
 MAXLEN=${MAXLEN:-384}                       # MUST equal the context length in DATA (T15_ctx = 384)
 # -----------------------------------
 
-export HF_HOME=${HF_HOME:-/project/igem2026/hf_cache}   # where NTv3_650M_pre was pre-staged
+export HF_HOME=${HF_HOME:-/project/igem2026/hf_$USER}   # where NTv3_650M_pre was pre-staged (personal, writable)
+export HF_TOKEN_PATH=${HF_TOKEN_PATH:-/tmp/hf_notoken_$USER}   # dodge the unreadable shared-cache token file
 export HF_HUB_OFFLINE=1 PYTHONNOUSERSITE=1 MKL_THREADING_LAYER=GNU
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 conda activate "$ENV"
