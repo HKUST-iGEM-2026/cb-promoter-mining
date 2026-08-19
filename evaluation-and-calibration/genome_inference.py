@@ -137,11 +137,38 @@ def cnn_v2_scorer(mod, model, device, enac_window):
 
 
 # --------------------------------------------------------------------------- scan
+def load_regions_bed(path):
+    """BED (contig,start,end,strand) -> {(contig,strand): (sorted_starts, sorted_ends)}. Same shape +
+    overlap convention as genome_fp_benchmark.load_regions, so a restricted scan scores exactly the
+    windows a downstream --regions filter would keep."""
+    df = pd.read_csv(path, sep="\t")
+    out = {}
+    for (c, st), g in df.groupby(["contig", "strand"]):
+        g = g.sort_values("start")
+        out[(str(c), str(st))] = (g["start"].to_numpy(int), g["end"].to_numpy(int))
+    return out
+
+
 def scan_contig(rec_id, seq, strand, window, step, scorer, batch_size, out_handle, write_header,
-                emit_logit=False):
+                emit_logit=False, regions=None):
     L = len(seq)
     scan = seq if strand == "+" else str(Seq(seq).reverse_complement())
-    starts = range(0, L - window + 1, step)
+    starts = np.arange(0, L - window + 1, step)
+    if regions is not None:
+        # RESTRICT (opt-in): keep only scan indices whose GENOMIC window overlaps a candidate region
+        # on this (contig, strand) -- same overlap test as genome_fp_benchmark.in_region_mask. g0/g1
+        # below are unchanged, so coordinates + scoring are identical; we only skip windows up front
+        # to avoid scoring ones a downstream --regions filter would discard. Default (None) = full scan.
+        rs_re = regions.get((rec_id, strand))
+        if rs_re is None:
+            return write_header, 0                              # no region on this contig/strand
+        rs, re = rs_re
+        gg = starts if strand == "+" else (L - (starts + window))    # genomic window start per index
+        idx = np.searchsorted(rs, gg + window, side="right") - 1     # region with largest start < win end
+        ok = idx >= 0
+        ov = np.zeros(len(starts), dtype=bool)
+        ov[ok] = re[idx[ok]] > gg[ok]                                # ...and it ends after the win starts
+        starts = starts[ov]
     cols = ["contig", "start", "end", "strand", "promoter_score"] + (
         ["logit", "at_fraction"] if emit_logit else [])
     n = 0
@@ -181,6 +208,11 @@ def main():
                          "FASTA header differs from the truth/regions contig id — e.g. a Bakta-renamed "
                          "'contig_1' vs the RefSeq 'NC_014328.1'. Errors if the FASTA has >1 record.")
     ap.add_argument("--strands", default="+,-")
+    ap.add_argument("--regions", default=None,
+                    help="optional BED (contig,start,end,strand) from make_candidate_regions.py: "
+                         "RESTRICT the scan to windows overlapping a candidate region on their "
+                         "(contig, strand). Default off => full-genome scan (unchanged). Only skips "
+                         "window starts up front; every emitted coordinate/score is identical.")
     ap.add_argument("--emit-logit", action="store_true",
                     help="also write the T26 calibrator's input features per window: `logit` "
                          "(logit1 - logit0) and `at_fraction`. apply_calibrator.py then reads both "
@@ -214,6 +246,7 @@ def main():
     strands = [s for s in a.strands.split(",") if s]
     if a.contig_name and sum(1 for _ in SeqIO.parse(a.genome, "fasta")) > 1:
         raise SystemExit("--contig-name is only valid for a single-record FASTA; this genome has >1 record.")
+    regions = load_regions_bed(a.regions) if a.regions else None
     write_header, total = True, 0
     with open(a.out, "w") as out_handle:
         for rec in SeqIO.parse(a.genome, "fasta"):
@@ -223,7 +256,8 @@ def main():
             seq = str(rec.seq)
             for strand in strands:
                 write_header, n = scan_contig(rec_id, seq, strand, a.window, a.step, scorer,
-                                              a.batch_size, out_handle, write_header, a.emit_logit)
+                                              a.batch_size, out_handle, write_header, a.emit_logit,
+                                              regions=regions)
                 total += n
                 print(f"  {rec_id} {strand}: {n:,} windows", file=sys.stderr)
     print(f"Wrote {total:,} scored windows -> {a.out}")

@@ -343,7 +343,12 @@ rebalance, so confirm current owners with Oak.
   transformers. Stats unit-tested (empirical_p/BH/region_mask/call_peaks/pooled_ensemble). Preflight
   FAILS LOUD on GFF3↔FASTA contig-id mismatch (the contig_1-vs-NC trap). Null must be 81 bp clean-ACGT
   (validated). Full convergent-intergenic null (both orientations) packed into one contig + scored
-  `--step 81 --strands +` so the whole pool is BATCHED. Motif env = `/project/igem2026/envs/meme`.
+  `--step 81 --strands +` so the whole pool is BATCHED. Ensemble rank-percentile reference =
+  RESTRICTED candidates + null (not the whole genome), so CDS score density stays out of the
+  normalization. **Candidate scan is PHYSICALLY restricted** via a new opt-in `--regions BED` filter
+  added to `genome_inference.py` (default-off → other consumers byte-for-byte unchanged; only scores
+  windows overlapping a candidate region → ~half the genome, cnn_v2 preempt-friendly; unit-tested to
+  keep exactly the same windows as the analysis `region_mask`). Motif env = `/project/igem2026/envs/meme`.
   (dep T26; reuses T28/T29/T30/T31) (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**

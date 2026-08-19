@@ -25,17 +25,23 @@ p-/q-values, not bare scores.
        there), so scoring them just inflates the multiple-testing burden with windows we would never
        call anyway. Restricting to candidate regions is the repo's established "restrict-scan"
        pattern (genome_fp_benchmark.py --regions, the deployed Regime-C mine).
-  Engineering note: the physical scan still reuses the audited genome_inference.py over the FULL
-  FASTA (that engine handles per-contig, per-strand coordinates correctly — the safe path), and the
-  RESTRICTION is applied afterward with the candidate-regions BED, exactly like C_ljung_scan_06.sh.
-  No calibration is applied: the T29 ensemble is mean RANK-PERCENTILE, which is calibration-invariant.
+  Engineering note: the scan reuses the audited genome_inference.py (per-contig, per-strand
+  coordinates handled by the engine — the safe path) with its opt-in --regions filter, so ONLY the
+  candidate-region windows are scored — CDS windows are skipped UP FRONT (not scored-then-dropped),
+  ~halving the scan so cnn_v2 fits a preempt window. The filter is additive + default-off, so every
+  other genome_inference consumer is unaffected; the Python side still re-applies the same region
+  test (idempotent, defense-in-depth). No calibration: the T29 ensemble is mean RANK-PERCENTILE,
+  which is calibration-invariant.
 
 PIPELINE (one reproducible entrypoint; the only reason it shells out is the conda-env split — NT
 needs transformers 4.57 in nt-tf4x, the rest need 5.3 in the main env, and one Python process cannot
 host both. So genome_inference.py is run per model as a subprocess under the right env; all the
 statistics/aggregation happen in THIS process):
   1. candidate regions  = make_candidate_regions.py(gff)                       -> BED (upstream of genes)
-  2. candidate scan      = genome_inference.py(genome fna, 81bp, +/-) x4 models -> per-model window tracks
+  2. candidate scan      = genome_inference.py(genome fna, 81bp, +/-, --regions BED) x4 models ->
+                           per-model window tracks RESTRICTED to the candidate regions (only upstream
+                           windows scored; ~half the genome, cnn_v2-friendly). --regions is opt-in +
+                           default-off, so other genome_inference consumers are byte-for-byte unaffected.
   3. null scan           = genome_inference.py(ALL convergent-intergenic 81bp seqs, both orientations,
                            packed into one contig, --step 81 --strands +)        -> per-model null scores (batched)
   4. ensemble (T29)      = POOL candidate+null per model, rank-percentile over the pool, mean across
@@ -141,11 +147,12 @@ def run(cmd, conda_base, env_prefix, hf_home, extra_exports=""):
 
 
 def scan(genome_inference, in_fasta, out_csv, model, model_root, subdir, envs, hf_home, conda_base,
-         step, strands):
+         step, strands, regions_bed=None):
     """One genome_inference.py pass. Resume-safe: keep a completed track (skip on a preempt requeue).
-    Candidates use step=1, both strands (a genomic slide); the null uses step=81, '+' only over the
-    contig of pre-concatenated 81 bp blocks (see the null-FASTA build) so every window is exactly one
-    null sequence AND the whole pool is scored in batches. Both use --window 81 (the model window)."""
+    Candidates use step=1, both strands (a genomic slide) RESTRICTED to the candidate-regions BED so
+    only upstream windows are scored; the null uses step=81, '+' only over the contig of
+    pre-concatenated 81 bp blocks (no --regions) so every window is exactly one null sequence AND the
+    whole pool is scored in batches. Both use --window 81 (the model window)."""
     if os.path.exists(out_csv) and os.path.getsize(out_csv) > 0:
         print(f"[skip] track exists: {out_csv}", file=sys.stderr)
         return
@@ -154,6 +161,8 @@ def scan(genome_inference, in_fasta, out_csv, model, model_root, subdir, envs, h
     tmp = out_csv + ".tmp"
     cmd = (f"python {genome_inference} --genome {in_fasta} {margs} "
            f"--window {WINDOW} --step {step} --strands {strands} --out {tmp}")
+    if regions_bed:
+        cmd += f" --regions {regions_bed}"
     run(cmd, conda_base, env_prefix, hf_home)
     os.replace(tmp, out_csv)
 
@@ -272,26 +281,40 @@ def run_one_set(setname, a, envs, genome):
         cpath = str(outdir / f"cand_{m}.csv")
         npath = str(outdir / f"null_{m}.csv")
         scan(a.genome_inference, a.genome, cpath, m, a.model_root, subdir, envs, a.hf_home,
-             a.conda_base, step=a.step, strands="+,-")
+             a.conda_base, step=a.step, strands="+,-", regions_bed=a.regions_bed)
         scan(a.genome_inference, a.null_fasta, npath, m, a.model_root, subdir,
              envs, a.hf_home, a.conda_base, step=WINDOW, strands="+")
         cand_tracks[m] = load_track(cpath, KEYS)
         null_tracks[m] = load_track(npath, ["contig", "strand", "start"])
 
-    # --- pooled rank-percentile ensemble (T29) ---
-    cand = cand_tracks[MODELS[0]][["contig", "start", "end", "strand"]].copy()
-    cand_ens, null_ens = pooled_ensemble(cand_tracks, null_tracks)
-    cand["ensemble"] = cand_ens
-
-    # --- restrict candidates to upstream regions; empirical p against the intergenic null ---
+    # --- RESTRICT candidates to upstream regions FIRST, then ensemble over (restricted cands + null) ---
+    # Ranking over the restricted space (not the whole genome) keeps CDS score density OUT of the
+    # rank-percentile normalization, consistent with the tailored intergenic null. The full-genome
+    # CDS windows were scored (genome_inference can't region-limit) but are dropped here — they never
+    # enter the ranking or the FDR.
+    n_full = len(cand_tracks[MODELS[0]])
+    base = cand_tracks[MODELS[0]]
+    for m in MODELS:                                   # grids must match before we positionally mask
+        ct = cand_tracks[m]
+        if len(ct) != n_full or not ct[KEYS].equals(base[KEYS]):
+            raise SystemExit(f"candidate track '{m}' is not on the same window grid as '{MODELS[0]}' "
+                             f"({len(ct):,} vs {n_full:,} rows or key mismatch). Re-scan the odd one out.")
     regions = pd.read_csv(a.regions_bed, sep="\t")
     regions["contig"] = regions["contig"].astype(str)
     regions["strand"] = regions["strand"].astype(str)
-    keep = region_mask(cand["contig"].to_numpy().astype(str), cand["start"].to_numpy(int),
-                       cand["strand"].to_numpy().astype(str), regions)
-    rc = cand[keep].copy()
-    rc["p_value"] = empirical_p(rc["ensemble"].to_numpy(), null_ens)
-    print(f"  restricted candidates: {len(rc):,}/{len(cand):,} windows ({keep.mean():.1%}); "
+    keep = region_mask(base["contig"].to_numpy().astype(str), base["start"].to_numpy(int),
+                       base["strand"].to_numpy().astype(str), regions)
+    if not keep.any():
+        raise SystemExit("no candidate window overlaps a candidate region — check the regions BED / "
+                         "contig ids (region contigs must match the scan-track contigs).")
+    rcand_tracks = {m: cand_tracks[m].loc[keep].reset_index(drop=True) for m in MODELS}
+
+    # --- pooled rank-percentile ensemble (T29) over RESTRICTED candidates + null; empirical p ---
+    rc = rcand_tracks[MODELS[0]][["contig", "start", "end", "strand"]].copy()
+    cand_ens, null_ens = pooled_ensemble(rcand_tracks, null_tracks)
+    rc["ensemble"] = cand_ens
+    rc["p_value"] = empirical_p(cand_ens, null_ens)
+    print(f"  restricted candidates: {len(rc):,}/{n_full:,} windows ({keep.mean():.1%}); "
           f"null samples: {len(null_ens):,}")
 
     # --- peak-call the p-gated windows, then BH q-values over PEAKS (the calling unit) ---
@@ -319,7 +342,7 @@ def run_one_set(setname, a, envs, genome):
 
     # --- motif detection on the top-N (T31 FIMO, bio env) ---
     motif_ok = run_motif(a, top_csv, outdir, envs)
-    write_report(setname, subdir, a, cand, rc, null_ens, peaks, top, drop, motif_ok, outdir)
+    write_report(setname, subdir, a, n_full, rc, null_ens, peaks, top, drop, motif_ok, outdir)
     print(f"  -> {outdir}/  (top{a.top_n}_promoters.csv, peaks_fdr.csv, analysis.md)")
 
 
@@ -339,7 +362,7 @@ def run_motif(a, top_csv, outdir, envs):
         return False
 
 
-def write_report(setname, subdir, a, cand, rc, null_ens, peaks, top, dropped, motif_ok, outdir):
+def write_report(setname, subdir, a, n_full, rc, null_ens, peaks, top, dropped, motif_ok, outdir):
     q = np.quantile(null_ens, [0.5, 0.95, 0.99, 1.0])
     arch = ""
     motif_file = outdir / f"top{a.top_n}_promoters_motif.csv"
@@ -352,10 +375,11 @@ def write_report(setname, subdir, a, cand, rc, null_ens, peaks, top, dropped, mo
     md = f"""# T27 empirical-FDR promoter mine — C. butyricum — model set `{setname}` ({subdir})
 
 **Restricted scan + tailored null.** Candidates are the {len(rc):,} upstream-of-gene windows (of
-{len(cand):,} genome-wide); the null is the {len(null_ens):,} convergent-intergenic samples (both
+{n_full:,} scanned); the null is the {len(null_ens):,} convergent-intergenic samples (both
 strands of the 81 bp CB negatives). Both are intergenic + AT-rich, so the empirical p-value is a
-composition-matched comparison (see the script header for why this beats a genome-wide scan).
-Ensemble = 4-model mean rank-percentile, pooled over candidates+null (calibration-free). No calibration.
+composition-matched comparison (see the script header). Ensemble = 4-model mean rank-percentile,
+pooled over the RESTRICTED candidates + null (NOT the whole genome — CDS score density is kept out of
+the normalization). Calibration-free; no calibration.
 
 ## Null score distribution (ensemble rank-percentile)
 median {q[0]:.4f} · p95 {q[1]:.4f} · p99 {q[2]:.4f} · max {q[3]:.4f}
