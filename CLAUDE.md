@@ -120,8 +120,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
     TSSpredator.
 - **Negatives (T14), four classes:** coding-sequence windows, intergenic non-promoter,
   downstream/3′, and **SRS** = Shuffled Real Sequence (dinucleotide-preserving shuffle of real
-  promoters — keeps base composition, destroys the −10/−35 signal). SRS is also the null for
-  empirical FDR (T27).
+  promoters — keeps base composition, destroys the −10/−35 signal). SRS was originally the FDR null,
+  but **T27 now uses the convergent-intergenic negatives as the empirical-FDR null** (decision 2026-08);
+  SRS is training-only.
 
 ---
 
@@ -331,7 +332,19 @@ rebalance, so confirm current owners with Oak.
   calibrator on the full set** (StandardScaler→LogisticRegression pipeline; one artifact
   `<model>_calibrator_at.joblib`). `run_calibration.sh` updated to the new flags (SRS-negative step
   dropped). Not run yet — needs the trained models + the two negative TSVs staged on HPC4. (dep PT4,T9,T22)
-- T27 Empirical FDR via SRS null → q-values — Ishi — ⬜ (dep PT4,T14,T26)
+- T27 Empirical FDR on the TARGET → q-values — Ishi — 🟡 **implemented, not yet run on HPC4 (2026-08)**:
+  `evaluation-and-calibration/T27/fdr_mine.py` (+ `run_fdr_mine.sbatch`). One reproducible Python
+  entrypoint that mines *C. butyricum* end-to-end: RESTRICTED candidate scan (upstream-of-gene windows
+  via make_candidate_regions) + a **convergent-intergenic null** (NOT SRS anymore — decision 2026-08),
+  4-model ensemble **pooled** so candidate+null share one rank-percentile scale (calibration-free),
+  empirical p = (#null≥score+1)/(Nnull+1), peak-call (T30-style), **BH q-values over peaks**, top-80
+  promoters + T31 FIMO −10/−35 motif. Runs BOTH model sets (`--model-set both`: xs + 0.6). Shells out
+  to genome_inference per model under the right env (NT→nt-tf4x) since one process can't host both
+  transformers. Stats unit-tested (empirical_p/BH/region_mask/call_peaks/pooled_ensemble). Preflight
+  FAILS LOUD on GFF3↔FASTA contig-id mismatch (the contig_1-vs-NC trap). Null must be 81 bp clean-ACGT
+  (validated). Full convergent-intergenic null (both orientations) packed into one contig + scored
+  `--step 81 --strands +` so the whole pool is BATCHED. Motif env = `/project/igem2026/envs/meme`.
+  (dep T26; reuses T28/T29/T30/T31) (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**
 - T28 Sliding-window inference on Clostridium — Swasti — 📄 `mining-and-motif-annotation/T28/` (dep PT6,T13,T20,T21)
