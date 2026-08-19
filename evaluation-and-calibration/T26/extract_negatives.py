@@ -367,6 +367,15 @@ def main():
     ap = argparse.ArgumentParser(description="T26 convergent-intergenic + CDS-interior negatives")
     ap.add_argument("--input-dir", default=DEFAULT_DIR, help="dir holding the .fna/.gff3 pairs")
     ap.add_argument("--output-dir", default=DEFAULT_DIR, help="dir to write the TSVs")
+    # Single-genome override: point at ONE genome (e.g. the C. butyricum target) by giving its
+    # filenames explicitly. When both are set, the hardcoded two-genome GENOMES list is replaced.
+    ap.add_argument("--fna", help="single-genome FASTA filename (relative to --input-dir)")
+    ap.add_argument("--gff3", help="single-genome GFF3 filename (relative to --input-dir)")
+    ap.add_argument("--prefix", default="CBUT", help="sequence-id prefix for --fna/--gff3 mode")
+    ap.add_argument("--species", default="Clostridium butyricum",
+                    help="source_species label for --fna/--gff3 mode")
+    ap.add_argument("--strain", default="butyricum",
+                    help="source_strain label for --fna/--gff3 mode")
     ap.add_argument("--window", type=int, default=52, help="window length (bp)")
     ap.add_argument("--trim", type=int, default=50, help="bp trimmed from each CDS-facing boundary")
     ap.add_argument("--seed", type=int, default=42, help="RNG seed (shared across both classes)")
@@ -378,6 +387,13 @@ def main():
 
     rng = random.Random(args.seed)
     skips = Counter()
+
+    if bool(args.fna) ^ bool(args.gff3):
+        sys.exit("ERROR: --fna and --gff3 must be given together.")
+    genomes = GENOMES
+    if args.fna and args.gff3:
+        genomes = [{"prefix": args.prefix, "fna": args.fna, "gff3": args.gff3,
+                    "species": args.species, "strain": args.strain}]
 
     conv_out = os.path.join(args.output_dir, "convergent_intergenic_negatives.tsv")
     cds_out = os.path.join(args.output_dir, "cds_negatives.tsv")
@@ -393,7 +409,7 @@ def main():
 
     all_conv, all_cds, region_rows = [], [], []
     genomes_processed = 0
-    for g in GENOMES:
+    for g in genomes:
         print(f"\n[{g['prefix']}] {g['species']} (strain label: {g['strain']})")
         res = process_genome(g, args.input_dir, args.window, args.trim, rng, skips)
         if res is None:
