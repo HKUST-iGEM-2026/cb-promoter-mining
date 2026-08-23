@@ -79,13 +79,14 @@ done
 # contig-id parity: Evo2 emits the FASTA header as `contig` and can't override it, and genome_inference
 # reads the SAME FASTA here (no --contig-name), so all three tracks share ids. Guard it anyway.
 FID=$(grep -m1 '^>' "$FASTA" | sed 's/^>//; s/[[:space:]].*//')
-if ! tail -n +2 "$REGIONS" | cut -f1 | sort -u | grep -qx "$FID"; then
+REG_CONTIGS=$(tail -n +2 "$REGIONS" | cut -f1 | sort -u)   # materialise first: no pipe into grep -q (SIGPIPE+pipefail)
+if ! grep -qx "$FID" <<<"$REG_CONTIGS"; then
     echo "ERROR: FASTA record id '$FID' is not among the regions' contigs — fix contig ids"; exit 1
 fi
 if [[ -n "$TRUTH" && ! -f "$TRUTH" ]]; then echo "TRUTH set but not found: $TRUTH"; exit 1; fi
 # guard: a non-empty truth whose contig != this genome means a stale default on a target mine — fail loud.
 if [[ -n "$TRUTH" ]]; then
-    TCONTIG=$(tail -n +2 "$TRUTH" | head -1 | cut -f1)
+    TCONTIG=$(awk 'NR==2{print $1; exit}' "$TRUTH")        # line-2 field-1; single process, no pipe/SIGPIPE
     [[ "$TCONTIG" == "$FID" ]] || { echo "ERROR: truth contig '$TCONTIG' != genome '$FID'. For a target"\
         " mine set TRUTH=\"\" (no benchmark); for validation point TRUTH at THIS genome's TSS."; exit 1; }
     echo "MODE: validation (truth=$(($(wc -l <"$TRUTH")-1)) TSS)"
