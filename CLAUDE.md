@@ -113,11 +113,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - **Target (what we mine):** _C. butyricum_ DSM 10702. **Deliberately excluded** from training.
 - **Training genomes (T5):** 166 other *Clostridium* (genus, NCBI taxon **1485**) RefSeq
   genomes — the regions where promoters live.
-- **Positive promoters come from two places:**
-  - **Curated cross-species (T8):** RegulonDB (*E. coli*) + DBTBS (*B. subtilis*). We borrow
+- **Positive promoters come from several sources** (verified counts in the deployed `T15_xs`, §7):
+  - **Curated cross-species (T8):** RegulonDB (*E. coli*, 3,827) + DBTBS (*B. subtilis*, 373). We borrow
     *E. coli* so the model generalises and *B. subtilis* because it's AT-rich like Clostridium.
-  - **Empirical TSS (T10):** transcription start sites called from published dRNA-seq with
-    TSSpredator.
+  - **Additional cross-species empirical TSS:** *B. licheniformis* (888, AT-rich Bacillus) +
+    *Ruminiclostridium cellulolyticum* (663, ex-*Clostridium* relative) — published TSS, added 2026-08,
+    train-pinned.
+  - **In-genus empirical TSS (T7b):** *C. acetobutylicum* / *C. beijerinckii* (Hocq 2022) — the verified
+    in-genus positives (the bulk of the 19,344 in-genus).
+  - **In-genus silver (T13):** housekeeping-gene upstreams, down-weighted (`--silver-weight 0.3`).
+  - Held out: **T9** (synthetic, → eval) and **T10** (*C. difficile*, out-of-genus, dRNA-seq via
+    TSSpredator — cross-species-adjacent support, not a training positive).
 - **Negatives (T14), four classes:** coding-sequence windows, intergenic non-promoter,
   downstream/3′, and **SRS** = Shuffled Real Sequence (dinucleotide-preserving shuffle of real
   promoters — keeps base composition, destroys the −10/−35 signal). SRS was originally the FDR null,
@@ -352,8 +358,8 @@ rebalance, so confirm current owners with Oak.
   (dep T26; reuses T28/T29/T30/T31) (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**
-- T28 Sliding-window inference on Clostridium — Swasti — 📄 `mining-and-motif-annotation/T28/` (dep PT6,T13,T20,T21)
-- T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — ⬜ (dep T28)
+- T28 Sliding-window inference on Clostridium — Swasti — 📄 **runnable scan+ensemble template (2026-08)**: `mining-and-motif-annotation/T28/scan_ensemble.sbatch` scans the 4 **xs** models (`T21_xs`, deployed pre-T26 set) full-genome via `genome_inference.py` (env-split for NT), calls T29, then benchmarks RESTRICTED (`genome_fp_benchmark --regions`) if a truth TSV is given (validation mode) else emits a restricted score-sorted shortlist (target-mine mode). One EDIT block, resume-safe. Runbook `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md`. Not yet run on HPC4. (dep PT6,T13,T20,T21)
+- T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — 📄 **template written + unit-verified (2026-08)**: `mining-and-motif-annotation/T29/ensemble_rank_percentile.py` joins the N per-model tracks on `(contig,start,strand)`, per-model percentile rank, mean → ensemble track whose `promoter_score` is a drop-in for `genome_fp_benchmark`. Calibration-invariant (correct on raw pre-T26 scores). Fails loud on window-grid mismatch; optional `--regions` restricted shortlist. Local synthetic tests pass (exact means, strand-aware restriction, mismatch guard). Not yet run on real tracks. (dep T28)
 - T30 Locus-level peak calling — Ishi — ⬜ (dep T29)
 - T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ⬜ (dep T30; FIMO alone if short on time)
 - T32 FINAL candidate output (TSV/JSONL, PT6 schema) — Ishi+Oak — ⬜ (dep T26,T27,T30,T31)
@@ -364,8 +370,10 @@ rebalance, so confirm current owners with Oak.
 ## 7. Conventions & decisions locked
 
 > ✅ **RESOLVED (2026-06).** The "no _verified_ in-genus positive in training" problem (raised
-> 2026-06-19) is fixed. The T15 positive set is now **T8 (cross-species, verified) + T7b (in-genus,
-> verified) + T13 (in-genus, _silver_)**, with T9 and T10 held out:
+> 2026-06-19) is fixed. The T15 positive set is now **T8 (cross-species curated: _E. coli_ RegulonDB +
+> _B. subtilis_ DBTBS, verified) + additional cross-species empirical TSS (_B. licheniformis_ +
+> _Ruminiclostridium cellulolyticum_, verified) + T7b (in-genus, verified) + T13 (in-genus, _silver_)**,
+> with T9 and T10 held out:
 > 1. **T7b supplies 5,759 verified in-genus positives** (Hocq 2022 empirical TSS: _C. acetobutylicum_ 1,434
 >    + _C. beijerinckii_ NCIMB 8052 / DSM 6423 = 4,325; extended 2026-07) — built + run on HPC4, feeds T15 `--positives`.
 > 2. **T13 housekeeping upstreams = silver/weak labels** — T15 down-weights them (`--silver-weight 0.3`),
@@ -375,6 +383,12 @@ rebalance, so confirm current owners with Oak.
 >    workaround is no longer needed now that T7b exists, and T9's ~51 bp would need poor N-padding.
 > 4. **T10 (_C. difficile_) stays out-of-genus** — re-run + verified (1,746 TSS) but treated as
 >    cross-species-adjacent support, and **not** passed to T15's `--positives`.
+> 5. **Extra out-of-genus empirical TSS added 2026-08** (`data-acquisition-and-curation/TSS_results/prep_new_tss.py`):
+>    _Ruminiclostridium cellulolyticum_ (gene-assoc TSS) + _Bacillus licheniformis_ (primary TSS), both
+>    **cross-species → pinned to TRAIN** in `cdhit_splits.py` (never in val/test, so the deployment metric
+>    stays honest). **VERIFIED in the deployed `T15_xs` (2026-08): 25,095 positives = 19,344 in-genus +
+>    5,751 out-of-genus (_E. coli_ 3,827 + _B. licheniformis_ 888 + _Ruminiclostridium_ 663 + _B. subtilis_
+>    373); 50,190 rows total** (supersedes the 47,088-row count in the §6 T15 entry).
 > Remaining: the Al-Bassam 2018 _C. ljungdahlii_ TSS are downloaded (1,245 primary TSS) but held OUT of
 > training on purpose — they are the clean in-genus validation genome (Regime C, and the T33 validation
 > genome). Adding them as training positives would forfeit that held-out set.
@@ -504,8 +518,37 @@ select by **product description**, not the gene-symbol field.
   0.6 barely moved the balanced numbers vs the old 0.9 splits → the earlier scores were not leakage-inflated.
 - **CNN-v2 is the round's standout:** best composition-matched SRS AUROC (0.924, cleanest motif-learning signal)
   AND best restricted genome-scale precision at recall 0.5–0.9. It reads the T16/cnn one-hot data (reconstructs
-  sequences) and is wired into T22/modular_eval/genome_inference/T24. **Ensemble decision: keep all FOUR** (Oak,
-  2026-08); the two CNNs are correlated, flagged for T29 weighting.
+  sequences) and is wired into T22/modular_eval/genome_inference/T24. (Earlier "keep all FOUR" call
+  SUPERSEDED — see the 3-model decision below.)
+- **DEPLOYMENT ENSEMBLE = 3 MODELS: ProkBERT + Evo2 + cnn_v2 (Oak, 2026-08). Drop NT-LoRA, CNN(v1), NTv3-ctx.**
+  Settled by the unified step-10 grid below, which put all six models on the SAME benchmark (step-10, restricted,
+  xs lineage) on BOTH held-out genomes for the first time. NT-LoRA and NTv3-ctx are the two worst at genome scale
+  on both genomes → dropped; CNN(v1) is the weaker, correlated cousin of cnn_v2 (4th on both) → dropped to keep the
+  ensemble diverse (a transformer + a fusion-CNN + a foundation model). The mine (T28→T29) runs these 3 on the
+  target; T29 rank-percentile is calibration-invariant so they combine on raw scores. Job: `mine_3model.sbatch`.
+- **Evo2 — genome-scale leader, NOT dropped (revised 2026-08; see `model-training/Evo2/EVO2_GENOME_SCALE_REPORT.md`):**
+  a frozen Evo2-7B embedding + **logreg** probe on `T15_xs` has the WORST balanced AUPRC (test **0.70** logreg /
+  0.61 RF, vs 0.80–0.88 fine-tuned) — but on the genome-scale FP benchmark (Regime C, held-out, restricted,
+  **matched step 10**) it **beats cnn_v2-xs at EVERY recall on BOTH validation genomes**: ljungdahlii 71.0%/58.0%
+  vs 63.1%/48.2% and autoethanogenum 85.8%/71.4% vs 81.2%/67.1% (precision @ recall 0.1/0.5; same TSS detected,
+  Evo2 just has fewer FP peaks). Replicated on 2 genomes + coordinate/strand code audited clean (identical minus-
+  strand coords/seq to `genome_inference`, no leakage — both genomes held out of `T15_xs`). This REVERSES the
+  earlier "evaluated and NOT used" call (which used the balanced metric only) — it's the sharpest balanced≠deployment
+  case in the project (opposite direction to NT). Probe = `evo2_probe_xs.pkl` (T15_xs logreg, reused across genomes).
+  Deployment cost ≈ 1 GPU-hr per restricted step-10 scan → **feasible for the target mine.** **Open decision (Oak):**
+  use Evo2 as lead caller / 5th T29 rank-percentile member (calibration-invariant, slots in) for the C. butyricum
+  mine, or document-only. Runs: `C_evo2_{ljung,cau}_scan.sbatch`. NB flash-attn in the evo2 env must match torch
+  (cu12/torch2.7/cxx11abiTRUE wheel) or Vortex won't import.
+- **NTv3-ctx — evaluated and BENCHED (2026-08; `ntv3_training/`):** a full fine-tune of NTv3-650M on a 384 bp-context
+  build of T15_xs (`T15_xs_ctx`) has the **BEST balanced AUPRC of any model** (val 0.956 / test 0.960, weighted) — and
+  it's genuine, not context-leak inflation: the clean re-score dropping high-recurrence rows barely moved it (test
+  0.960 full → 0.958 de-leaked; `ntv3_rescore_clean.py`). YET on genome-scale Regime C (restricted, **step 10**, same
+  benchmark as Evo2 / cnn_v2-xs) it is the **WORST** model on BOTH held-out genomes: ljungdahlii **35.7% / 28.0%** and
+  autoethanogenum **58.5% / 48.3%** (precision @ recall 0.1 / 0.5) vs cnn_v2-xs 63.1%/48.2%, 81.2%/67.1% and Evo2
+  71.0%/58.0%, 85.8%/71.4%. Same NT-family failure as NT-LoRA but MORE extreme (highest balanced, hardest genome-scale
+  collapse): a bigger backbone + 384 bp mean-pooled context buy curated-set accuracy and lose the spatial resolution the
+  genome base rate demands. → **NTv3-ctx does NOT earn an ensemble slot.** Runs: `ntv3_training/ntv3_regimeC.sbatch`
+  (job 526023 COMPLETED). NB balanced 0.96 is NOT apples-to-apples with the 81 bp models (it reads 384 bp).
 - **Deployment finding flip (see `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv`,
   regenerated + council-audited):** at genome scale (Regime C, held-out *C. ljungdahlii*, restricted scan) the **CNN
   family leads, CNN-v2 best at practical recall**; **NT is weakest at genome scale despite 2nd-best balanced AUPRC**;
@@ -527,6 +570,20 @@ select by **product description**, not the gene-symbol field.
   (905 FP), i.e. ~⅔ of the 45%→33% drop was STALE HYPERPARAMETERS, ~⅓ (40.8 vs 45) is intrinsic to 0.6 clustering.**
   → **ADOPT the 0.6-swept ProkBERT (`T21_final_06/prokbert`)** over T21_final's; it beats it on both balanced AND genome scale,
   and gets most of the 0.9 benefit with the clean leakage-safe protocol (kills the "revert to 0.9" question for good).
+- **UNIFIED STEP-10 SIX-MODEL GRID (2026-08; `evaluation-and-calibration/regimeC_step10_allmodels.sbatch`, job rc_s10_all):**
+  scanned the deployed **xs** ProkBERT/CNN/NT-LoRA at step-10 on BOTH clj + cau (they'd only had step-1/clj before,
+  and no autoethanogenum scan at all), through the same `genome_fp_benchmark` as Evo2/cnn_v2-xs/NTv3-ctx. **Control
+  PASSED:** cnn_v2 re-scan reproduced the Evo2 report within ~1 pt (clj 64.4/47.2 vs 63.1/48.2; cau 81.0/66.0 vs
+  81.2/67.1), so the new rows are trustworthy. **Precision @ recall 0.1/0.5, restricted, step-10:**
+  clj — Evo2 71.0/58.0 · **ProkBERT 64.4/47.7** · cnn_v2 64.4/47.2 · CNN 49.0/40.3 · NT-LoRA 43.9/36.1 · NTv3-ctx 35.7/28.0;
+  cau — Evo2 85.8/71.4 · cnn_v2 81.0/66.0 · **ProkBERT 76.7/64.6** · CNN 72.6/63.0 · NT-LoRA 64.9/58.7 · NTv3-ctx 58.5/48.3.
+  **Stable ranking on both genomes: Evo2 > ProkBERT ≈ cnn_v2 > CNN > NT-LoRA > NTv3-ctx.**
+- **⚠️ CORRECTION to the species-report "ProkBERT regressed at genome scale" finding:** that was the **0.6-plain
+  (T21_final_06) checkpoint at step-1** (33% @0.5 clj). The **actually-deployed xs ProkBERT (T21_xs)** reads
+  **47.7% @0.5 on clj (tied with cnn_v2, 2nd only to Evo2) and 64.6% on cau** — NO genome-scale regression. The extra
+  cross-species training in the xs set (B. licheniformis, Ruminiclostridium) restored it with genuine signal. So
+  "the CNN family carries the ensemble, transformers trail" was an artifact of benchmarking the wrong checkpoint;
+  on the deployment lineage ProkBERT is a co-leader. (This is why the 3-model ensemble keeps ProkBERT, not NT.)
 **Frontier (Phase D→E):** evaluation regeneration COMPLETE (all regimes, 4 models, 0.6 + the 0.9 robustness check).
 Next: the rest of Phase D (T25 sigma-strat,
 T26 calibration — note CNN-v2 needs it, T27 FDR) + Phase E (T28 mining on the target, T29 four-model rank-percentile
@@ -535,5 +592,11 @@ ensemble which is calibration-invariant, T30–T32). Runbook: `evaluation-and-ca
 **Needs attention:** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS table · Regime B out-of-genus numbers
 in the report are still pre-0.6 (refresh queued) · CNN-v2 genome scan is slow (per-window Python featurisation; bump
 `--step` or vectorise if needed) · keep the shared `/project` clone **pull-only**.
+**⚠️ Two Regime-C grids, NOT one — don't cross-compare naively:** the species report's four-model table
+(ProkBERT/NT-LoRA/CNN/cnn_v2) is **step-1 restrict on the 0.6 checkpoints, clj only**; the Evo2/cnn_v2-xs/NTv3-ctx
+numbers are **step-10 restrict on the xs checkpoints, clj + cau**. Different step AND dataset lineage. cnn_v2 is the
+only model in both and is the bridge: clj @0.5 = 44.3% (0.6/step-1) vs 48.2% (xs/step-10), so step-10 reads ~+4 pts
+richer. A literal all-six step-10 table does NOT exist yet — to build one, scan the deployed xs ProkBERT/CNN/NT-LoRA
+at step 10 on clj+cau through the same `genome_fp_benchmark` (a ~1–2 GPU-hr job, mirrors `ntv3_regimeC.sbatch`).
 **When in doubt:** confirm owners/decisions with Oak; verify tool usage and accessions against
 the literature; keep changes surgical and within your task.

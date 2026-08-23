@@ -53,13 +53,21 @@ def load_regions(path):
     return out
 
 
-def region_starts(intervals, window, step, contig_len):
+def region_starts(intervals, window, step, contig_len, align=False):
     """All window starts whose forward span [s, s+window) OVERLAPS some region [rs, re) and fits the
-    contig — i.e. s in [rs-window+1, re-1] — matching genome_fp_benchmark's in_region_mask."""
+    contig — i.e. s in [rs-window+1, re-1] — matching genome_fp_benchmark's in_region_mask.
+
+    align=True snaps each region's first start UP to the global step grid (a multiple of `step`), so the
+    emitted starts are exactly the genome-wide {0, step, 2*step, ...} positions that also overlap a
+    region. That makes this restricted track a SUBSET of a genome_inference.py full-genome step scan on
+    the same grid — the precondition for aligning tracks (align_tracks.py) and ensembling (T29). Default
+    off preserves the region-anchored grid the standalone Evo2 benchmark report was produced on."""
     starts = set()
     for rs, re in intervals:
         lo = max(0, rs - window + 1)
         hi = min(contig_len - window, re - 1)
+        if align:
+            lo = ((lo + step - 1) // step) * step        # snap up to the nearest multiple of step
         s = lo
         while s <= hi:
             starts.add(s)
@@ -80,6 +88,10 @@ def main():
     ap.add_argument("--step", type=int, default=10, help="stride; 5-10 is plenty for peak-calling")
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--strands", default="+,-")
+    ap.add_argument("--align-grid", action="store_true",
+                    help="snap window starts to the global step grid (multiples of --step) so this track "
+                         "shares a window grid with genome_inference.py tracks — REQUIRED for the T29 "
+                         "3-model ensemble (align_tracks.py). Default off keeps the report grid.")
     a = ap.parse_args()
 
     from evo2 import Evo2
@@ -97,7 +109,7 @@ def main():
                 ivs = regions.get((contig, strand))
                 if not ivs:
                     continue
-                starts = region_starts(ivs, a.window, a.step, L)
+                starts = region_starts(ivs, a.window, a.step, L, align=a.align_grid)
                 if not starts:
                     continue
                 wins = [seq[s:s + a.window] if strand == "+" else revcomp(seq[s:s + a.window]) for s in starts]
