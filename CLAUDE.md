@@ -505,6 +505,16 @@ select by **product description**, not the gene-symbol field.
   `~/.local` shadows the env and crashes with `_ARRAY_API not found` under numpy 2.x. The envs set
   `PYTHONNOUSERSITE=1` (so **jobs are immune**); for interactive checks, activate the env or prefix
   `PYTHONNOUSERSITE=1` (do NOT add `python -S` — that also hides the env's own packages).
+- **Evo2 ↔ genome_inference minus-strand grid mismatch at step>1 (2026-08):** `genome_inference.py` scans the
+  '−' strand on the reverse-complement and emits the genomic start `L−(scan_start+window)` (residue
+  `(L−window) mod step`), while `evo2_scan_restricted.py` emits the forward start `s` (residue 0). At **step 1**
+  they coincide (every position — which is why the Evo2 report's coordinate audit passed), but at **step 10** the
+  minus grids diverge, so `align_tracks.py` drops the ENTIRE minus strand (~half the windows → the ensemble's max
+  recall collapses to ~52%, and every precision number is distorted). Fixed: `evo2_scan_restricted --align-grid`
+  now snaps PER-STRAND (`+`→ residue 0, `−`→ `(L−window)%step`) to match genome_inference. Only bites when
+  ensembling Evo2 with genome_inference tracks at step>1; symptom is a low "Max achievable recall" in the ensemble
+  benchmark. (Also fixed same session: two `tail|head`/`sort|grep -q` pipelines in `mine_3model.sbatch` tripped
+  `set -o pipefail` via SIGPIPE → `awk` / materialised-var + here-string.)
 
 ---
 
@@ -526,6 +536,16 @@ select by **product description**, not the gene-symbol field.
   on both genomes → dropped; CNN(v1) is the weaker, correlated cousin of cnn_v2 (4th on both) → dropped to keep the
   ensemble diverse (a transformer + a fusion-CNN + a foundation model). The mine (T28→T29) runs these 3 on the
   target; T29 rank-percentile is calibration-invariant so they combine on raw scores. Job: `mine_3model.sbatch`.
+- **3-MODEL ENSEMBLE VALIDATED on held-out ljungdahlii (2026-08; `mine3_clj/`):** restricted step-10 mean-rank-
+  percentile, the 3-model ensemble **beats every member AND the 4-model variant** at both operating points.
+  Precision @ recall 0.1/0.5 (FP peaks): **ensemble-3 74.4%/61.6% (43/388)** > Evo2 69.4%/58.4% > ProkBERT
+  64.4%/47.7% ≈ cnn_v2 64.4%/47.2% > CNN-v1 49.0%/40.3%. **Adding CNN-v1 (4-model) DILUTES it to 71.4%/58.3%**
+  (≈ Evo2 solo) — CNN-v1 is the weakest member and correlated with cnn_v2, so the mean-rank drops; this
+  empirically CONFIRMS dropping CNN-v1 (the species report's open question). Member numbers reproduce the unified
+  step-10 grid exactly (ProkBERT 64.4/47.7, cnn_v2 64.4/47.2) → pipeline consistent. Pieces: `mine_3model.sbatch`
+  (now N-model via `MODELS=`, RUN-suffixed outputs) + `mining-and-motif-annotation/T29/align_tracks.py` (grid
+  reconcile) + Evo2 `--align-grid`. NB the ensemble ranks over the RESTRICTED candidate space (Evo2 can't scan
+  full-genome), which is the right universe for a mine.
 - **Evo2 — genome-scale leader, NOT dropped (revised 2026-08; see `model-training/Evo2/EVO2_GENOME_SCALE_REPORT.md`):**
   a frozen Evo2-7B embedding + **logreg** probe on `T15_xs` has the WORST balanced AUPRC (test **0.70** logreg /
   0.61 RF, vs 0.80–0.88 fine-tuned) — but on the genome-scale FP benchmark (Regime C, held-out, restricted,
