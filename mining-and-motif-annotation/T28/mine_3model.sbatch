@@ -36,7 +36,9 @@
 #   TAG=g409755 TRUTH="" MODELS="prokbert cnn_v2 evo2" \
 #     FASTA=/abs/g409755.fna REGIONS=/abs/g409755_candidate_regions.bed \
 #     sbatch mining-and-motif-annotation/T28/mine_3model.sbatch
-# Resume-safe: a completed per-model track is skipped on requeue.
+# Resume-safe: a completed per-model track is skipped on requeue. NOTE: run only ONE job per TAG at a
+# time (finish the first, then submit the next) — same-TAG jobs share the per-model track files, so the
+# second reuses them. (Temp files are job-unique, so a concurrent submit won't corrupt, just waste work.)
 set -eo pipefail
 
 REPO=/project/igem2026/cb-promoter-mining
@@ -112,19 +114,20 @@ echo "MODELS=[$MODELS]  RUN=$RUN  TAG=$TAG  step=$STEP  out=$OUT"
 ALIGN_ARGS=()
 for m in $MODELS; do
     TRACK=$OUT/${TAG}_${m}.csv
+    TMP="$TRACK.${SLURM_JOB_ID:-$$}.tmp"            # job-unique temp: two concurrent jobs can't race on one .tmp
     if [[ ! -s "$TRACK" ]]; then
         if [[ "$m" == "evo2" ]]; then
             conda activate "$EVO2_ENV"
             echo "=== scan evo2 (evo2_scan_restricted --align-grid, step $STEP) ==="
             python "$EVO2/evo2_scan_restricted.py" --genome "$FASTA" --regions "$REGIONS" --probe "$PROBE" \
-                --window 81 --step "$STEP" --align-grid --batch-size 16 --out "$TRACK.tmp"
+                --window 81 --step "$STEP" --align-grid --batch-size 16 --out "$TMP"
         else
             conda activate "$MAIN_ENV"
             echo "=== scan $m (genome_inference, step $STEP) ==="
             python "$EVAL/genome_inference.py" --genome "$FASTA" --model-path "${MPATH[$m]}" \
-                $(extra_args "$m") --window 81 --step "$STEP" --out "$TRACK.tmp"
+                $(extra_args "$m") --window 81 --step "$STEP" --out "$TMP"
         fi
-        mv "$TRACK.tmp" "$TRACK"
+        mv -f "$TMP" "$TRACK"
     else echo "=== skip $m (track exists) ==="; fi
     ALIGN_ARGS+=(--track "$m" "$TRACK")
 done
