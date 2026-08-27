@@ -31,7 +31,7 @@ conda activate "$MAIN_ENV"
 python "$REPO/evaluation-and-calibration/T27/fdr_mine.py" \
     --genome   "$ANN/C_butyricum.fna" \
     --gff      "$ANN/C_butyricum.gff3" \
-    --null-tsv "$ANN/convergent_intergenic_negatives.tsv" \
+    --null-tsv "$ANN/convergent_intergenic_negatives.tsv" "$ANN/../c_acetobutylicum_annotation/convergent_intergenic_negatives.tsv" "$ANN/../c_phytofermentans_annotation/convergent_intergenic_negatives.tsv"\
     --model-root "$REPO/infrastructure/T3/snakemake_scaffold/results" \
     --model-set both \
     --out-dir "$REPO/evaluation-and-calibration/T27/results" \
