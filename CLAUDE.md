@@ -536,11 +536,14 @@ select by **product description**, not the gene-symbol field.
   on both genomes → dropped; CNN(v1) is the weaker, correlated cousin of cnn_v2 (4th on both) → dropped to keep the
   ensemble diverse (a transformer + a fusion-CNN + a foundation model). The mine (T28→T29) runs these 3 on the
   target; T29 rank-percentile is calibration-invariant so they combine on raw scores. Job: `mine_3model.sbatch`.
-- **3-MODEL ENSEMBLE VALIDATED on held-out ljungdahlii (2026-08; `mine3_clj/`):** restricted step-10 mean-rank-
-  percentile, the 3-model ensemble **beats every member AND the 4-model variant** at both operating points.
-  Precision @ recall 0.1/0.5 (FP peaks): **ensemble-3 74.4%/61.6% (43/388)** > Evo2 69.4%/58.4% > ProkBERT
-  64.4%/47.7% ≈ cnn_v2 64.4%/47.2% > CNN-v1 49.0%/40.3%. **Adding CNN-v1 (4-model) DILUTES it to 71.4%/58.3%**
-  (≈ Evo2 solo) — CNN-v1 is the weakest member and correlated with cnn_v2, so the mean-rank drops; this
+- **3-MODEL ENSEMBLE VALIDATED on BOTH held-out genomes (2026-08; `mine3_clj/`, `mine3_cau/`):** restricted
+  step-10 mean-rank-percentile, the 3-model ensemble is the strongest caller on BOTH — decisively best at recall
+  0.5, tied-best with Evo2 at recall 0.1. Precision @ recall 0.1/0.5: **clj ensemble-3 74.4%/61.6%** > Evo2
+  69.4%/58.4% > cnn_v2 64.4%/47.2% ≈ ProkBERT 64.4%/47.7% > CNN-v1 49.0%/40.3%; **cau ensemble-3 87.0%/76.6%**
+  ≈ Evo2 87.6%/72.5% (Evo2 +0.6 @0.1, ensemble +4.1 @0.5) > cnn_v2 81.0%/66.0% > ProkBERT 76.7%/64.6% (max recall
+  99.1/99.2%, so the minus-strand grid fix holds on both). **Adding CNN-v1 (4-model) DILUTES on BOTH genomes**
+  (clj 74.4/61.6→71.4/58.3; cau 87.0/76.6→86.5/74.5, ≈ Evo2 solo) — CNN-v1 is the weakest member and correlated
+  with cnn_v2, so the mean-rank drops; this
   empirically CONFIRMS dropping CNN-v1 (the species report's open question). Member numbers reproduce the unified
   step-10 grid exactly (ProkBERT 64.4/47.7, cnn_v2 64.4/47.2) → pipeline consistent. Pieces: `mine_3model.sbatch`
   (now N-model via `MODELS=`, RUN-suffixed outputs) + `mining-and-motif-annotation/T29/align_tracks.py` (grid

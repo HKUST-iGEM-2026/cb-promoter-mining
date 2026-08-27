@@ -56,7 +56,7 @@ export RC
 TAG=${TAG:-clj}
 FASTA=${FASTA:-$RC/clj.fna}
 REGIONS=${REGIONS:-$RC/clj_candidate_regions.bed}
-TRUTH=${TRUTH:-$EVAL/ljungdahlii_holdout_tss.tsv}  # default = clj validation; set TRUTH="" for a target mine
+TRUTH=${TRUTH-$EVAL/ljungdahlii_holdout_tss.tsv}   # NOTE: '-' not ':-' — default only if UNSET, so TRUTH="" (empty) => target mine, no benchmark
 STEP=${STEP:-10}                                   # MUST match the Evo2/validation grid; shared by ALL models
 RECALLS=${RECALLS:-0.1,0.5,0.7,0.9}
 PROBE=${PROBE:-$RC/evo2/evo2_probe_xs.pkl}         # frozen T15_xs logreg probe (genome-agnostic)
