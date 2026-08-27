@@ -4,8 +4,7 @@ ALPHABET= ACGT
 
 strand: + -
 
-Background letter frequencies (Clostridium, GC~30% AT-rich — so a TATAAT is NOT surprising by
-composition alone; this background is what makes FIMO's -10 call meaningful vs the AT-trap).
+Background letter frequencies (Clostridium, AT-rich GC~30%):
 A 0.35 C 0.15 G 0.15 T 0.35
 
 MOTIF minus10 sigmaA_-10

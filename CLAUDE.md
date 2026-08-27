@@ -358,7 +358,13 @@ rebalance, so confirm current owners with Oak.
   (dep T26; reuses T28/T29/T30/T31) (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**
-- T28 Sliding-window inference on Clostridium — Swasti — 📄 **runnable scan+ensemble template (2026-08)**: `mining-and-motif-annotation/T28/scan_ensemble.sbatch` scans the 4 **xs** models (`T21_xs`, deployed pre-T26 set) full-genome via `genome_inference.py` (env-split for NT), calls T29, then benchmarks RESTRICTED (`genome_fp_benchmark --regions`) if a truth TSV is given (validation mode) else emits a restricted score-sorted shortlist (target-mine mode). One EDIT block, resume-safe. Runbook `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md`. Not yet run on HPC4. (dep PT6,T13,T20,T21)
+- T28 Sliding-window inference on Clostridium — Swasti — ✅ **RUN on the TARGET (2026-08)**: the deployment mine
+  uses **`mining-and-motif-annotation/T28/mine_3model.sbatch`** (N-model, default = the 3-model set ProkBERT + cnn_v2
+  + Evo2; Evo2 via `evo2_scan_restricted --align-grid`, others via `genome_inference`; `align_tracks.py` reconciles
+  grids → T29). Validated on both held-out genomes (clj/cau, §10) then **mined _C. butyricum_ `g409755`** (job 534196)
+  → **173,947-window shortlist `results/regimeC/mine3_g409755/g409755_shortlist_3m_restricted.csv`** (target-mine mode,
+  `TRUTH=""`). The earlier `scan_ensemble.sbatch` (4 xs models full-genome, benchmark-if-truth) remains for
+  full-genome/validation runs. Runbook `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md`. (dep PT6,T13,T20,T21)
 - T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — 📄 **template written + unit-verified (2026-08)**: `mining-and-motif-annotation/T29/ensemble_rank_percentile.py` joins the N per-model tracks on `(contig,start,strand)`, per-model percentile rank, mean → ensemble track whose `promoter_score` is a drop-in for `genome_fp_benchmark`. Calibration-invariant (correct on raw pre-T26 scores). Fails loud on window-grid mismatch; optional `--regions` restricted shortlist. Local synthetic tests pass (exact means, strand-aware restriction, mismatch guard). Not yet run on real tracks. (dep T28)
 - T30 Locus-level peak calling — Ishi — ⬜ (dep T29)
 - T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ⬜ (dep T30; FIMO alone if short on time)
@@ -549,6 +555,18 @@ select by **product description**, not the gene-symbol field.
   (now N-model via `MODELS=`, RUN-suffixed outputs) + `mining-and-motif-annotation/T29/align_tracks.py` (grid
   reconcile) + Evo2 `--align-grid`. NB the ensemble ranks over the RESTRICTED candidate space (Evo2 can't scan
   full-genome), which is the right universe for a mine.
+- **TARGET MINED — _C. butyricum_ DSM 10702 (`g409755`, GCF_000409755.1) 3-model shortlist DELIVERED (2026-08;
+  job 534196, 17 min, `results/regimeC/mine3_g409755/`):** the validated 3-model ensemble (ProkBERT + cnn_v2 + Evo2,
+  restricted step-10 mean-rank-percentile) scored **173,947 candidate windows** across the target's contigs
+  (`NZ_AQQF01000…`) → **`g409755_shortlist_3m_restricted.csv`** (the mine deliverable; per-model tracks +
+  `g409755_ensemble_3m.csv` cached alongside). Ran in TARGET-MINE mode (`TRUTH=""`, no benchmark — the target has
+  no known TSS, so a high score can't be scored against truth; that ambiguity is the whole reason it's the target,
+  see T33). Top windows show tight 3-model agreement (best: ProkBERT 0.9997 / cnn_v2 0.9999 / Evo2 0.9992 →
+  ensemble 0.9996). Shortlist is the FULL restricted candidate set score-sorted — NOT yet peak-called or
+  thresholded. **Next: T30 `call_peaks.py --track g409755_shortlist_3m_restricted.csv --min-score 0.9` → T31 motif
+  → T32 final table.** (Blocker fixed en route: `mine_3model.sbatch` used `TRUTH=${TRUTH:-…}` which treats an
+  empty string as unset and wrongly benchmarked against ljungdahlii TSS → contig-mismatch abort; changed `:-`→`-`
+  so `TRUTH=""` genuinely disables the benchmark.)
 - **Evo2 — genome-scale leader, NOT dropped (revised 2026-08; see `model-training/Evo2/EVO2_GENOME_SCALE_REPORT.md`):**
   a frozen Evo2-7B embedding + **logreg** probe on `T15_xs` has the WORST balanced AUPRC (test **0.70** logreg /
   0.61 RF, vs 0.80–0.88 fine-tuned) — but on the genome-scale FP benchmark (Regime C, held-out, restricted,
