@@ -413,7 +413,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--genome", required=True, help="target FASTA (C_butyricum.fna)")
     ap.add_argument("--gff", required=True, help="target GFF3 (C_butyricum.gff3) — candidate regions")
-    ap.add_argument("--null-tsv", required=True, help="convergent_intergenic_negatives.tsv (81 bp 'sequence' col)")
+    ap.add_argument("--null-tsv", required=True, nargs="+", metavar="TSV",
+                    help="one or more convergent_intergenic_negatives.tsv files (81 bp 'sequence' col). "
+                         "Pass several to POOL them into one null, e.g. per-genome sets: "
+                         "--null-tsv cbut.tsv cace.tsv cphy.tsv")
     ap.add_argument("--model-root", required=True, help="dir holding T21_final_06/ and T21_xs/")
     ap.add_argument("--model-set", choices=["06", "xs", "both"], default="both")
     ap.add_argument("--out-dir", default="results/T27")
@@ -466,12 +469,20 @@ def main():
     # ---------- null FASTA from the TSV (validate 81 bp, clean ACGT) — written once, reused per set ----------
     null_fasta_master = out / "null.fasta"
     if not null_fasta_master.exists():
-        ndf = pd.read_csv(a.null_tsv, sep="\t")
-        if "sequence" not in ndf.columns:
-            raise SystemExit(f"{a.null_tsv}: no 'sequence' column; has {list(ndf.columns)}")
-        seqs = ndf["sequence"].astype(str).str.upper()
-        if len(seqs) == 0:
-            raise SystemExit(f"{a.null_tsv}: 0 rows — an empty null pool cannot define an FDR.")
+        fwd, per_file = [], []
+        for tsv in a.null_tsv:                         # POOL one or more convergent-intergenic TSVs
+            ndf = pd.read_csv(tsv, sep="\t")
+            if "sequence" not in ndf.columns:
+                raise SystemExit(f"{tsv}: no 'sequence' column; has {list(ndf.columns)}")
+            s = ndf["sequence"].astype(str).str.upper().tolist()
+            per_file.append((tsv, len(s)))
+            fwd.extend(s)
+        if len(fwd) == 0:
+            raise SystemExit("null TSV(s) contributed 0 rows — an empty null pool cannot define an FDR.")
+        n_pooled = len(fwd)
+        fwd = list(dict.fromkeys(fwd))                 # drop any identical 81-mer shared across files
+        n_dup = n_pooled - len(fwd)
+        seqs = pd.Series(fwd, dtype=str)
         bad_len = int((seqs.str.len() != WINDOW).sum())
         bad_chr = int((~seqs.str.fullmatch("[ACGT]+")).sum())
         if bad_len or bad_chr:
@@ -483,12 +494,14 @@ def main():
         # --strands + so window i == block i and the whole pool goes through the model in batches.
         # NEVER scan this contig on '-' (that reverse-complements the WHOLE concatenation and
         # scrambles the blocks); the reverse orientation is already present as explicit rc blocks.
-        fwd = list(seqs)
         blocks = fwd + [revcomp(s) for s in fwd]
         with open(null_fasta_master, "w") as fh:
             fh.write(">nullcat\n" + "".join(blocks) + "\n")
-        print(f"[null] {len(fwd):,} convergent-intergenic seqs x2 orientations = {len(blocks):,} null "
-              f"blocks ({WINDOW} bp each) packed into one batched contig -> {null_fasta_master}")
+        for tsv, n in per_file:
+            print(f"[null]   {n:>8,} rows <- {tsv}")
+        print(f"[null] {n_pooled:,} pooled -> {len(fwd):,} unique ({n_dup:,} cross-file duplicates dropped) "
+              f"x2 orientations = {len(blocks):,} null blocks ({WINDOW} bp each) packed into one batched "
+              f"contig -> {null_fasta_master}")
     a.null_fasta = str(null_fasta_master)      # ONE validated null FASTA, reused by every model set
 
     sets = ["06", "xs"] if a.model_set == "both" else [a.model_set]

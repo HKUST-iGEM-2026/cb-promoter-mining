@@ -383,6 +383,10 @@ def main():
                     help="optional cap on windows per interval (default: no cap)")
     ap.add_argument("--dry-run", action="store_true", help="validate + preview, do not write TSVs")
     ap.add_argument("--force", action="store_true", help="overwrite existing output TSVs")
+    ap.add_argument("--conv-out", default="convergent_intergenic_negatives.tsv",
+                    help="filename for the convergent-intergenic negatives (the FDR null pool). "
+                         "Relative names are placed under --output-dir; an absolute path is used "
+                         "as-is. Set it per run so different genomes don't overwrite each other.")
     args = ap.parse_args()
 
     rng = random.Random(args.seed)
@@ -395,7 +399,7 @@ def main():
         genomes = [{"prefix": args.prefix, "fna": args.fna, "gff3": args.gff3,
                     "species": args.species, "strain": args.strain}]
 
-    conv_out = os.path.join(args.output_dir, "convergent_intergenic_negatives.tsv")
+    conv_out = args.conv_out if os.path.isabs(args.conv_out) else os.path.join(args.output_dir, args.conv_out)
     cds_out = os.path.join(args.output_dir, "cds_negatives.tsv")
     counts_out = os.path.join(args.output_dir, "region_counts.tsv")
 
