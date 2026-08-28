@@ -1,0 +1,53 @@
+category	our_accession	our_name	tree_leaf	gtdb_species	note
+remap45	GCF_055391695.1	Clostridium nitrophenolicum		no-GTDB-species	UNPLACED
+remap45	GCF_055396605.1	Clostridium budayi		no-GTDB-species	UNPLACED
+remap45	GCF_000007625.1	Clostridium tetani E88	GCF_900167265.1	Clostridium_G tetani	
+remap45	GCF_000010265.1	Clostridium kluyveri NBRC 12016	GCF_000016505.1	Clostridium_B kluyveri	
+remap45	GCF_000063585.1	Clostridium botulinum A str. ATCC 3502	GCF_001276985.1	Clostridium_F botulinum	
+remap45	GCF_000218855.1	Clostridium acetobutylicum DSM 1731	GCF_000008765.1	Clostridium_S acetobutylicum	
+remap45	GCF_000371465.1	Clostridium thermobutyricum	GCF_002050515.1	Clostridium thermobutyricum	
+remap45	GCF_000424025.1	Clostridium paraputrificum AGR2156	GCF_900447045.1	Clostridium paraputrificum	
+remap45	GCF_000703125.1	Clostridium algidicarnis	GCF_002934235.1	Clostridium_L algidicarnis	
+remap45	GCF_000724225.2	Clostridium haemolyticum NCTC 9693	GCF_003614235.1	Clostridium_H haemolyticum	
+remap45	GCF_000973705.1	Clostridium sporogenes	GCF_001020205.1	Clostridium_F sporogenes	
+remap45	GCF_001244495.1	Clostridium phoceensis	GCA_003112755.1	Lawsonibacter asaccharolyticus	
+remap45	GCF_001484725.1	Clostridium autoethanogenum DSM 10061	GCF_000143685.1	Clostridium_B ljungdahlii	SHARED
+remap45	GCF_001642655.1	Clostridium tyrobutyricum	GCF_000359585.1	Clostridium_B tyrobutyricum	
+remap45	GCF_001856645.1	Clostridium pasteurianum DSM 525 = ATCC 6013	GCF_000807255.1	Clostridium_I pasteurianum	
+remap45	GCF_001991075.2	Clostridium baratii	GCF_039521545.1	Clostridium nitritogenes	
+remap45	GCF_002074155.1	Clostridium argentinense	GCF_000816675.1	Clostridium_J argentinense	
+remap45	GCF_002327205.1	Clostridium chauvoei	GCF_002327185.1	Clostridium chauvoei	
+remap45	GCF_002749945.1	Clostridium combesii	GCF_001276985.1	Clostridium_F botulinum	SHARED
+remap45	GCF_003096175.1	Clostridium drakei	GCF_000633595.2	Clostridium_AM drakei	
+remap45	GCF_003575225.1	Clostridium chromiireducens	GCF_002029255.1	Clostridium chromiireducens	
+remap45	GCF_008705175.1	Clostridium diolis	GCF_018223745.1	Clostridium beijerinckii	SHARED
+remap45	GCF_013296705.1	Clostridium tetanomorphum	GCF_017873215.1	Clostridium_AO tetanomorphum	
+remap45	GCF_014287925.1	Clostridium segne	GCF_003024715.1	Otoolea fessa	
+remap45	GCF_017348895.1	Clostridium gasigenes	GCF_900104115.1	Clostridium gasigenes	
+remap45	GCF_018916625.1	Clostridium senegalense	GCF_000285575.1	Clostridium_J senegalense	
+remap45	GCF_019753795.1	Clostridium sardiniense	GCF_016907995.1	Clostridium sardiniense	
+remap45	GCF_020176155.1	Clostridium bowmanii	GCF_018861315.1	Clostridium_AD bowmanii	
+remap45	GCF_020709765.1	Clostridium pacaense	GCF_040096035.1	Enterocloster sp000155435	
+remap45	GCF_020911725.1	Clostridium cadaveris	GCF_039521325.1	Clostridium_X cadaveris	
+remap45	GCF_021412605.1	Clostridium celatum	GCF_000320405.1	Clostridium celatum	
+remap45	GCF_024622765.1	Clostridium mucosae	GCF_015550425.1	Clostridium sp015550425	
+remap45	GCF_026650945.1	Clostridium tagluense	GCF_003865095.1	Clostridium_AD tagluense	
+remap45	GCF_026651045.1	Clostridium estertheticum	GCF_001877035.1	Clostridium_AD estertheticum	
+remap45	GCF_027698965.1	Clostridium fessum	GCF_003024715.1	Otoolea fessa	SHARED
+remap45	GCF_035905475.1	Clostridium intestinale	GCF_900130055.1	Clostridium_T intestinale	
+remap45	GCF_046127635.1	Clostridium caseinilyticum	GCF_014837145.1	Chryseobacterium caseinilyticum (epithet)	
+remap45	GCF_052067195.1	Clostridium sulfidigenes	GCF_000732635.1	Clostridium_J sulfidigenes (epithet)	
+remap45	GCF_054657435.1	Clostridium carnis	GCF_003860585.1	Kaistella carnis (epithet)	
+remap45	GCF_054733335.1	Clostridium tertium	GCF_017873245.1	Clostridium tertium (epithet)	
+remap45	GCF_056033985.1	Clostridium aciditolerans	GCF_016316925.1	Clostridium_AM aciditolerans (epithet)	
+remap45	GCF_056431285.1	Clostridium amazonense	GCF_018555435.2	Bifidobacterium amazonense (epithet)	
+remap45	GCF_900113195.1	Clostridium homopropionicum	GCF_001263795.1	Clostridium_H homopropionicum	
+remap45	GCF_900129955.1	Clostridium magnum DSM 2767	GCF_001623875.1	Clostridium_AM magnum	
+remap45	GCF_900465025.1	Clostridium neonatale	GCF_001458595.1	Clostridium neonatale	
+donor	GCF_000005845.2	Escherichia coli K-12 MG1655	GCF_003697165.2	Escherichia coli	
+donor	GCF_000009045.1	Bacillus subtilis 168	GCF_000009045.1	Bacillus subtilis	
+donor	GCF_000011645.1	Bacillus licheniformis DSM 13	GCF_000011645.1	Bacillus licheniformis	
+donor	GCF_000022065.1	Ruminiclostridium cellulolyticum H10	GCF_000022065.1	Ruminiclostridium cellulolyticum	
+donor	GCF_000008765.1	Clostridium acetobutylicum ATCC 824	GCF_000008765.1	Clostridium_S acetobutylicum	SHARED
+donor	GCF_000018685.1	Lachnoclostridium phytofermentans ISDg	GCF_000018685.1	Lachnoclostridium phytofermentans	
+target	GCF_000409755.1	Clostridium butyricum DSM 10702 (TARGET)	GCF_006742065.1	Clostridium butyricum	
