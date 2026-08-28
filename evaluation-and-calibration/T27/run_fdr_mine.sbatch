@@ -99,13 +99,21 @@ echo "=== prep (contig preflight + packed null) ==="
 python "$T27/fdr_stats.py" prep --genome "$GENOME" --gff "$GFF" --null-tsv $NULL_TSVS --out-dir "$OUT"
 NULL_FASTA=$OUT/null.fasta
 NULL_REGIONS=$OUT/null_regions.bed
+for f in "$NULL_FASTA" "$NULL_REGIONS"; do
+    [[ -s "$f" ]] || { echo "FATAL: prep did not produce $f (deleted results/? stale clone?)"; exit 1; }
+done
 
 # ---- 1) candidate regions BED (main env; contig ids come straight from the GFF) ----
+# Cheap, deterministic output derived from the GFF — safe to delete, always regenerable. Rebuild it
+# whenever it's missing/empty, then HARD-ASSERT it exists so a deleted results/ can never resurface as
+# an opaque FileNotFoundError inside a scanner further down.
 REGIONS=$OUT/cbut_candidate_regions.bed
 if [[ ! -s "$REGIONS" ]]; then
     echo "=== make_candidate_regions (up $UP / down $DOWN) ==="
+    [[ -f "$EVAL/make_candidate_regions.py" ]] || { echo "FATAL: missing $EVAL/make_candidate_regions.py — is the HPC4 clone up to date? (git pull)"; exit 1; }
     python "$EVAL/make_candidate_regions.py" --gff "$GFF" --up "$UP" --down "$DOWN" --out "$REGIONS"
 else echo "=== skip candidate regions (exists) ==="; fi
+[[ -s "$REGIONS" ]] || { echo "FATAL: candidate regions BED not created at $REGIONS — check GFF $GFF"; exit 1; }
 
 # ---- 2) per-model scans: candidate (restricted, +/-) + null (packed nullcat, +, step 81), cached ----
 CAND_ALIGN=(); NULL_ALIGN=()
