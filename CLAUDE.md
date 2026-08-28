@@ -338,24 +338,27 @@ rebalance, so confirm current owners with Oak.
   calibrator on the full set** (StandardScaler→LogisticRegression pipeline; one artifact
   `<model>_calibrator_at.joblib`). `run_calibration.sh` updated to the new flags (SRS-negative step
   dropped). Not run yet — needs the trained models + the two negative TSVs staged on HPC4. (dep PT4,T9,T22)
-- T27 Empirical FDR on the TARGET → q-values — Ishi — 🟡 **implemented, not yet run on HPC4 (2026-08)**:
-  `evaluation-and-calibration/T27/fdr_mine.py` (+ `run_fdr_mine.sbatch`). One reproducible Python
-  entrypoint that mines *C. butyricum* end-to-end: RESTRICTED candidate scan (upstream-of-gene windows
-  via make_candidate_regions) + a **convergent-intergenic null** (NOT SRS anymore — decision 2026-08),
-  4-model ensemble **pooled** so candidate+null share one rank-percentile scale (calibration-free),
-  empirical p = (#null≥score+1)/(Nnull+1), peak-call (T30-style), **BH q-values over peaks**, top-80
-  promoters + T31 FIMO −10/−35 motif. Runs BOTH model sets (`--model-set both`: xs + 0.6). Shells out
-  to genome_inference per model under the right env (NT→nt-tf4x) since one process can't host both
-  transformers. Stats unit-tested (empirical_p/BH/region_mask/call_peaks/pooled_ensemble). Preflight
-  FAILS LOUD on GFF3↔FASTA contig-id mismatch (the contig_1-vs-NC trap). Null must be 81 bp clean-ACGT
-  (validated). Full convergent-intergenic null (both orientations) packed into one contig + scored
-  `--step 81 --strands +` so the whole pool is BATCHED. Ensemble rank-percentile reference =
-  RESTRICTED candidates + null (not the whole genome), so CDS score density stays out of the
-  normalization. **Candidate scan is PHYSICALLY restricted** via a new opt-in `--regions BED` filter
-  added to `genome_inference.py` (default-off → other consumers byte-for-byte unchanged; only scores
-  windows overlapping a candidate region → ~half the genome, cnn_v2 preempt-friendly; unit-tested to
-  keep exactly the same windows as the analysis `region_mask`). Motif env = `/project/igem2026/envs/meme`.
-  (dep T26; reuses T28/T29/T30/T31) (dep PT4,T14,T26)
+- T27 Empirical FDR on the TARGET → q-values — Ishi — 🟡 **REFACTORED to scan/stats split (2026-08),
+  locally smoke-tested, not yet run on HPC4**: was the monolithic `fdr_mine.py`; now **`fdr_stats.py`
+  (pure-Python STATS, no subprocess/GPU) + `run_fdr_mine.sbatch` (bash owns ALL scanning/env-switching/
+  align/motif)**, mirroring the `mine_3model.sbatch` pattern. `fdr_mine.py` is SUPERSEDED (left in place,
+  safe to delete). Pipeline: `fdr_stats.py prep` (contig preflight + packed null + null_regions.bed) →
+  make_candidate_regions → per-model scan loop **candidate (restricted, +/-) + null (packed nullcat,
+  step 81, +)** cached/resume-safe → `align_tracks.py` ×2 (cand + null onto one grid) → `fdr_stats.py fdr`
+  (pooled rank-percentile ensemble + empirical p=(#null≥score+1)/(Nnull+1) + p-gated peak-call + **BH q
+  over peaks** + top-80 + summit seq) → `annotate_motifs.py` (T31 FIMO). **DEPLOYMENT 3-MODEL ENSEMBLE:
+  default `MODELS="prokbert cnn_v2 evo2"`** (Evo2 wired via `evo2_scan_restricted.py --align-grid` in its
+  own env + align_tracks grid-reconcile; NT→nt-tf4x, rest→main; motif→meme). Tunable: any subset via
+  `MODELS=`; `MODELSET=xs|06`; tracks cached so re-running a different set only scans the NEW model.
+  **Analysis written as BOTH `analysis.md` AND `analysis.tex`** (null dist, discovery counts, p/q table;
+  full per-locus p/q in `peaks_fdr.csv`). Score column `promoter_score` flows through every file unchanged
+  (rank-percentile is scale-invariant, so probability-vs-logit is moot). Null = convergent-intergenic (NOT
+  SRS), both orientations packed into one `nullcat` contig, scored `--step 81 --strands +` (window==block,
+  batched, each seq scored INDEPENDENTLY — packing is a pure batching container). Preflight FAILS LOUD on
+  GFF3↔FASTA contig mismatch; null must be 81 bp clean-ACGT (⚠️ extract_negatives.py defaults to --window
+  52 — regenerate the null at 81). Candidate scan physically restricted via `genome_inference.py --regions`
+  (opt-in, default-off → other consumers unchanged). Local smoke test (synthetic 3-model fixtures) passes
+  prep + fdr + both reports. Reuses T28-scanners/T29-align/T30-peak-logic/T31-motif. (dep PT4,T14,T26)
 
 **Phase E — mining & motif annotation**
 - T28 Sliding-window inference on Clostridium — Swasti — ✅ **RUN on the TARGET (2026-08)**: the deployment mine
