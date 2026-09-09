@@ -341,8 +341,9 @@ rebalance, so confirm current owners with Oak.
 - T27 Empirical FDR on the TARGET → q-values — Ishi — 🟡 **REFACTORED to scan/stats split (2026-08),
   locally smoke-tested, not yet run on HPC4**: was the monolithic `fdr_mine.py`; now **`fdr_stats.py`
   (pure-Python STATS, no subprocess/GPU) + `run_fdr_mine.sbatch` (bash owns ALL scanning/env-switching/
-  align/motif)**, mirroring the `mine_3model.sbatch` pattern. `fdr_mine.py` is SUPERSEDED (left in place,
-  safe to delete). Pipeline: `fdr_stats.py prep` (contig preflight + packed null + null_regions.bed) →
+  align/motif)**, mirroring the `mine_3model.sbatch` pattern. `fdr_mine.py` is SUPERSEDED (kept for history but
+  DEPRECATED 2026-09: banner + a `--run-deprecated` run-guard added so it can't be run by accident — it
+  hardcodes the OLD 4-model set [prokbert, nt, cnn, cnn_v2] and has no Evo2 wiring; still safe to delete). Pipeline: `fdr_stats.py prep` (contig preflight + packed null + null_regions.bed) →
   make_candidate_regions → per-model scan loop **candidate (restricted, +/-) + null (packed nullcat,
   step 81, +)** cached/resume-safe → `align_tracks.py` ×2 (cand + null onto one grid) → `fdr_stats.py fdr`
   (pooled rank-percentile ensemble + empirical p=(#null≥score+1)/(Nnull+1) + p-gated peak-call + **BH q
@@ -359,6 +360,11 @@ rebalance, so confirm current owners with Oak.
   52 — regenerate the null at 81). Candidate scan physically restricted via `genome_inference.py --regions`
   (opt-in, default-off → other consumers unchanged). Local smoke test (synthetic 3-model fixtures) passes
   prep + fdr + both reports. Reuses T28-scanners/T29-align/T30-peak-logic/T31-motif. (dep PT4,T14,T26)
+  ⚠️ **ASSEMBLY BUG (2026-09):** the committed `results/cbut_xs/` run scored T26's **4-contig**
+  `C_butyricum.fna` (`contig_1..4`), NOT the mine's **96-contig** g409755 (`NZ_AQQF…`) — so its q-values are
+  on a different coordinate frame and do **NOT** map to `g409755_candidates.tsv` / the 912-306-100 tiers
+  (§9). The sbatch now defaults to a settable g409755 assembly (`G409755_FASTA`/`G409755_GFF`, fresh
+  `cbut_g409755_*` OUT); **re-run T27 on g409755** before joining FDR q-values onto the candidate tiers.
 
 **Phase E — mining & motif annotation**
 - T28 Sliding-window inference on Clostridium — Swasti — ✅ **RUN on the TARGET (2026-08)**: the deployment mine
@@ -369,9 +375,26 @@ rebalance, so confirm current owners with Oak.
   `TRUTH=""`). The earlier `scan_ensemble.sbatch` (4 xs models full-genome, benchmark-if-truth) remains for
   full-genome/validation runs. Runbook `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md`. (dep PT6,T13,T20,T21)
 - T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — 📄 **template written + unit-verified (2026-08)**: `mining-and-motif-annotation/T29/ensemble_rank_percentile.py` joins the N per-model tracks on `(contig,start,strand)`, per-model percentile rank, mean → ensemble track whose `promoter_score` is a drop-in for `genome_fp_benchmark`. Calibration-invariant (correct on raw pre-T26 scores). Fails loud on window-grid mismatch; optional `--regions` restricted shortlist. Local synthetic tests pass (exact means, strand-aware restriction, mismatch guard). Not yet run on real tracks. (dep T28)
-- T30 Locus-level peak calling — Ishi — ⬜ (dep T29)
-- T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ⬜ (dep T30; FIMO alone if short on time)
-- T32 FINAL candidate output (TSV/JSONL, PT6 schema) — Ishi+Oak — ⬜ (dep T26,T27,T30,T31)
+- T30 Locus-level peak calling — Ishi — ✅ **RUN on the target g409755 (2026-08)**: `mining-and-motif-annotation/T30/call_peaks.py`
+  `--min-score 0.9 --merge 81` on the 173,947-window shortlist → **10,933 windows ≥0.9 → 3,167 promoter calls**
+  (`results/regimeC/mine3_g409755/g409755_peaks.csv`); **912 with ≥5 supporting windows** (confident), 882 single-window (noise).
+  Runs on the login node (pure pandas, no GPU). (dep T29)
+- T31 Motif annotation FIMO/MEME (−10/−35 + sigma) — Leo — ✅ **RUN on the target (2026-08)**: FIMO σA −10/−35 over the
+  3,167 calls via `annotate_motifs.py` (Flow A, architecture summary) → **51 canonical · 1,746 minus10_only · 108 minus35_only ·
+  99 both_bad_spacing · 1,163 none; 36 canonical AND ≥5-window = highest-confidence**. (minus10_only dominating is expected on an
+  AT-rich genome — the −10 is the conserved box; the 1,163 `none` are the AT-trap suspects the filter is meant to flag.) For the
+  T32 table use Flow B: `extract_call_sequences.py` (n_windows≥5 filter + `candidate_id`) → FIMO → `build_candidate_table.py`.
+  **FIXED `sigma_a_promoter.meme`**: its `Background letter frequencies` directive wrapped across 2 lines, so FIMO parsed the
+  comment text as freqs (`ordered Q"!` / don't sum to 1) → FATAL. Collapsed to one line + the freq row (sums to 1.0). MEME env
+  (`/project/igem2026/envs/meme`) has `fimo` but NOT pandas → run FIMO there, extract/annotate in the main env (`--fimo-tsv`). (dep T30)
+- T32 FINAL candidate output (TSV/JSONL, PT6 schema) — Ishi+Oak — ✅ **DELIVERED on the target (2026-08)**: Flow B
+  (`extract_call_sequences.py` n_windows≥5 + `candidate_id` → FIMO → `build_candidate_table.py`) →
+  **`results/regimeC/mine3_g409755/g409755_candidates.tsv` (+ `.jsonl`): 912 confident candidates** (3-model ensemble
+  ≥0.9, ≥5 supporting windows), score-sorted, PT6 schema (candidate_id, chromosome, strand, tss_position [summit+61
+  fwd / summit+21 rev], region, peak/mean score, n_windows, −10/−35 offsets/spacer/architecture). **306 have a placed
+  −10 (promoter architecture); 100 are canonical (−10 AND −35) — the wet-lab shortlist.** Coordinates verified against
+  the shortlist (summit+61). `*_known*`/`is_validated` blank (target mine). **➜ Mine→peak→motif→table pipeline is now
+  COMPLETE end-to-end on _C. butyricum_ DSM 10702.** (dep T26,T27,T30,T31)
 - T33 Iterative hard-negative mining (v2 refinement) — Oak+? — ⬜ **mine confident false positives where labels EXIST, and keep the mining and validation genomes DISJOINT.** ⚠️ Do NOT relabel the target's (*C. butyricum*) top T28 scores as negatives: with no target TSS a high score is ambiguous (may be a *real* promoter) and would train the model to reject real promoters. **Mine from:** (a) high-scoring windows on the in-genus genomes already in TRAINING that we have TSS for (*C. acetobutylicum/beijerinckii*, Hocq), far from their known TSS; and (b) high-scoring windows deep in annotated CDS far from gene 5′ ends — annotation (not TSS) gives the label, so this class is mineable **even on the target itself** and is the most transfer-safe. Add as a 5th T14 negative class → regenerate T15/T16 → retrain T18–T20. **Do NOT mine from *C. ljungdahlii*** — keep it untouched as the held-out validation genome (we have its 1,245 primary TSS; it is already the Regime-C benchmark). **Validate there:** the retrain must lower FP peaks on *C. ljungdahlii* while holding recall on its TSS (mining AND validating the same genome would be circular). Council caveats: TSS catalogues are incomplete (mostly primary / intergenic-sense) and deep CDS still holds sparse internal/antisense promoters, so a mined "FP" can be a real unannotated promoter. **Load-bearing mitigation = DOWN-WEIGHT mined negatives** (T15 silver-weight style, ~0.3) + keep to 1–2 rounds; do NOT filter them by "has a clean −10/−35" (self-defeating: AT-trap negatives look promoter-like by design), and note "far from a 5′ end" does nothing for mid-gene internal/antisense promoters (better: exclude windows overlapping any dRNA-seq-called internal/antisense TSS where available). Transfer to the more AT-rich target (GC ~28–29% vs relatives ~30–31%) is imperfect — another reason to lean on target-side deep-CDS negatives. Strongest FP-reduction lever (DeePromoter-style); a 2nd pass, not a new DAG rule. See `WORKFLOW_RATIONALE.md`. (dep T28 + a mining-genome scan; validation = held-out *C. ljungdahlii*)
 
 ---
@@ -524,6 +547,29 @@ select by **product description**, not the gene-symbol field.
   ensembling Evo2 with genome_inference tracks at step>1; symptom is a low "Max achievable recall" in the ensemble
   benchmark. (Also fixed same session: two `tail|head`/`sort|grep -q` pipelines in `mine_3model.sbatch` tripped
   `set -o pipefail` via SIGPIPE → `awk` / materialised-var + here-string.)
+- **T27 FDR ran on the WRONG C. butyricum assembly (2026-09):** `run_fdr_mine.sbatch` defaulted `GENOME`/`GFF`
+  to T26's `c_butyricum_annotation/C_butyricum.fna` — a **4-contig** assembly (`contig_1..4`, multi-Mb coords) —
+  while the deployment mine (T28→T32) and the delivered candidate list (`g409755_candidates.tsv` + the
+  912/306/100 tiers) are on the **96-contig RefSeq WGS** g409755 = GCF_000409755.1 (`NZ_AQQF01000…`). **Zero
+  shared contig ids** → the `results/cbut_xs/` q-values do NOT correspond to the deliverable and cannot be
+  coordinate-joined to it (a 2.8 Mb `contig_1` position can't exist on any short WGS scaffold — genuinely
+  different assemblies, not just renamed contigs). Fix: sbatch now defaults to a settable g409755 assembly
+  (`G409755_FASTA`/`G409755_GFF`, fresh `cbut_g409755_*` OUT) — re-run T27 there. The null pool is unaffected
+  (scored independently in a packed `nullcat`, never coordinate-joined, so a promoter-free C. butyricum
+  intergenic set from any assembly is a valid composition-matched null). Broader note: T26 calibration also
+  used the 4-contig assembly — harmless for the mine (T29 rank-percentile is calibration-free and the mine
+  never applies T26 calibrators) — but the team should pick ONE canonical target assembly across T26/T27/T28.
+- **CANONICAL TARGET ASSEMBLY = `GCF_014131795.1` (2026-09):** the resolution to the assembly mess above.
+  It's *the same strain* (DSM 10702) but a **complete, reference-grade** genome (`ASM1413179v1`; Flye 2.4;
+  PacBio+Nanopore+Illumina 361×; RefSeq **Reference Genome**, from **type material**) — 4 replicons
+  `NZ_CP040626.1` (chr1 3,921,278) + `NZ_CP040627.1` (chr2 770,199) + plasmids `NZ_CP040628.1` (pCB_1 6,059)
+  + `NZ_CP040629.1` (pCB_2 8,060), ~4.71 Mb — vs g409755's 96-contig `NZ_AQQF01000…` draft. This is also
+  the assembly the oxidative-stress/inducible work already used (`NZ_CP040626/627`, locus prefix `FF104`).
+  **A turnkey re-mine (T28→T32) on it is prepped: `mining-and-motif-annotation/REMINE_g131795_CLAUDE.md`
+  + `mining-and-motif-annotation/T28/prep_g131795.sh`** (tag `g131795`, TARGET-MINE `TRUTH=""`, STEP=10).
+  Run it on HPC4, then re-run T26/T27 on the same assembly so calibration + FDR + the candidate table all
+  share one coordinate frame. NB coords on `NZ_CP0406xx.1` are NOT position-joinable to the g409755
+  912/306/100 tiers (different assembly) — re-run `split_candidate_tiers.py` on `g131795_candidates.tsv`.
 
 ---
 
@@ -565,9 +611,10 @@ select by **product description**, not the gene-symbol field.
   `g409755_ensemble_3m.csv` cached alongside). Ran in TARGET-MINE mode (`TRUTH=""`, no benchmark — the target has
   no known TSS, so a high score can't be scored against truth; that ambiguity is the whole reason it's the target,
   see T33). Top windows show tight 3-model agreement (best: ProkBERT 0.9997 / cnn_v2 0.9999 / Evo2 0.9992 →
-  ensemble 0.9996). Shortlist is the FULL restricted candidate set score-sorted — NOT yet peak-called or
-  thresholded. **Next: T30 `call_peaks.py --track g409755_shortlist_3m_restricted.csv --min-score 0.9` → T31 motif
-  → T32 final table.** (Blocker fixed en route: `mine_3model.sbatch` used `TRUTH=${TRUTH:-…}` which treats an
+  ensemble 0.9996). Shortlist is the FULL restricted candidate set score-sorted. **DONE (2026-08): T30 `call_peaks`
+  `--min-score 0.9` → 3,167 calls (912 with ≥5 windows) → T31 FIMO −10/−35 → T32 `g409755_candidates.tsv` = 912
+  confident candidates, 306 with a placed −10, 100 canonical (−10 AND −35) = the wet-lab shortlist. Full pipeline
+  complete on the target.** (Blocker fixed en route: `mine_3model.sbatch` used `TRUTH=${TRUTH:-…}` which treats an
   empty string as unset and wrongly benchmarked against ljungdahlii TSS → contig-mismatch abort; changed `:-`→`-`
   so `TRUTH=""` genuinely disables the benchmark.)
 - **Evo2 — genome-scale leader, NOT dropped (revised 2026-08; see `model-training/Evo2/EVO2_GENOME_SCALE_REPORT.md`):**
