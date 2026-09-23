@@ -261,7 +261,12 @@ rebalance, so confirm current owners with Oak.
 
 **Pre-tasks (learning + reusable code)**
 - PT1 Fine-tune loop on RegulonDB/DBTBS — Sine — 🟡 (check it runs on **GPU** not CPU)
-- PT2 Ship ProkBERT to HuggingFace — Sine — ⬜ (dep PT1)
+- PT2 Ship ProkBERT to HuggingFace — Sine — ✅ **all 3 deployment models published to HF org `CloBiT` (private, 2026-09)**:
+  `prokbert-mini-clostridium-promoter` (CC-BY-NC-4.0, inherits base `neuralbioinfo/prokbert-mini`) +
+  `cnn-fusion-clostridium-promoter` (CC-BY-4.0) + `evo2-logreg-clostridium-promoter-probe` (CC-BY-4.0, probe only,
+  no Evo2 weights). Tooling in `huggingface_release/` (per-model cards + `upload_to_hf.py`, `--only`/`--dry-run`/
+  `--public`). NB ProkBERT checkpoint ships weights + `models.py` but NOT the tokenizer → card loads tokenizer from
+  base. Repos still PRIVATE (review → flip public). `huggingface_release/` is untracked in git. (dep PT1)
 - PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
 - PT4 Calibration + FDR harness — Seonyu — 🟡 implemented `pre-tasks/PT4/calibration_fdr.py` (Snakefile
   marks it LIVE; not independently re-verified this session). (dep PT3; reused by T26/T27)
@@ -570,6 +575,20 @@ select by **product description**, not the gene-symbol field.
   Run it on HPC4, then re-run T26/T27 on the same assembly so calibration + FDR + the candidate table all
   share one coordinate frame. NB coords on `NZ_CP0406xx.1` are NOT position-joinable to the g409755
   912/306/100 tiers (different assembly) — re-run `split_candidate_tiers.py` on `g131795_candidates.tsv`.
+  **✅ DELIVERED (2026-09):** re-mine + T27 FDR both ran on g131795. Mine → **929 confident candidates**
+  (vs g409755's 912; same score dist, meanPeak 0.980); T27 FDR joined → **929/929 overlap an
+  FDR-significant peak (all q≤0.05)** — the null is adequate (1,726 convergent-intergenic samples, floor
+  p=5.79e-4) so this is a wholesale VALIDATION, not a filter (the ≥0.9 cutoff already sits at the null's
+  p95). Prioritized for the wet lab via the new **`prioritize_candidates.py`** (FDR-aware; ranks tier →
+  peak_score → n_windows → motif p): **929 → 180 placed-−10 → 45 canonical** (`g131795_{ranked,
+  tier2_has_minus10,tier1_canonical}.tsv` in `results/regimeC/mine3_g131795/`). Top tier all tied at the
+  q-floor (0.010004) → FDR validates but does NOT rank; use `peak_score`. ⚠️ 45 canonical vs g409755's 100
+  is de-novo-MEME per-run motif instability, NOT biology — the robust deliverable is the 929 + score rank,
+  canonical is a motif-convenience subset. (T26 calibration on g131795 still pending, but calibration-free
+  for the mine — T29 rank-percentile.) **Sequences attached (2026-09):** `summit_seq` (81 bp reading-orientation
+  window, TSS at +61) + `minus10_seq`/`minus35_seq` (sliced from the window at the FIMO hits `build_candidate_table`
+  chose) joined onto the tiers by `candidate_id` from the mine's call-seqs FASTA + `fimo.tsv` → `*_seq.tsv`. The
+  45-canonical wet-lab pick is packaged with a Notes tab as `g131795_wetlab_shortlist.xlsx` (repo root).
 
 ---
 

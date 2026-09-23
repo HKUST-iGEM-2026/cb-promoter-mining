@@ -1,6 +1,21 @@
 #!/usr/bin/env python3
+# =============================================================================
+#  ⚠️  DEPRECATED — DO NOT RUN.  Superseded by the scan/stats split (2026-09):
+#        run_fdr_mine.sbatch  ->  fdr_stats.py    (same directory)
+#
+#  This monolith hardcodes the OLD 4-MODEL ensemble [prokbert, nt, cnn, cnn_v2].
+#  The DEPLOYMENT ensemble is 3 models — prokbert + cnn_v2 + evo2 — with NT-LoRA
+#  and CNN-v1 dropped (Oak, 2026-08; see CLAUDE.md §10). Evo2 is NOT supported
+#  here: it needs its own scanner/env, which is exactly why this file was split.
+#  Kept for history only; the live pipeline already runs the 3-model set.
+#
+#  To mine:  sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
+#  (main() refuses to run without --run-deprecated so the example below can't be
+#   copy-pasted by mistake.)
+# =============================================================================
 """
 fdr_mine.py — T27 empirical-FDR promoter mine on the TARGET, C. butyricum DSM 10702.
+[DEPRECATED: superseded by run_fdr_mine.sbatch + fdr_stats.py — see the banner above.]
 
 WHAT / WHY (read the RESTRICTED-SCAN rationale first — it is the load-bearing design choice)
 ============================================================================================
@@ -81,7 +96,8 @@ import pandas as pd
 # ------------------------------------------------------------------- constants / model layout
 WINDOW = 81
 KEYS = ["contig", "start", "strand"]                       # a scored window's identity across tracks
-MODELS = ["prokbert", "nt", "cnn", "cnn_v2"]               # the four ensemble members
+MODELS = ["prokbert", "nt", "cnn", "cnn_v2"]               # DEPRECATED old 4-model set;
+#          deployment is prokbert + cnn_v2 + evo2 (see the DEPRECATED banner at the top of this file)
 SET_SUBDIR = {"06": "T21_final_06", "xs": "T21_xs"}        # --model-set -> results/ subdir
 COMPLEMENT = str.maketrans("ACGTNacgtn", "TGCANtgcan")
 
@@ -409,6 +425,14 @@ _Reproducible: scoring, ensembling, p/q are deterministic; FIMO is deterministic
 
 # ------------------------------------------------------------------- main
 def main():
+    # DEPRECATED guard: this monolith runs the old 4-model ensemble and has no Evo2 support.
+    # Use run_fdr_mine.sbatch + fdr_stats.py (3-model). Pass --run-deprecated to override.
+    if "--run-deprecated" in sys.argv:
+        sys.argv.remove("--run-deprecated")
+    else:
+        sys.exit("fdr_mine.py is DEPRECATED and superseded by run_fdr_mine.sbatch + fdr_stats.py "
+                 "(3-model ensemble: prokbert + cnn_v2 + evo2). This file runs the OLD 4-model set "
+                 "[prokbert, nt, cnn, cnn_v2] and has no Evo2 support. Pass --run-deprecated to force.")
     repo = Path(__file__).resolve().parents[2]
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--genome", required=True, help="target FASTA (C_butyricum.fna)")

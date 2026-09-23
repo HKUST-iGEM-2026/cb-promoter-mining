@@ -33,10 +33,24 @@
 # ⚠️ The null TSV(s) MUST be 81 bp (extract_negatives.py defaults to --window 52 — regenerate at 81, or
 # fdr_stats.py prep fails loud). Run only ONE job per $OUT at a time (same-$OUT jobs share track files).
 #
-# SUBMIT (deployment 3-model, xs checkpoints — the default):
-#   sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
-# SUBMIT (the leakage-safe 0.6 checkpoints instead of xs):
-#   MODELSET=06 sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
+# ⚠️ ASSEMBLY MUST MATCH THE DELIVERABLE. The candidate list (g409755_candidates.tsv + the 912/306/100
+# tiers) was mined on the 96-contig RefSeq WGS assembly g409755 = GCF_000409755.1 (contig ids
+# NZ_AQQF01000…). This FDR run MUST use the SAME assembly, or its peaks won't share coordinates with the
+# candidate table and can't be joined. The earlier results/cbut_xs/ run used T26's C_butyricum.fna — a
+# DIFFERENT 4-contig assembly (contig_1..4) — so those q-values do NOT map to the deliverable (CLAUDE.md §9).
+# Set G409755_FASTA / G409755_GFF below to the SAME files the mine used.
+#
+# SUBMIT (deployment 3-model, xs checkpoints — the default), after setting the two g409755 paths:
+#   G409755_FASTA=/abs/g409755.fna G409755_GFF=/abs/g409755.gff3 \
+#     sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
+#   (leakage-safe 0.6 checkpoints instead of xs: add  MODELSET=06)
+#
+# To guarantee the FDR windows are byte-identical to the mine's (recommended), copy the mine's regions BED
+# into the output dir BEFORE submitting so T27 reuses it instead of rebuilding from the GFF:
+#   OUT=evaluation-and-calibration/T27/results/cbut_g409755_xs ; mkdir -p "$OUT"
+#   cp <mine>/g409755_candidate_regions.bed  "$OUT/cbut_candidate_regions.bed"
+# (Optional, skips the GPU candidate scan entirely: also drop the mine's per-model g409755 tracks there as
+#  cand_prokbert.csv / cand_cnn_v2.csv / cand_evo2.csv — T27 is resume-safe and reuses existing tracks.)
 set -eo pipefail
 
 REPO=/project/igem2026/cb-promoter-mining
@@ -61,11 +75,19 @@ PEAK_ALPHA=${PEAK_ALPHA:-0.05}
 MERGE=${MERGE:-81}
 TOPN=${TOPN:-80}
 UP=${UP:-300}; DOWN=${DOWN:-50}                     # candidate region = [gene_start-UP, gene_start+DOWN]
-GENOME=${GENOME:-$ANN/C_butyricum.fna}
-GFF=${GFF:-$ANN/C_butyricum.gff3}
+# TARGET ASSEMBLY — set to the SAME g409755 files the mine used (mine_3model.sbatch FASTA + the GFF the
+# candidate-regions BED was built from). RefSeq WGS, contig ids NZ_AQQF01000…  ⚠️ NOT T26's 4-contig
+# C_butyricum.fna — that mismatch is why the old cbut_xs q-values don't map to the deliverable (CLAUDE.md §9).
+G409755_FASTA=${G409755_FASTA:-/project/igem2026/cb-promoter-mining/PATH_TO/g409755.fna}   # <-- SET ME
+G409755_GFF=${G409755_GFF:-/project/igem2026/cb-promoter-mining/PATH_TO/g409755.gff3}      # <-- SET ME
+GENOME=${GENOME:-$G409755_FASTA}
+GFF=${GFF:-$G409755_GFF}
+# Null pool stays as-is: it is scored INDEPENDENTLY (packed nullcat) and never shares coordinates with the
+# candidates, so promoter-free C. butyricum intergenic sequence is a valid composition-matched null whatever
+# assembly it came from. (Regenerating the cbut null from g409755 is optional, not required for correctness.)
 NULL_TSVS=${NULL_TSVS:-"$ANN/convergent_intergenic_negatives.tsv $EVAL/T26/c_acetobutylicum_annotation/convergent_intergenic_negatives.tsv $EVAL/T26/c_phytofermentans_annotation/convergent_intergenic_negatives.tsv"}
 PROBE=${PROBE:-$DIR/regimeC/evo2/evo2_probe_xs.pkl}   # frozen T15_xs logreg probe (genome-agnostic)
-OUT=${OUT:-$T27/results/cbut_${MODELSET}} ; mkdir -p "$OUT"
+OUT=${OUT:-$T27/results/cbut_g409755_${MODELSET}} ; mkdir -p "$OUT"   # fresh dir — NOT the stale 4-contig cbut_xs
 
 declare -A MPATH=(                                  # genome_inference models (evo2 is separate)
     [prokbert]="$DIR/$SUB/prokbert/best_model"

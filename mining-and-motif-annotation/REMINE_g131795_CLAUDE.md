@@ -144,6 +144,57 @@ with a placed −10, 100 canonical**.
 
 ---
 
+## Step 6 — Empirical FDR (T27) + q-values on the candidates (recommended)
+
+The mine ranks and thresholds; T27 adds the *statistical* layer — an empirical p/q per locus against a
+convergent-intergenic (AT-rich, promoter-free) null — so a candidate can be called "significant at
+q ≤ 0.05" rather than just "scored ≥ 0.9". Because this FDR runs on the **same g131795 assembly** as the
+mine, its q-values coordinate-join back onto `g131795_candidates.tsv` — the join CLAUDE.md §9 was blocked
+on when the mine was g409755 and the FDR ran on T26's 4-contig assembly.
+
+`run_fdr_mine.sbatch` is fully parameterised — repoint it on the submit line, don't edit it. Reuse the
+mine's candidate-regions BED so the FDR windows match the mine byte-for-byte:
+
+```bash
+cd /project/igem2026/cb-promoter-mining
+MINE=$PWD/infrastructure/T3/snakemake_scaffold/results/regimeC/mine3_g131795
+FOUT=$PWD/evaluation-and-calibration/T27/results/cbut_g131795_xs
+mkdir -p "$FOUT"
+cp "$MINE/g131795_candidate_regions.bed" "$FOUT/cbut_candidate_regions.bed"    # reuse the mine's exact windows
+
+GENOME=$MINE/g131795.fna GFF=$MINE/g131795.gff3 OUT=$FOUT MODELSET=xs STEP=10 \
+  sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
+squeue --me ; tail -f t27_fdr_mine_*.log
+```
+
+- `MODELSET=xs STEP=10` match the mine (same `T21_xs` checkpoints, same grid), so the FDR scores the same
+  promoters. Setting `GENOME`/`GFF` directly bypasses the `G409755_FASTA`/`G409755_GFF` placeholders; the
+  fresh `cbut_g131795_xs` OUT keeps it clear of the stale 4-contig `cbut_xs` run.
+- The null (convergent-intergenic negatives) is composition-matched and **assembly-independent**, reused
+  as-is. If `fdr_stats.py prep` fails on window length, the null TSVs need regenerating at 81 bp (not 52).
+- GPU saver (optional): the mine's Evo2 candidate track is already restricted on the same grid, so drop it
+  in to skip that ~1 GPU-hr scan — `cp $MINE/g131795_evo2.csv $FOUT/cand_evo2.csv`. `align_tracks.py` fails
+  loud if the grid doesn't match, so it's safe to try.
+
+Outputs in `$FOUT/`: `peaks_fdr.csv` (every locus with p/q), `top80_promoters.csv` (+ summit sequence),
+`analysis.md`/`analysis.tex`.
+
+### Join q-values back onto the candidate table
+
+```bash
+python evaluation-and-calibration/T27/join_fdr_qvalues.py \
+  --candidates $MINE/g131795_candidates.tsv \
+  --fdr-peaks  $FOUT/peaks_fdr.csv \
+  --out        $MINE/g131795_candidates_fdr.tsv
+```
+
+Adds `fdr_q_value`, `fdr_p_value`, `fdr_ensemble_score`, `fdr_n_overlapping_peaks`, `fdr_significant_q05`
+by overlap on (chromosome, strand). A candidate with a **blank q** was not called above the p-gate — not
+separable from the intergenic null — which is a "believe-it-less" flag, **not** proof it's a non-promoter.
+The FDR-backed wet-lab shortlist is `fdr_significant_q05 == True`, sorted by `peak_score`.
+
+---
+
 ## Compare to g409755 (sanity, once it's done)
 
 Because it's the same strain, the two candidate lists should broadly agree in *number* and motif

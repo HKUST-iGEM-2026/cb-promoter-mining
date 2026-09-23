@@ -1,0 +1,58 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage{siunitx}
+\title{T27 empirical-FDR promoter mine --- \textit{C. butyricum}}
+\date{ensemble: prokbert + cnnv2 + evo2}
+\begin{document}
+\maketitle
+
+\section*{Method}
+Restricted scan + tailored null. Candidates are the 1,026 upstream-of-gene windows; the null is the 420 convergent-intergenic samples (both strands of the 81 bp negatives). Both are intergenic + AT-rich, so the empirical p is a composition-matched comparison. Ensemble = mean rank-percentile pooled over the RESTRICTED candidates + null (calibration-free).
+
+\section*{Null score distribution (ensemble rank-percentile)}
+median 0.5189, p95 0.8690, p99 0.9604, max 0.9945.
+Smallest achievable p-value $= 1/(N_{\mathrm{null}}+1) = \num{2.38e-03}$
+($N_{\mathrm{null}} = 420$).
+
+\section*{Discoveries}
+\begin{itemize}
+  \item candidate windows tested: 1,026
+  \item windows passing empirical $p \le 0.05$: peak-called into \textbf{24 promoter loci}
+  \item loci at $q \le 0.05$: \textbf{24}; at $q \le 0.10$: 24
+  \item reported: top 24 by ensemble score (0 summit windows truncated at a contig end)
+  \item top-24 ensemble range $[0.8797, 0.9963]$, $q$ range $[\num{1.90e-02}, \num{4.51e-02}]$
+\end{itemize}
+
+\section*{Top 20 promoters}
+(full set in \texttt{top80\_promoters.csv})
+\begin{center}
+\begin{tabular}{llrrrrrr}
+\toprule
+candidate\_id & contig & summit & strand & ensemble & $p$ & $q$ & n\_windows \\
+\midrule
+cbut\_0001 & contig\_1 & 3740720 & + & 0.9963 & 2.375e-03 & 1.900e-02 & 9 \\
+cbut\_0002 & contig\_1 & 2363897 & - & 0.9949 & 2.375e-03 & 1.900e-02 & 5 \\
+cbut\_0003 & contig\_1 & 1572280 & + & 0.9855 & 7.126e-03 & 1.900e-02 & 3 \\
+cbut\_0004 & contig\_2 & 130280 & + & 0.9846 & 7.126e-03 & 1.900e-02 & 7 \\
+cbut\_0005 & contig\_1 & 3054087 & - & 0.9802 & 9.501e-03 & 1.900e-02 & 7 \\
+cbut\_0006 & contig\_1 & 1730730 & + & 0.9769 & 9.501e-03 & 1.900e-02 & 3 \\
+cbut\_0007 & contig\_1 & 2354237 & - & 0.9730 & 9.501e-03 & 1.900e-02 & 3 \\
+cbut\_0008 & contig\_2 & 282538 & - & 0.9719 & 1.188e-02 & 1.900e-02 & 3 \\
+cbut\_0009 & contig\_2 & 583558 & - & 0.9714 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0010 & contig\_1 & 1177980 & + & 0.9693 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0011 & contig\_1 & 2140837 & - & 0.9693 & 1.188e-02 & 1.900e-02 & 5 \\
+cbut\_0012 & contig\_1 & 3215247 & - & 0.9693 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0013 & contig\_1 & 3059960 & + & 0.9689 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0014 & contig\_1 & 2592437 & - & 0.9684 & 1.188e-02 & 1.900e-02 & 1 \\
+cbut\_0015 & contig\_1 & 861180 & + & 0.9659 & 1.188e-02 & 1.900e-02 & 6 \\
+cbut\_0016 & contig\_2 & 699238 & - & 0.9525 & 1.663e-02 & 2.217e-02 & 3 \\
+cbut\_0017 & contig\_1 & 2139187 & - & 0.9521 & 1.663e-02 & 2.217e-02 & 5 \\
+cbut\_0018 & contig\_1 & 2946167 & - & 0.9504 & 1.663e-02 & 2.217e-02 & 8 \\
+cbut\_0019 & contig\_1 & 2014217 & - & 0.9458 & 1.900e-02 & 2.400e-02 & 6 \\
+cbut\_0020 & contig\_1 & 1140037 & - & 0.9424 & 2.138e-02 & 2.565e-02 & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\end{document}

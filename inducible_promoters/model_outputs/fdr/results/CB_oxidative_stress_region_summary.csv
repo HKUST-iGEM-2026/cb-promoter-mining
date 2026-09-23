@@ -1,0 +1,28 @@
+Region ID,Operon ID,Leader Bakta locus,Leader gene,Leader product,Target RefSeq loci,Target Bakta loci,Target functions,n_significant_peaks,has_significant_promoter,best_candidate_id,best_ensemble_score,best_q_value
+AOOCHK_04177|contig_2|-|upstream_300bp,operon_02454,AOOCHK_04177,,Superoxide dismutase,FF104_RS20715,AOOCHK_04177,superoxide dismutase,1,YES,cbut_0009,0.971415398801291,0.0190023752969121
+AOOCHK_02838|contig_1|+|upstream_300bp,operon_00917,AOOCHK_02838,,thioredoxin-dependent peroxiredoxin,FF104_RS14075,AOOCHK_02838,peroxiredoxin,1,YES,cbut_0013,0.9688796680497924,0.0190023752969121
+AOOCHK_01201|contig_1|-|upstream_300bp,operon_01136,AOOCHK_01201,,Rubredoxin,FF104_RS05950,AOOCHK_01201,NADH peroxidase,0,NO,,,
+AOOCHK_02736|contig_1|-|upstream_300bp,operon_01663,AOOCHK_02736,,Thiol peroxidase,FF104_RS13550,AOOCHK_02736,thiol peroxidase,1,YES,cbut_0018,0.9504379898570772,0.0221694378463974
+AOOCHK_04287|contig_2|-|upstream_300bp,operon_02506,AOOCHK_04287,,Glutathione peroxidase,FF104_RS21250;FF104_RS21255,AOOCHK_04286;AOOCHK_04287,glutathione peroxidase;glutathione peroxidase,0,NO,,,
+AOOCHK_02359|contig_1|-|upstream_300bp,operon_01518,AOOCHK_02359,,Radical SAM protein,FF104_RS11680,AOOCHK_02358,rubrerythrin,1,YES,cbut_0014,0.9684186260949746,0.0190023752969121
+AOOCHK_03071|contig_1|-|upstream_300bp,operon_01827,AOOCHK_03071,,Ferritin-like diiron domain-containing protein,FF104_RS15235,AOOCHK_03071,rubrerythrin,0,NO,,,
+AOOCHK_04277|contig_2|-|upstream_300bp,operon_02500,AOOCHK_04277,,Rubrerythrin,FF104_RS21205;FF104_RS21200,AOOCHK_04277;AOOCHK_04276,rubrerythrin;desulfoferrodoxin,1,YES,cbut_0016,0.9525126786537575,0.0221694378463974
+AOOCHK_03756|contig_2|+|upstream_300bp,operon_02124,AOOCHK_03756,,Alkyl hydroperoxide reductase C,FF104_RS18650,AOOCHK_03756,alkyl hydroperoxide reductase subunit C,1,YES,cbut_0004,0.9845550945136008,0.0190023752969121
+AOOCHK_02118|contig_1|-|upstream_300bp,operon_01405,AOOCHK_02118,,Thioredoxin,FF104_RS10490,AOOCHK_02118,thioredoxin,1,YES,cbut_0007,0.9730290456431536,0.0190023752969121
+AOOCHK_02832|contig_1|-|upstream_300bp,operon_01714,AOOCHK_02832,,Thioredoxin,FF104_RS14045,AOOCHK_02832,thioredoxin,1,YES,cbut_0005,0.9801751959428308,0.0190023752969121
+AOOCHK_01012|contig_1|+|upstream_300bp,operon_00456,AOOCHK_01012,,Thioredoxin,FF104_RS05020,AOOCHK_01012,thioredoxin,1,YES,cbut_0010,0.9693407100046104,0.0190023752969121
+AOOCHK_03484|contig_1|-|upstream_300bp,operon_02005,AOOCHK_03484,,Thioredoxin reductase,FF104_RS17295;FF104_RS17285,AOOCHK_03484;AOOCHK_03483,thioredoxin-disulfide reductase;glutaredoxin domain-containing protein,1,YES,cbut_0021,0.9273858921161824,0.0310947959404016
+AOOCHK_03482|contig_1|+|upstream_300bp,operon_00969,AOOCHK_03482,,Glutaredoxin-like YruB-family protein,FF104_RS17290,AOOCHK_03482,glutaredoxin domain-containing protein,1,YES,cbut_0001,0.9963116643614568,0.0190023752969121
+AOOCHK_02076|contig_1|-|upstream_300bp,operon_01384,AOOCHK_02076,ywtE,5-amino-6-(5-phospho-D-ribitylamino)uracil phosphatase YwtE,FF104_RS10275,AOOCHK_02075,thioredoxin family protein,1,YES,cbut_0023,0.8948824343015214,0.0371785603635237
+AOOCHK_01398|contig_1|+|upstream_300bp,operon_00629,AOOCHK_01398,,UPF0246 protein Cbei_1739,FF104_RS06915,AOOCHK_01398,peroxide stress protein,1,YES,cbut_0003,0.9854771784232366,0.0190023752969121
+AOOCHK_03563|contig_1|-|upstream_300bp,operon_02035,AOOCHK_03563,,Ferredoxin,FF104_RS17690,AOOCHK_03563,ferredoxin,1,YES,cbut_0024,0.8796680497925311,0.0451306413301662
+AOOCHK_01799|contig_1|-|upstream_300bp,operon_01239,AOOCHK_01799,,hypothetical protein,FF104_RS08905,AOOCHK_01799,ferredoxin,1,YES,cbut_0019,0.9458275703088982,0.0240030003750468
+AOOCHK_01930|contig_1|-|upstream_300bp,operon_01311,AOOCHK_01930,,CASTOR ACT domain-containing protein,FF104_RS09545,AOOCHK_01929,EFR1 family ferrodoxin,1,YES,cbut_0017,0.9520516366989396,0.0221694378463974
+AOOCHK_01932|contig_1|-|upstream_300bp,operon_01312,AOOCHK_01932,,Ferredoxin,FF104_RS09560,AOOCHK_01932,EFR1 family ferrodoxin,1,YES,cbut_0011,0.9693407100046104,0.0190023752969121
+AOOCHK_00718|contig_1|+|upstream_300bp,operon_00325,AOOCHK_00718,,Flavodoxin,FF104_RS03560,AOOCHK_00718,flavodoxin family protein,1,YES,cbut_0015,0.9658828953434764,0.0190023752969121
+AOOCHK_01525|contig_1|+|upstream_300bp,operon_00700,AOOCHK_01525,,Flavodoxin-like domain-containing protein,FF104_RS07550,AOOCHK_01525,flavodoxin family protein,1,YES,cbut_0006,0.9769479022591055,0.0190023752969121
+AOOCHK_01638|contig_1|+|upstream_300bp,operon_00762,AOOCHK_01638,,NADPH-dependent FMN reductase-like domain-containing protein,FF104_RS08110,AOOCHK_01638,flavodoxin family protein,1,YES,cbut_0022,0.9223144306131856,0.0310947959404016
+AOOCHK_02128|contig_1|-|upstream_300bp,operon_01410,AOOCHK_02128,,Flavodoxin,FF104_RS10540,AOOCHK_02128,flavodoxin,1,YES,cbut_0002,0.9949285384970032,0.0190023752969121
+AOOCHK_02977|contig_1|-|upstream_300bp,operon_01775,AOOCHK_02977,,Flavodoxin,FF104_RS14770,AOOCHK_02977,flavodoxin,1,YES,cbut_0012,0.9693407100046104,0.0190023752969121
+AOOCHK_03897|contig_2|-|upstream_300bp,operon_02318,AOOCHK_03897,,2-amino-4-deoxychorismate dehydrogenase,FF104_RS19340,AOOCHK_03897,flavodoxin family protein,1,YES,cbut_0008,0.9718764407561088,0.0190023752969121
+FF104_RS04850|RefSeq_only|contig_1|-|upstream_300bp,,,rd,rubredoxin,FF104_RS04850,,rubredoxin,1,YES,cbut_0020,0.9423697556477638,0.0256532066508313
