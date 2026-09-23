@@ -138,41 +138,80 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 cb-promoter-mining/
 ├── CLAUDE.md                       # this file
 ├── README.md                       # project blurb + plain-language flowchart
-├── prompt-guideline/CLAUDE.md      # behavioral rules (see §0)
+├── WORKFLOW_RATIONALE.md           # why the approach is sound; the base-rate ceiling
+├── LOADING_MODELS.md               # loading the trained checkpoints on HPC4
+├── score_promoters.py              # single hand-off entry point: score a FASTA with one model
+├── env.sh                          # shared HPC4 environment shim
+├── prompt-guideline/README.md      # pointer note (the behavioral rules are inlined in §0)
 ├── infrastructure/
-│   ├── T3/snakemake_scaffold/      # the pipeline scaffold (see §5)
+│   ├── T3/snakemake_scaffold/      # the pipeline scaffold (see §5) — still task-numbered, see §9
 │   │   ├── Snakefile               #   Phase B–E (HPC4)
 │   │   ├── local_prep.smk          #   Phase A: T5–T9 (local)
 │   │   ├── tss_prep.smk            #   Phase A: T10/TSSpredator (HPC4)
-│   │   ├── config/config.yaml      #   placeholder paths/params
-│   │   └── profiles/slurm/config.yaml  # the ONE place for cluster settings
-│   └── T4/                         # conda env + deploy runbook
-│       ├── environment.yml
-│       └── DEPLOY.md
+│   │   ├── config/config.yaml      #   real paths/params
+│   │   ├── profiles/slurm/config.yaml  # the ONE place for cluster settings
+│   │   └── results/                #   every trained checkpoint + output (mirrored on HPC4)
+│   ├── conda-environments/         # T4 — environment.yml, DEPLOY.md, NT_ENV.md, HPC4_RUNBOOK.md
+│   ├── HPC4_GUIDE.md               # start here if you are new to the cluster
+│   └── EVO2_ENV.md, NTV3_ENV .md   # per-model env recipes
 ├── data-acquisition-and-curation/
-│   ├── T5/                         # 166 Clostridium genomes (zip, Git-LFS) + provenance
-│   ├── T7/                         # dRNA-seq/TSS literature search (README + run lists)
-│   └── T8/                         # RegulonDB+DBTBS -> Parquet (run_t8_pipeline.py)
-├── dataset-construction/           # T11–T16 land here (currently README only)
+│   ├── clostridium-genomes/        # T5  — 166 Clostridium genomes (zip, Git-LFS) + provenance
+│   ├── bakta-annotations/          # T6  — the bulk zip (per-genome output lives in bakta_outputs/)
+│   ├── tss-literature/             # T7/T7b — dRNA-seq search + published in-genus TSS
+│   ├── curated-promoters/          # T8  — RegulonDB+DBTBS -> Parquet
+│   ├── synthetic-promoters/        # T9  — literature/synthetic promoters (held out for eval)
+│   ├── cdifficile-drnaseq/         # T10 — TSSpredator re-processing (out-of-genus)
+│   └── additional-published-tss/   # B. licheniformis + Ruminiclostridium published TSS
+├── dataset-construction/
+│   ├── housekeeping-genes/         # T11
+│   ├── operon-detection/           # T12
+│   ├── upstream-extraction/        # T13 — silver positives
+│   ├── negative-sets/              # T14 — four classes incl. SRS
+│   ├── clustering-and-splits/      # T15 — CD-HIT/MMseqs2, cluster-disjoint splits
+│   └── tokenisation/               # T16 — per-model encodings
 ├── model-training/
-│   ├── T18/                            (template removed 2026-06 — owner writes fresh)
-│   ├── T19/                            (template removed 2026-06 — owner writes fresh)
-│   ├── T20/train_cnn_template.py
-│   └── T21/hyperparameter_sweep_template.py
+│   ├── prokbert/                   # T18
+│   ├── nucleotide-transformer/     # T19 — NT v2 250M LoRA
+│   ├── cnn/                        # T20 — train_cnn.py + train_cnn_v2.py
+│   ├── hyperparameter-sweep/       # T21
+│   ├── Evo2/                       # frozen-embedding probe — genome-scale leader
+│   └── nucleotide-transformer-v3/  # NTv3, benched — current/ + earlier-iteration/
 ├── evaluation-and-calibration/
-│   ├── T23/cluster_cv_template.py
-│   └── T24/evaluate_external_template.py
+│   ├── metrics/                    # T22
+│   ├── cross-validation/           # T23
+│   ├── external-holdout/           # T24
+│   ├── sigma-factor-stratified/    # T25
+│   ├── calibration/                # T26 — Platt + AT covariate
+│   ├── empirical-fdr/              # T27 — scan/stats split, q-values
+│   └── genome_inference.py, genome_fp_benchmark.py, modular_eval.py  # shared scanners
 ├── mining-and-motif-annotation/
-│   └── T28/sliding_window_engine_template.py
-└── pre-tasks/
-    ├── PT1/prokbert_finetune.py, regulonDB_treating.py
-    ├── PT3/metrics_cv.py
-    └── PT5/sliding_window_inference.py  # E. coli (MG1655) sliding-window inference; reused by T28
+│   ├── genome-scan/                # T28 — mine_3model.sbatch is the deployment mine
+│   ├── ensemble-aggregation/       # T29 — mean rank-percentile + align_tracks.py
+│   ├── peak-calling/               # T30
+│   ├── motif-annotation/           # T31 — FIMO −10/−35, sigma_a_promoter.meme
+│   ├── candidate-table/            # T32 — final PT6-schema table
+│   ├── motif_qc/                   # post-hoc motif sanity checks
+│   └── prioritize_candidates.py, split_candidate_tiers.py, filter_and_rank_wetlab.py
+├── final-candidates/               # delivered candidate tables + wet-lab shortlists
+├── prototypes/                     # PT1–PT6 — learning exercises + reusable code
+│   ├── prokbert-finetune/          # PT1
+│   ├── metrics-and-cv/             # PT3 — metrics_cv.py, reused by T22/T23
+│   ├── calibration-fdr/            # PT4 — reused by T26/T27
+│   ├── ecoli-sliding-window/       # PT5 — MG1655 inference, reused by T28
+│   └── pipeline-validation/        # PT6 — locks the candidate-table schema
+├── huggingface_release/            # PT2 — model cards + upload_to_hf.py
+├── inducible_promoters/            # Stage 2 spin-off: oxidative-stress inducible promoters
+├── positives_with_context/         # 384 bp-context positive build (for NTv3)
+├── phylogenetic_tree/              # GTDB tree work
+└── wiki/                           # iGEM wiki copy
 ```
 
 T6 (Bakta annotations, ~8.9 GB) lives in a **separate** repo/folder `bakta_outputs/`, not here
 (only `.gff3` + `.fna` + `.tsv` per genome matter downstream). The `*_template.py` files are
 **starter drafts**, not finished code — owners replace them.
+
+Directories are named for what they do, not for their task number; the task ID each one
+implements is in the comment beside it, so the T-numbers used throughout this file still map.
 
 ---
 
@@ -420,7 +459,7 @@ rebalance, so confirm current owners with Oak.
 >    workaround is no longer needed now that T7b exists, and T9's ~51 bp would need poor N-padding.
 > 4. **T10 (_C. difficile_) stays out-of-genus** — re-run + verified (1,746 TSS) but treated as
 >    cross-species-adjacent support, and **not** passed to T15's `--positives`.
-> 5. **Extra out-of-genus empirical TSS added 2026-08** (`data-acquisition-and-curation/TSS_results/prep_new_tss.py`):
+> 5. **Extra out-of-genus empirical TSS added 2026-08** (`data-acquisition-and-curation/additional-published-tss/prep_new_tss.py`):
 >    _Ruminiclostridium cellulolyticum_ (gene-assoc TSS) + _Bacillus licheniformis_ (primary TSS), both
 >    **cross-species → pinned to TRAIN** in `cdhit_splits.py` (never in val/test, so the deployment metric
 >    stays honest). **VERIFIED in the deployed `T15_xs` (2026-08): 25,095 positives = 19,344 in-genus +
@@ -588,7 +627,7 @@ select by **product description**, not the gene-symbol field.
   for the mine — T29 rank-percentile.) **Sequences attached (2026-09):** `summit_seq` (81 bp reading-orientation
   window, TSS at +61) + `minus10_seq`/`minus35_seq` (sliced from the window at the FIMO hits `build_candidate_table`
   chose) joined onto the tiers by `candidate_id` from the mine's call-seqs FASTA + `fimo.tsv` → `*_seq.tsv`. The
-  45-canonical wet-lab pick is packaged with a Notes tab as `g131795_wetlab_shortlist.xlsx` (repo root).
+  45-canonical wet-lab pick is packaged with a Notes tab as `final-candidates/g131795_wetlab_shortlist.xlsx`.
 
 ---
 
@@ -649,7 +688,7 @@ select by **product description**, not the gene-symbol field.
   use Evo2 as lead caller / 5th T29 rank-percentile member (calibration-invariant, slots in) for the C. butyricum
   mine, or document-only. Runs: `C_evo2_{ljung,cau}_scan.sbatch`. NB flash-attn in the evo2 env must match torch
   (cu12/torch2.7/cxx11abiTRUE wheel) or Vortex won't import.
-- **NTv3-ctx — evaluated and BENCHED (2026-08; `ntv3_training/`):** a full fine-tune of NTv3-650M on a 384 bp-context
+- **NTv3-ctx — evaluated and BENCHED (2026-08; `model-training/nucleotide-transformer-v3/current/`):** a full fine-tune of NTv3-650M on a 384 bp-context
   build of T15_xs (`T15_xs_ctx`) has the **BEST balanced AUPRC of any model** (val 0.956 / test 0.960, weighted) — and
   it's genuine, not context-leak inflation: the clean re-score dropping high-recurrence rows barely moved it (test
   0.960 full → 0.958 de-leaked; `ntv3_rescore_clean.py`). YET on genome-scale Regime C (restricted, **step 10**, same
@@ -657,7 +696,7 @@ select by **product description**, not the gene-symbol field.
   autoethanogenum **58.5% / 48.3%** (precision @ recall 0.1 / 0.5) vs cnn_v2-xs 63.1%/48.2%, 81.2%/67.1% and Evo2
   71.0%/58.0%, 85.8%/71.4%. Same NT-family failure as NT-LoRA but MORE extreme (highest balanced, hardest genome-scale
   collapse): a bigger backbone + 384 bp mean-pooled context buy curated-set accuracy and lose the spatial resolution the
-  genome base rate demands. → **NTv3-ctx does NOT earn an ensemble slot.** Runs: `ntv3_training/ntv3_regimeC.sbatch`
+  genome base rate demands. → **NTv3-ctx does NOT earn an ensemble slot.** Runs: `model-training/nucleotide-transformer-v3/current/ntv3_regimeC.sbatch`
   (job 526023 COMPLETED). NB balanced 0.96 is NOT apples-to-apples with the 81 bp models (it reads 384 bp).
 - **Deployment finding flip (see `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv`,
   regenerated + council-audited):** at genome scale (Regime C, held-out *C. ljungdahlii*, restricted scan) the **CNN

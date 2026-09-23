@@ -18,7 +18,7 @@
 # {clj,cau}_candidate_regions.bed, cau_truth.tsv. ljungdahlii truth is committed in $EVAL.
 # Scan scripts (ntv3_infer.py, ntv3_genome_scan.py) are read from ~ (scp'd there).
 #
-# SUBMIT:  sbatch ntv3_training/ntv3_regimeC.sbatch
+# SUBMIT:  sbatch model-training/nucleotide-transformer-v3/current/ntv3_regimeC.sbatch
 #   (uses the xs model by default; MODEL=... to point elsewhere, STEP=1 for a denser scan)
 set -eo pipefail
 

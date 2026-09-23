@@ -11,7 +11,7 @@ boxes, and inferred a systematic -35 windowing/extraction bug.
 
 This script re-runs that test on the ACTUAL inputs that live in the repo -- the pipeline's own
 MEME motif model (mining-and-motif-annotation/motif-annotation/sigma_a_promoter.meme, canonical TATAAT / TTGACA
-with an AT-rich background baked in) and the delivered candidate table (g131795_ranked_seq.tsv) --
+with an AT-rich background baked in) and the delivered candidate table (final-candidates/g131795_ranked_seq.tsv) --
 and adds the controls the score-only test was missing:
   1. reproduce the contamination rate with the pipeline's own motifs;
   2. redo it under the motif file's declared AT-rich background (0.35/0.15) vs uniform 0.25;
@@ -33,7 +33,7 @@ BASES = "ACGT"; IDX = {b: i for i, b in enumerate(BASES)}
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
 MEME = os.path.join(REPO, "mining-and-motif-annotation", "motif-annotation", "sigma_a_promoter.meme")
-TABLE = os.path.join(REPO, "g131795_ranked_seq.tsv")
+TABLE = os.path.join(REPO, "final-candidates/g131795_ranked_seq.tsv")
 UNIFORM = [0.25, 0.25, 0.25, 0.25]
 
 

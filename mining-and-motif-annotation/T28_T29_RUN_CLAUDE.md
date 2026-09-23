@@ -45,7 +45,7 @@ job benchmarks the ensemble *and each member* restricted, at recall 0.1/0.5/0.7/
 confirm the ensemble is doing what you want (ideally: fewer FP peaks at recall 0.1 than cnn_v2-xs
 alone) before you trust it on the target. Held-out genomes with truth already prepped: **C. ljungdahlii**
 (`evaluation-and-calibration/ljungdahlii_holdout_tss.tsv`, 1,245 TSS) and **C. autoethanogenum**
-(`data-acquisition-and-curation/TSS_results/autoethanogenum_tss.tsv`, 2,885 TSS — prep via
+(`data-acquisition-and-curation/additional-published-tss/autoethanogenum_tss.tsv`, 2,885 TSS — prep via
 `prep_cau_regimeC.sh`).
 
 **B. Target mine (no truth).** Leave `TRUTH=""`. The job scans + ensembles and writes the

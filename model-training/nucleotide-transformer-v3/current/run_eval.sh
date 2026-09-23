@@ -12,4 +12,4 @@ source ~/.bashrc
 conda activate ntv3_env
 
 # Run the evaluation script
-python -u scripts/evaluate_ntv3.py
+python -u model-training/nucleotide-transformer-v3/earlier-iteration/evaluate_ntv3.py

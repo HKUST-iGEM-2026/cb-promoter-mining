@@ -9,7 +9,7 @@
 #SBATCH --output=ntv3_ctx_finetune_%j.log
 #
 # Full fine-tune of NTv3 (650M) as a PROMOTER CLASSIFIER on the context split, using
-# ntv3_training/finetune_ntv3_classifier.py (backbone + mean-pool + linear head, weighted CE on the
+# model-training/nucleotide-transformer-v3/current/finetune_ntv3_classifier.py (backbone + mean-pool + linear head, weighted CE on the
 # `weight` column, weighted-AUPRC metric). Replaces the degenerate MLM run in results_ntv3_full.
 #
 # DATA: defaults to T15_ctx (ready today: sequence_context/label/weight all present, ctx=384 bp).
@@ -24,8 +24,8 @@
 #     export HF_HOME=/project/igem2026/hf_cache
 #     huggingface-cli download InstaDeepAI/NTv3_650M_pre
 #
-# SUBMIT:  sbatch ntv3_training/finetune_ntv3.sbatch
-#   resume after a preempt:  RESUME=1 sbatch ntv3_training/finetune_ntv3.sbatch
+# SUBMIT:  sbatch model-training/nucleotide-transformer-v3/current/finetune_ntv3.sbatch
+#   resume after a preempt:  RESUME=1 sbatch model-training/nucleotide-transformer-v3/current/finetune_ntv3.sbatch
 set -eo pipefail
 
 REPO=/project/igem2026/cb-promoter-mining
@@ -54,7 +54,7 @@ echo "data=$DATA  out=$OUT  max_length=$MAXLEN  env=$ENV"
 
 # batch 4 x grad-accum 8 = eff. 32; NTv3-650M full fine-tune with all hidden states retained is
 # memory-heavy — if it OOMs on the H800, drop --batch-size to 2 (raise --grad-accum to 16 to keep eff. 32).
-python "$REPO/ntv3_training/finetune_ntv3_classifier.py" \
+python "$REPO/model-training/nucleotide-transformer-v3/current/finetune_ntv3_classifier.py" \
     --data-dir "$DATA" --model-id InstaDeepAI/NTv3_650M_pre \
     --seq-col sequence_context --max-length "$MAXLEN" \
     --out "$OUT" --epochs 3 --batch-size 4 --grad-accum 8 --lr 1e-5 \

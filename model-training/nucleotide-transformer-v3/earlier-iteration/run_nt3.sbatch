@@ -12,4 +12,4 @@ source ~/.bashrc
 conda activate /project/igem2026/cb-promoter-mining/.conda
 
 # Run the training script
-python -u scripts/train_classifier.py
+python -u model-training/nucleotide-transformer-v3/earlier-iteration/train_classifier.py

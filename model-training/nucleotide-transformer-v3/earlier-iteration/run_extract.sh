@@ -12,4 +12,4 @@ source ~/.bashrc
 conda activate ntv3_env
 
 # Run embedding extraction
-python -u scripts/extract_embeddings.py
+python -u model-training/nucleotide-transformer-v3/earlier-iteration/extract_embeddings.py

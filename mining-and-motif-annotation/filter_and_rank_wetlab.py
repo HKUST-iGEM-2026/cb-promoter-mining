@@ -19,13 +19,13 @@ NB the in-genus Hocq TSS set (C. acetobutylicum / C. beijerinckii) is NOT includ
 an unfetched Git-LFS pointer locally. Those relatives are the most likely to share sequence, so add
 them (git lfs pull, or re-extract) and re-run for a stricter novelty screen.
 
-  python filter_and_rank_wetlab.py
+  python mining-and-motif-annotation/filter_and_rank_wetlab.py
 """
 import sys
 import pandas as pd
 
 K = 20
-CANDIDATES = "g131795_ranked_seq.tsv"
+CANDIDATES = "final-candidates/g131795_ranked_seq.tsv"
 KNOWN = [
     ("data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet", "sequence"),  # RegulonDB+DBTBS
     ("data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv", "sequence"),            # T9 literature
@@ -111,14 +111,14 @@ def main():
             "minus10_offset", "minus35_seq", "minus10_seq", "fdr_q_value", "summit_seq",
             "dup_group_size"]
     cols = [c for c in cols if c in keep.columns]
-    keep[cols].to_csv("g131795_final_wetlab.tsv", sep="\t", index=False)
+    keep[cols].to_csv("final-candidates/g131795_final_wetlab.tsv", sep="\t", index=False)
     # audit trail of what was dropped
     dropped = cand[cand["matches_known"] | cand["redundant_dup"]].copy()
     dropped["drop_reason"] = ["matches_known_db" if mk else "internal_duplicate"
                               for mk in dropped["matches_known"]]
     dropped.sort_values("priority_rank")[["candidate_id", "chromosome", "strand", "tss_position",
-        "peak_score", "drop_reason", "dup_group_size"]].to_csv("g131795_dropped.tsv", sep="\t", index=False)
-    print("\nwrote g131795_final_wetlab.tsv  +  g131795_dropped.tsv (audit)")
+        "peak_score", "drop_reason", "dup_group_size"]].to_csv("final-candidates/g131795_dropped.tsv", sep="\t", index=False)
+    print("\nwrote final-candidates/g131795_final_wetlab.tsv  +  final-candidates/g131795_dropped.tsv (audit)")
     print("\nTop 15 (final wet-lab order):")
     show = ["wetlab_rank", "candidate_id", "chromosome", "strand", "tss_position", "peak_score", "tier_label"]
     print(keep.head(15)[show].to_string(index=False))

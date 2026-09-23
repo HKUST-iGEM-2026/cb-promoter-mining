@@ -15,8 +15,8 @@ Tiers (nested, most confident first):
   3  confident    >=0.9, >=5 windows             (all rows)
 
 Usage:
-  python prioritize_candidates.py g131795_candidates_fdr.tsv
-  python prioritize_candidates.py g131795_candidates_fdr.tsv --tag g131795 --outdir .
+  python mining-and-motif-annotation/prioritize_candidates.py g131795_candidates_fdr.tsv
+  python mining-and-motif-annotation/prioritize_candidates.py g131795_candidates_fdr.tsv --tag g131795 --outdir .
 """
 import argparse
 import os

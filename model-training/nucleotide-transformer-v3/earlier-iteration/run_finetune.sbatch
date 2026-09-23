@@ -13,4 +13,4 @@ echo "Running on host: $(hostname)"
 nvidia-smi
 
 # Directly execute using the conda environment's python binary
-/project/igem2026/cb-promoter-mining/.conda/bin/python -u scripts/fine_tune_nt3.py
+/project/igem2026/cb-promoter-mining/.conda/bin/python -u model-training/nucleotide-transformer-v3/earlier-iteration/fine_tune_nt3.py

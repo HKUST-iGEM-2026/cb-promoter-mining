@@ -8,7 +8,7 @@ offset header + filters to canonical promoter TSS.
   Bacillus licheniformis            (S5)      -> Class == P (primary)    [CROSS-SPECIES positive]
   Clostridium autoethanogenum       (Table S1)-> Class == P, deduped     [VALIDATION genome only]
 
-Run from this folder (data-acquisition-and-curation/TSS_results).
+Run from this folder (data-acquisition-and-curation/additional-published-tss).
 """
 import pandas as pd
 

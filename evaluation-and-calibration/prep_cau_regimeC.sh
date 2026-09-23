@@ -19,7 +19,7 @@ REPO=/project/igem2026/cb-promoter-mining
 EVAL=$REPO/evaluation-and-calibration
 RES=$REPO/infrastructure/T3/snakemake_scaffold/results
 OUT=$RES/regimeC
-TSS=$REPO/data-acquisition-and-curation/TSS_results/autoethanogenum_tss.tsv   # pos,strand (2,885 primary TSS, Class==P)
+TSS=$REPO/data-acquisition-and-curation/additional-published-tss/autoethanogenum_tss.tsv   # pos,strand (2,885 primary TSS, Class==P)
 ACC=GCF_000484505.1
 mkdir -p "$OUT" && cd "$OUT"
 

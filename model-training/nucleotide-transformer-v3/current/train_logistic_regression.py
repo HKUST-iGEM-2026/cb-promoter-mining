@@ -26,8 +26,8 @@ test_accuracy = 0.8302
 test_f1 = 0.77
 
 # Ensure output directory exists
-os.makedirs("ntv3_training", exist_ok=True)
-results_file = "ntv3_training/logistic_regression_eval_results.txt"
+os.makedirs("model-training/nucleotide-transformer-v3/current", exist_ok=True)
+results_file = "model-training/nucleotide-transformer-v3/current/logistic_regression_eval_results.txt"
 
 # Write the evaluation results to an output file
 with open(results_file, "w") as f:
