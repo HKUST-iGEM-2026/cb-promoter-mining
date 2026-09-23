@@ -171,7 +171,7 @@ def load_cnn_model(cnn_model_path: Path, device: torch.device):
     import importlib.util
 
     repo = Path(__file__).resolve().parents[2]
-    t20_path = (repo / "model-training" / "T20" / "train_cnn.py").resolve()
+    t20_path = (repo / "model-training" / "cnn" / "train_cnn.py").resolve()
 
     spec = importlib.util.spec_from_file_location("train_cnn", str(t20_path))
     mod = importlib.util.module_from_spec(spec)
@@ -197,7 +197,7 @@ def load_cnn_v2_model(cnn_v2_model_path: Path, device: torch.device):
     import importlib.util
 
     repo = Path(__file__).resolve().parents[2]
-    path = (repo / "model-training" / "T20" / "train_cnn_v2.py").resolve()
+    path = (repo / "model-training" / "cnn" / "train_cnn_v2.py").resolve()
     spec = importlib.util.spec_from_file_location("train_cnn_v2", str(path))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

@@ -32,7 +32,7 @@ random.seed(7); np.random.seed(7)
 BASES = "ACGT"; IDX = {b: i for i, b in enumerate(BASES)}
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.abspath(os.path.join(HERE, "..", ".."))
-MEME = os.path.join(REPO, "mining-and-motif-annotation", "T31", "sigma_a_promoter.meme")
+MEME = os.path.join(REPO, "mining-and-motif-annotation", "motif-annotation", "sigma_a_promoter.meme")
 TABLE = os.path.join(REPO, "g131795_ranked_seq.tsv")
 UNIFORM = [0.25, 0.25, 0.25, 0.25]
 

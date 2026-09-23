@@ -35,7 +35,7 @@ import tempfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 EVO2_DIR = os.path.join(REPO_ROOT, "model-training", "Evo2")          # probe + helper live here (in-repo)
-CNN_CODE = os.path.join(REPO_ROOT, "model-training", "T20", "train_cnn_v2.py")
+CNN_CODE = os.path.join(REPO_ROOT, "model-training", "cnn", "train_cnn_v2.py")
 
 # name -> (hub repo == card dir, kind, source spec, extra single files to add)
 MODELS = {

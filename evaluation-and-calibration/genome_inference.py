@@ -67,7 +67,7 @@ def transformer_scorer(tok, model, device, max_length):
 def load_cnn(model_path, device):
     import importlib.util
     repo = Path(__file__).resolve().parents[1]
-    t20 = repo / "model-training" / "T20" / "train_cnn.py"
+    t20 = repo / "model-training" / "cnn" / "train_cnn.py"
     spec = importlib.util.spec_from_file_location("train_cnn", str(t20))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -107,7 +107,7 @@ def load_cnn_v2(model_path, device):
     the feature window the model was trained with (read from config.json)."""
     import importlib.util
     repo = Path(__file__).resolve().parents[1]
-    t20v2 = repo / "model-training" / "T20" / "train_cnn_v2.py"
+    t20v2 = repo / "model-training" / "cnn" / "train_cnn_v2.py"
     spec = importlib.util.spec_from_file_location("train_cnn_v2", str(t20v2))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

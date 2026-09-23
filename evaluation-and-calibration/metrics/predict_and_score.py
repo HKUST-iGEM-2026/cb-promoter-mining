@@ -43,7 +43,7 @@ def _load_v2_module():
     inference helpers)."""
     import importlib.util
     here = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(here, "..", "..", "model-training", "T20", "train_cnn_v2.py")
+    path = os.path.join(here, "..", "..", "model-training", "cnn", "train_cnn_v2.py")
     spec = importlib.util.spec_from_file_location("train_cnn_v2", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -97,7 +97,7 @@ def build_cnn(model_path, device):
     import importlib.util
     here = os.path.dirname(os.path.abspath(__file__))
     spec = importlib.util.spec_from_file_location(
-        "train_cnn", os.path.join(here, "..", "..", "model-training", "T20", "train_cnn.py"))
+        "train_cnn", os.path.join(here, "..", "..", "model-training", "cnn", "train_cnn.py"))
     tcnn = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(tcnn)
     # find the config next to the checkpoint (best_model.pt -> metrics.json in the same dir)
