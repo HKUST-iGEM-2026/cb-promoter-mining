@@ -16,7 +16,7 @@ echo "=== tools (need cd-hit-est + snakemake for T15) ==="
 for t in cd-hit-est snakemake python; do printf "  %-12s " "$t:"; command -v "$t" 2>/dev/null || echo MISSING; done
 echo
 echo "=== Bakta zip (must be a real ~450MB file, NOT a ~130-byte LFS pointer) ==="
-z="$REPO/data-acquisition-and-curation/T6/all_bakta_output.zip"; printf "  all_bakta_output.zip: %s bytes\n" "$(sz "$z")"
+z="$REPO/data-acquisition-and-curation/bakta-annotations/all_bakta_output.zip"; printf "  all_bakta_output.zip: %s bytes\n" "$(sz "$z")"
 echo
 echo "=== Phase A inputs/  (0 bytes = EMPTY STUB -> T15 has no positives!) ==="
 for f in reference_promoters.parquet published_tss_promoters.parquet literature_promoters_train.parquet tss_sites.gff3 literature_promoters.tsv; do

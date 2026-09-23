@@ -43,7 +43,7 @@ pre-filled in `mine_3model.sbatch`; you don't touch them.
 ```bash
 source /project/igem2026/cb-promoter-mining/env.sh
 conda activate /project/igem2026/envs/promoter-mining-hpc4     # has ncbi-datasets-cli
-bash mining-and-motif-annotation/T28/prep_g131795.sh
+bash mining-and-motif-annotation/genome-scan/prep_g131795.sh
 ```
 
 This fetches the assembly + GFF, writes `g131795.fna` and `g131795_candidate_regions.bed` into
@@ -70,7 +70,7 @@ OUT=infrastructure/T3/snakemake_scaffold/results/regimeC/mine3_g131795
 TAG=g131795 TRUTH="" MODELS="prokbert cnn_v2 evo2" STEP=10 \
   FASTA=$PWD/$OUT/g131795.fna \
   REGIONS=$PWD/$OUT/g131795_candidate_regions.bed \
-  sbatch mining-and-motif-annotation/T28/mine_3model.sbatch
+  sbatch mining-and-motif-annotation/genome-scan/mine_3model.sbatch
 
 squeue --me ; tail -f mineN_*.log
 ```
@@ -93,7 +93,7 @@ mine took ~17 min; a complete ~4.7 Mb genome is the same order.
 Collapse the per-window shortlist into one call per locus (same thresholds as `g409755`):
 
 ```bash
-python mining-and-motif-annotation/T30/call_peaks.py \
+python mining-and-motif-annotation/peak-calling/call_peaks.py \
     --track $OUT/g131795_shortlist_3m_restricted.csv --min-score 0.9 --merge 81 \
     --out $OUT/g131795_peaks.csv
 ```
@@ -108,7 +108,7 @@ calls, assigns `candidate_id`), then MEME de-novo + FIMO **in the MEME env**:
 
 ```bash
 # 4a. extract summit windows (main env: needs pandas)
-python mining-and-motif-annotation/T31/extract_call_sequences.py \
+python mining-and-motif-annotation/motif-annotation/extract_call_sequences.py \
     --calls $OUT/g131795_peaks.csv --genome $OUT/g131795.fna \
     --min-windows 5 --top-n 500 \
     --out-fasta $OUT/g131795_call_seqs.fasta \
@@ -117,20 +117,20 @@ python mining-and-motif-annotation/T31/extract_call_sequences.py \
 
 # 4b. MEME + FIMO (MEME env: has meme/fimo, NOT pandas)
 conda activate /project/igem2026/envs/meme
-bash mining-and-motif-annotation/T31/annotate_motifs.sh \
+bash mining-and-motif-annotation/motif-annotation/annotate_motifs.sh \
     $OUT/g131795_call_seqs_top.fasta $OUT/g131795_call_seqs.fasta $OUT/t31_g131795
 conda activate /project/igem2026/envs/promoter-mining-hpc4
 ```
 
 > Optional architecture summary over **all** calls (fixed σA −10/−35, the `g409755` "51 canonical /
-> 1,746 minus10_only / …" breakdown): `python mining-and-motif-annotation/T31/annotate_motifs.py
+> 1,746 minus10_only / …" breakdown): `python mining-and-motif-annotation/motif-annotation/annotate_motifs.py
 > --peaks $OUT/g131795_peaks.csv --genome $OUT/g131795.fna --out $OUT/g131795_architecture.tsv`. Not
 > needed for the candidate table.
 
 ## Step 5 — T32 final candidate table (PT6 schema)
 
 ```bash
-python mining-and-motif-annotation/T32/build_candidate_table.py \
+python mining-and-motif-annotation/candidate-table/build_candidate_table.py \
     --calls $OUT/g131795_calls_with_id.tsv --fimo $OUT/t31_g131795/fimo/fimo.tsv \
     --out $OUT/g131795_candidates.tsv --jsonl $OUT/g131795_candidates.jsonl
 ```
@@ -158,12 +158,12 @@ mine's candidate-regions BED so the FDR windows match the mine byte-for-byte:
 ```bash
 cd /project/igem2026/cb-promoter-mining
 MINE=$PWD/infrastructure/T3/snakemake_scaffold/results/regimeC/mine3_g131795
-FOUT=$PWD/evaluation-and-calibration/T27/results/cbut_g131795_xs
+FOUT=$PWD/evaluation-and-calibration/empirical-fdr/results/cbut_g131795_xs
 mkdir -p "$FOUT"
 cp "$MINE/g131795_candidate_regions.bed" "$FOUT/cbut_candidate_regions.bed"    # reuse the mine's exact windows
 
 GENOME=$MINE/g131795.fna GFF=$MINE/g131795.gff3 OUT=$FOUT MODELSET=xs STEP=10 \
-  sbatch evaluation-and-calibration/T27/run_fdr_mine.sbatch
+  sbatch evaluation-and-calibration/empirical-fdr/run_fdr_mine.sbatch
 squeue --me ; tail -f t27_fdr_mine_*.log
 ```
 
@@ -182,7 +182,7 @@ Outputs in `$FOUT/`: `peaks_fdr.csv` (every locus with p/q), `top80_promoters.cs
 ### Join q-values back onto the candidate table
 
 ```bash
-python evaluation-and-calibration/T27/join_fdr_qvalues.py \
+python evaluation-and-calibration/empirical-fdr/join_fdr_qvalues.py \
   --candidates $MINE/g131795_candidates.tsv \
   --fdr-peaks  $FOUT/peaks_fdr.csv \
   --out        $MINE/g131795_candidates_fdr.tsv
@@ -220,25 +220,25 @@ re-run `split_candidate_tiers.py` on `g131795_candidates.tsv`.
 
 ```bash
 # 1) stage complete genome + candidate regions (login node)
-bash mining-and-motif-annotation/T28/prep_g131795.sh
+bash mining-and-motif-annotation/genome-scan/prep_g131795.sh
 OUT=infrastructure/T3/snakemake_scaffold/results/regimeC/mine3_g131795
 
 # 2) 3-model mine (GPU, target-mine mode)
 TAG=g131795 TRUTH="" MODELS="prokbert cnn_v2 evo2" STEP=10 \
   FASTA=$PWD/$OUT/g131795.fna REGIONS=$PWD/$OUT/g131795_candidate_regions.bed \
-  sbatch mining-and-motif-annotation/T28/mine_3model.sbatch
+  sbatch mining-and-motif-annotation/genome-scan/mine_3model.sbatch
 
 # 3) peaks -> 4) motif -> 5) table
-python mining-and-motif-annotation/T30/call_peaks.py --track $OUT/g131795_shortlist_3m_restricted.csv \
+python mining-and-motif-annotation/peak-calling/call_peaks.py --track $OUT/g131795_shortlist_3m_restricted.csv \
   --min-score 0.9 --merge 81 --out $OUT/g131795_peaks.csv
-python mining-and-motif-annotation/T31/extract_call_sequences.py --calls $OUT/g131795_peaks.csv \
+python mining-and-motif-annotation/motif-annotation/extract_call_sequences.py --calls $OUT/g131795_peaks.csv \
   --genome $OUT/g131795.fna --min-windows 5 --top-n 500 \
   --out-fasta $OUT/g131795_call_seqs.fasta --out-top $OUT/g131795_call_seqs_top.fasta \
   --out-calls $OUT/g131795_calls_with_id.tsv
 conda activate /project/igem2026/envs/meme
-bash mining-and-motif-annotation/T31/annotate_motifs.sh \
+bash mining-and-motif-annotation/motif-annotation/annotate_motifs.sh \
   $OUT/g131795_call_seqs_top.fasta $OUT/g131795_call_seqs.fasta $OUT/t31_g131795
 conda activate /project/igem2026/envs/promoter-mining-hpc4
-python mining-and-motif-annotation/T32/build_candidate_table.py --calls $OUT/g131795_calls_with_id.tsv \
+python mining-and-motif-annotation/candidate-table/build_candidate_table.py --calls $OUT/g131795_calls_with_id.tsv \
   --fimo $OUT/t31_g131795/fimo/fimo.tsv --out $OUT/g131795_candidates.tsv --jsonl $OUT/g131795_candidates.jsonl
 ```

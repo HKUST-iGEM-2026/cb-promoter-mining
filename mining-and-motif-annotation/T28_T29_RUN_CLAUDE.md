@@ -98,13 +98,13 @@ CONTIG_OVERRIDE=""            # or "--contig-name NC_014328.1"
 ```
 
 Confirm the `MPATH` table points at the `T21_xs` checkpoints (pre-filled). If `T21_xs` was moved,
-`grep -m1 model-path evaluation-and-calibration/T26/C_ljung_scan_xs.sh` shows the paths the xs
+`grep -m1 model-path evaluation-and-calibration/calibration/C_ljung_scan_xs.sh` shows the paths the xs
 ljungdahlii scan used.
 
 ## Step 3 — submit
 
 ```bash
-sbatch mining-and-motif-annotation/T28/scan_ensemble.sbatch
+sbatch mining-and-motif-annotation/genome-scan/scan_ensemble.sbatch
 squeue --me
 tail -f t28_scan_t29_ens_*.log
 ```
@@ -138,8 +138,8 @@ Outputs land in `.../results/regimeC/mine_<TAG>/`:
 ## Commit (from Oak's Mac, surgical)
 
 ```bash
-git add mining-and-motif-annotation/T28/scan_ensemble.sbatch \
-        mining-and-motif-annotation/T29/ensemble_rank_percentile.py \
+git add mining-and-motif-annotation/genome-scan/scan_ensemble.sbatch \
+        mining-and-motif-annotation/ensemble-aggregation/ensemble_rank_percentile.py \
         mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md
 git commit -m "T28/T29: restricted scan + mean-rank-percentile ensemble (xs models)"
 git push

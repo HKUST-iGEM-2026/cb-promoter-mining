@@ -11,7 +11,7 @@ Combines the three positive sources into one context-carrying set, each handled 
 
 | Source | rows | context | how |
 |---|---|---|---|
-| T7b (Hocq/Al-Bassam published TSS) | 5,759 | **real** | coords parsed from `promoter_id` (`{src}_{contig}_{pos}_{strand}`), carved from the RefSeq FASTAs in `data-acquisition-and-curation/T7/ref/` using the exact `extract_published_tss` framing (81 bp, +1 at offset 60). 100% round-trip verified. |
+| T7b (Hocq/Al-Bassam published TSS) | 5,759 | **real** | coords parsed from `promoter_id` (`{src}_{contig}_{pos}_{strand}`), carved from the RefSeq FASTAs in `data-acquisition-and-curation/tss-literature/ref/` using the exact `extract_published_tss` framing (81 bp, +1 at offset 60). 100% round-trip verified. |
 | T13 (housekeeping upstreams, silver) | 14,602 | **real** | loaded PER GENOME (its `genome` column → that genome's own Bakta FASTA) and located by sequence search, so the genome and framing are both correct (no `contig_1` collision). |
 | T8 (RegulonDB/DBTBS, cross-species) | 4,336 | sequence-only | cross-species (E. coli / B. subtilis) — no coordinates for our genomes, so `has_genomic_context=False`, core fit to 81 bp, context N-padded. |
 
@@ -44,7 +44,7 @@ real context; T8's 4,336 are sequence-only.
 The two-column design (`sequence` = 81 bp core for ProkBERT/CNN, `sequence_context` = long window
 for NTv3) plugs into the existing T15 → T16 flow:
 
-1. **T15 clustering/splits** — `dataset-construction/T15/cdhit_splits.py` clusters on the 81 bp
+1. **T15 clustering/splits** — `dataset-construction/clustering-and-splits/cdhit_splits.py` clusters on the 81 bp
    `sequence` core (leakage-safe) and carries `sequence_context`/`core_offset` through the splits.
 2. **T16 / encode** — `dataset-construction/negative-tokenization/encode.py --model nt
    --sequence-col sequence_context` tokenizes the long window for NTv3 (single-base, N-pad to a

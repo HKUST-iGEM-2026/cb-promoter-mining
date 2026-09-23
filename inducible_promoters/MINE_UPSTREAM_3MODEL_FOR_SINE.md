@@ -176,7 +176,7 @@ RC=infrastructure/T3/snakemake_scaffold/results/regimeC
 TAG=cb_oxstress TRUTH="" MODELS="prokbert cnn_v2 evo2" STEP=10 \
   FASTA=$PWD/$RC/inducible/cb_2repl.fna \
   REGIONS=$PWD/$RC/inducible/cb_oxstress_upstream.bed \
-  sbatch mining-and-motif-annotation/T28/mine_3model.sbatch
+  sbatch mining-and-motif-annotation/genome-scan/mine_3model.sbatch
 ```
 
 Notes:
@@ -231,7 +231,7 @@ ensemble thinks it is (`best_score`). Sort within Tier 1 first — those are the
 (SOD, peroxiredoxin, AhpC, rubrerythrins, thioredoxin system).
 
 **Optional — motif annotation** for the strong calls, identical to the `g409755` tail: run
-`mining-and-motif-annotation/T30/call_peaks.py --track cb_oxstress_shortlist_3m_restricted.csv
+`mining-and-motif-annotation/peak-calling/call_peaks.py --track cb_oxstress_shortlist_3m_restricted.csv
 --min-score 0.9 --merge 81 --out cb_oxstress_peaks.csv`, then T31 FIMO (`extract_call_sequences.py` →
 `fimo` in the `/project/igem2026/envs/meme` env → `build_candidate_table.py`) to place −10/−35 boxes. See
 `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md` for that flow — but note the T31 motif is the
@@ -265,7 +265,7 @@ grep '^>' cb_2repl.fna    # verify 2 records, ids match the BED
 # 3. mine (target-mine mode, 3-model ensemble)
 TAG=cb_oxstress TRUTH="" MODELS="prokbert cnn_v2 evo2" STEP=10 \
   FASTA=$PWD/cb_2repl.fna REGIONS=$PWD/cb_oxstress_upstream.bed \
-  sbatch mining-and-motif-annotation/T28/mine_3model.sbatch
+  sbatch mining-and-motif-annotation/genome-scan/mine_3model.sbatch
 
 # 4. per-gene best call  ->  cb_oxstress_per_gene_calls.tsv   (snippet in §5)
 ```

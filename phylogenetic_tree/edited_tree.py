@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 
 HERE = Path(__file__).parent
-GENOME_LIST = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T5/genome_list.tsv"
+GENOME_LIST = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/clostridium-genomes/genome_list.tsv"
 REMAP = HERE / "gtdb_remap.tsv"   # our_accession -> GTDB tree_leaf (built once from bac120_taxonomy_r226)
 
 # accession -> species name (e.g. "GCF_000007625.1" -> "Clostridium tetani E88")

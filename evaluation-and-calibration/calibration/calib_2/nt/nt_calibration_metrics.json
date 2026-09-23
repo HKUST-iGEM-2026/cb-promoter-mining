@@ -1,0 +1,71 @@
+{
+  "device": "cuda",
+  "n_total": 279,
+  "n_positive": 93,
+  "n_negative": 186,
+  "n_convergent": 130,
+  "n_cds": 56,
+  "cv_folds": 5,
+  "cv_repeats": 5,
+  "l2_C": 1.0,
+  "tol": 0.005,
+  "chosen": "unregularized",
+  "selection_reason": "unregularized chosen (simpler): mean OOF log_loss 0.5633+/-0.0043 vs L2 0.5629+/-0.0040 over 5x5-fold (L2 not better by tol 0.005)",
+  "seed": 42,
+  "max_length": 128,
+  "model_output_shape": [
+    279,
+    2
+  ],
+  "base_id": "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species",
+  "metrics": {
+    "raw": {
+      "brier": 0.33915778023837234,
+      "log_loss": 1.4129926978302536,
+      "auroc": 0.5633599260030061,
+      "auprc": 0.37597281415887535,
+      "ece": 0.338159731659084
+    },
+    "cv_unregularized": {
+      "brier": 0.19094210462841077,
+      "brier_std": 0.0014582669249921844,
+      "log_loss": 0.5632778523732499,
+      "log_loss_std": 0.004280218052491001,
+      "auroc": 0.7308937449416117,
+      "auroc_std": 0.004789249191967359,
+      "auprc": 0.5557740926505039,
+      "auprc_std": 0.006167011844256398,
+      "ece": 0.05150093497249798,
+      "ece_std": 0.0065935805317452545
+    },
+    "cv_l2": {
+      "brier": 0.19076390792385048,
+      "brier_std": 0.0014019196048879962,
+      "log_loss": 0.5628634519269292,
+      "log_loss_std": 0.004017330857196533,
+      "auroc": 0.7311249855474621,
+      "auroc_std": 0.004965619440742848,
+      "auprc": 0.5575805018613857,
+      "auprc_std": 0.005556884556881481,
+      "ece": 0.05036830771023619,
+      "ece_std": 0.007295972997183025
+    },
+    "calibrated_logit_at_oof": {
+      "brier": 0.1906567808243739,
+      "log_loss": 0.5623147808356461,
+      "auroc": 0.7311249855474622,
+      "auprc": 0.5575147767965943,
+      "ece": 0.048581606918070674
+    }
+  },
+  "paths": {
+    "base_id": "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species",
+    "adapter_dir": "/project/igem2026/cb-promoter-mining/results/T21/nt_lora/trial_14/best_adapter",
+    "positives": "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv",
+    "convergent_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/convergent_intergenic_negatives.tsv",
+    "cds_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/cds_negatives.tsv",
+    "calibrator_at": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_2/nt/nt_calibrator_at.joblib",
+    "predictions_csv": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_2/nt/nt_calibration_predictions.csv",
+    "metrics_json": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_2/nt/nt_calibration_metrics.json"
+  }
+}

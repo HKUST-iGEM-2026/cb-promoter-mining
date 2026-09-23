@@ -10,11 +10,11 @@
 # A RELATIVE path is resolved against the repo root, so it works wherever the repo is pulled
 # (HPC4, your Mac, etc.) — the zip ships inside the repo via Git-LFS. Use an ABSOLUTE path only to
 # point at an out-of-repo copy, e.g. --config bakta_dir=/Users/oak23/Downloads/bakta_outputs
-bakta_dir: "data-acquisition-and-curation/T6/all_bakta_output.zip"
+bakta_dir: "data-acquisition-and-curation/bakta-annotations/all_bakta_output.zip"
 
 # T5 genomes: 166 RefSeq .fna inside one Git-LFS zip. Source for the reference
 # FASTAs used by T7b / T10 (must be unzipped first — see local_prep t5 rule).
-genomes_zip: "data-acquisition-and-curation/T5/Clostridium_genomes_v2_166.zip"
+genomes_zip: "data-acquisition-and-curation/clostridium-genomes/Clostridium_genomes_v2_166.zip"
 
 # T6 Bakta DB (light, ~30 GB) — ONLY needed to REGENERATE annotations (local_prep t6 rule).
 # The committed all_bakta_output.zip is the canonical artifact; re-running bakta is opt-in.
@@ -22,7 +22,7 @@ genomes_zip: "data-acquisition-and-curation/T5/Clostridium_genomes_v2_166.zip"
 bakta_db: "/project/igem2026/bakta_db/db-light"
 
 # T7 dRNA-seq accession list consumed by T10 (TSSpredator): 20 runs.
-srr_list: "data-acquisition-and-curation/T7/SRR_dRNAseq_for_TSSpredator.txt"
+srr_list: "data-acquisition-and-curation/tss-literature/SRR_dRNAseq_for_TSSpredator.txt"
 
 # --- Parameters ---
 upstream_window_bp: 300     # T12 contig-end window + T13 extraction window (bp)

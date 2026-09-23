@@ -47,7 +47,7 @@ def load_data():
         frames.append(df_t7)
         print(f"📥 Loaded T7b: {len(df_t7)} rows")
 
-    t8_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/T8/curated_positive_promoters.parquet"
+    t8_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet"
     if os.path.exists(t8_path):
         df_t8 = pd.read_parquet(t8_path)
         df_t8['source_type'] = 't8_curated_positive'

@@ -102,7 +102,7 @@ def main():
         probs = _score_transformer(model, tok, seqs, device)
 
     elif a.model == "cnn":
-        tcnn = _load_module(f"{REPO}/model-training/T20/train_cnn.py", "train_cnn")
+        tcnn = _load_module(f"{REPO}/model-training/cnn/train_cnn.py", "train_cnn")
         cfg = json.load(open(f"{a.models_dir}/cnn/metrics.json")).get("config", {})
         keys = ("conv1_filters", "conv2_filters", "conv3_filters", "kernel_size", "dropout_rate", "use_batch_norm")
         model = tcnn.PromoterCNN(input_channels=4, sequence_length=81,
@@ -119,7 +119,7 @@ def main():
             probs = torch.softmax(model(torch.from_numpy(X).to(device)).float(), dim=1)[:, 1].cpu().numpy()
 
     else:  # cnn_v2
-        v2 = _load_module(f"{REPO}/model-training/T20/train_cnn_v2.py", "train_cnn_v2")
+        v2 = _load_module(f"{REPO}/model-training/cnn/train_cnn_v2.py", "train_cnn_v2")
         cfg = json.load(open(f"{a.models_dir}/cnn_v2/config.json"))
         model = v2.build_model_from_config(cfg, device=device)
         model.load_state_dict(torch.load(f"{a.models_dir}/cnn_v2/best_model.pt", map_location=device))

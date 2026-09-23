@@ -27,8 +27,8 @@ import pandas as pd
 K = 20
 CANDIDATES = "g131795_ranked_seq.tsv"
 KNOWN = [
-    ("data-acquisition-and-curation/T8/curated_positive_promoters.parquet", "sequence"),  # RegulonDB+DBTBS
-    ("data-acquisition-and-curation/T9/literature_promoters.tsv", "sequence"),            # T9 literature
+    ("data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet", "sequence"),  # RegulonDB+DBTBS
+    ("data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv", "sequence"),            # T9 literature
 ]
 _RC = str.maketrans("ACGT", "TGCA")
 

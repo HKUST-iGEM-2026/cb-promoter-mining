@@ -11,11 +11,11 @@ OLD models. This runbook re-derives all three regimes on the new checkpoints.
 All commands use **absolute paths through variables you set once in Step 0**, so nothing depends
 on which `results/` tree you are standing in.
 
-Two envs (see `infrastructure/T4/NT_ENV.md`): `promoter-mining-hpc4` for ProkBERT + CNN,
+Two envs (see `infrastructure/conda-environments/NT_ENV.md`): `promoter-mining-hpc4` for ProkBERT + CNN,
 `nt-tf4x` for NT. HF must be offline-cached (the retrain already populated `~/hf_cache`).
 
 ```bash
-# ---- env activation (run once per shell; see infrastructure/T4/DEPLOY.md for the base path) ----
+# ---- env activation (run once per shell; see infrastructure/conda-environments/DEPLOY.md for the base path) ----
 source <conda-base>/etc/profile.d/conda.sh
 MAIN=/project/igem2026/envs/promoter-mining-hpc4     # ProkBERT + CNN
 NTENV=/project/igem2026/envs/nt-tf4x                 # NT only
@@ -201,7 +201,7 @@ Train (main env; add the swept hyperparameters if you have them):
 
 ```bash
 conda activate $MAIN
-python $REPO/model-training/T20/train_cnn_v2.py \
+python $REPO/model-training/cnn/train_cnn_v2.py \
     --data-dir  $T16DIR/cnn \
     --output-dir $RES/T21_final/cnn_v2 \
     --encodings onehot,dinuc,trinuc,enac

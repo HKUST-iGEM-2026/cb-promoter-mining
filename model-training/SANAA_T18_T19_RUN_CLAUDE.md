@@ -36,7 +36,7 @@ NB NT ships `pytorch_model.bin` only (no safetensors) — the env's torch 2.x lo
 ships custom code → the script loads it with `trust_remote_code=True` (**already coded + verified loading on HPC4**).
 
 ## Step 3 — Read the two scripts (own them)
-`model-training/T18/train_prokbert.py`, `T19/train_nt_lora.py`. Note the `WeightedTrainer`, `compute_metrics`
+`model-training/prokbert/train_prokbert.py`, `T19/train_nt_lora.py`. Note the `WeightedTrainer`, `compute_metrics`
 (AUPRC/AUROC/F1), the CLI flags, and where each saves (`best_model/` for T18; `best_adapter/` LoRA for T19).
 
 ## Step 4 — Run T18 (ProkBERT) as a GPU job
@@ -54,7 +54,7 @@ conda activate /project/igem2026/envs/promoter-mining-hpc4
 export HF_HOME=/project/igem2026/hf_cache HF_HUB_OFFLINE=1
 cd /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold
 python -c "import torch; assert torch.cuda.is_available(), 'NO GPU'"
-python ../../../model-training/T18/train_prokbert.py --data-dir results/T16/prokbert --output-dir results/T18
+python ../../../model-training/prokbert/train_prokbert.py --data-dir results/T16/prokbert --output-dir results/T18
 EOF
 sbatch run_t18.sbatch
 ```
@@ -68,7 +68,7 @@ if it looks off, check with Leo before this long run (it's a ~4× compute factor
 template handles any length). Same header, more `--time`:
 ```bash
 # run_t19.sbatch — identical header but: #SBATCH --time=12:00:00  / --job-name=t19_nt
-python ../../../model-training/T19/train_nt_lora.py --data-dir results/T16/nt --output-dir results/T19
+python ../../../model-training/nucleotide-transformer/train_nt_lora.py --data-dir results/T16/nt --output-dir results/T19
 ```
 Expect `print_trainable_parameters()` ~1% trainable, then `Validation AUPRC: …`, `results/T19/metrics.json`,
 `results/T19/best_adapter/` (the LoRA adapter only — to use it, load base NT + this adapter).
@@ -88,7 +88,7 @@ Pass criteria:
 - Training loss decreased across epochs (check the SLURM `.out` log).
 
 ## Step 7 — Hand to T21 (this IS finalising the T17 recipe)
-Once both run clean standalone, T21 (`model-training/T21/hyperparameter_sweep.py`) drives them — it appends
+Once both run clean standalone, T21 (`model-training/hyperparameter-sweep/hyperparameter_sweep.py`) drives them — it appends
 `--sweep-trial N --output-dir <dir> --<hparam> …` and reads `val_auprc` back to maximise. The template defaults
 are the **starting** recipe (T17); the sweep tunes them to the **final** recipe. You don't modify T18/T19 for
 the sweep — they already honor the CLI contract. (T20/CNN is Yany's; she's aligning it to the same contract.)

@@ -191,14 +191,14 @@ storage, gotchas). Key facts:
 | GPU job rule | 1 GPU : 28 threads : 8 GB RAM/thread — **don't** set `--mem`/CPU flags on GPU jobs |
 | Storage | `/home` 200 GB/user · **`/project/igem2026`** 5 TB group (persistent — put the env here) · `/scratch/igem2026` 5 TB Lustre (**files inactive >30 days are deleted** — job I/O only) |
 
-**The shared conda env (T4):** `infrastructure/T4/environment.yml`, deployed at
+**The shared conda env (T4):** `infrastructure/conda-environments/environment.yml`, deployed at
 `/project/igem2026/envs/promoter-mining-hpc4`. Build/verify/lock steps are in
-`infrastructure/T4/DEPLOY.md`. Everyone `conda activate`s that one prefix.
+`infrastructure/conda-environments/DEPLOY.md`. Everyone `conda activate`s that one prefix.
 
 **TWO envs (2026-07):** the main `promoter-mining-hpc4` (transformers **5.3.0**) runs everything EXCEPT the
 Nucleotide Transformer (**T19**), which needs a **second** env `nt-tf4x` (transformers **4.57.6**) — NT's
 remote code is v4-era and breaks on v5 in ≥6 ways (one *silent*). Recipe + rationale:
-**`infrastructure/T4/NT_ENV.md`**. Only T19 (standalone + the T21 NT sweep) uses `nt-tf4x`; T18/T20/all data
+**`infrastructure/conda-environments/NT_ENV.md`**. Only T19 (standalone + the T21 NT sweep) uses `nt-tf4x`; T18/T20/all data
 tasks stay on the 5.3.0 env.
 - Channels: `pytorch, nvidia, conda-forge, bioconda`; PyTorch pinned `>=2.1,<2.5` with
   `pytorch-cuda=12.1` (**confirm against `module avail cuda`** on SuperPOD before building).
@@ -249,7 +249,7 @@ rebalance, so confirm current owners with Oak.
 **Infrastructure**
 - T1 HPC4 access — Oak — ✅
 - T2 GitHub repo — Oak — ✅
-- T3 Snakemake scaffold + SLURM — Swasti — ✅ (`infrastructure/T3/snakemake_scaffold/`). **Rewired 2026-06**: Phase B (`collect_bakta_tsv`, T11–T14) now runs FOR REAL (config-driven `bakta_dir`, real `.tsv` outputs; T11 fed by a flat-`.tsv` staging rule that symlinks the nested Bakta dirs); T15–T32 + pre-tasks stay mock but every `# real:` now names the actual script + exact args (fixed the bogus `scripts/*.py {input} {output}` refs, the PT6 `validate_lock_schema.py`→`validate_promoters.py` name, PT5 `cd`, T18/T19 `.sh` filename bug). Validated by AI council: `snakemake -n` builds the full 30-job DAG; real run produced T11 (22,760 rows/166 genomes) → T12 (14,659 leaders). `config.yaml` now has real paths/params. **Real-shell pass (2026-06)**: `bakta_dir` may be a `.zip` (HPC4: `all_bakta_output.zip`) → new `extract_bakta` rule unzips it (collect symlinks made absolute). Phase A now carries REAL shell too: T5 (unzip genomes), T6 (bakta loop, opt-in regen — needs a bakta env + DB), T7/T8/T9 (cp/run+cp; T8 re-run gives the real 3,963 RegulonDB rows), T7b still a stub (its published-TSS tables aren't staged). T10 mock→ real 6-stage `data-acquisition-and-curation/T10/run_tss_pipeline.sh` (datasets→prefetch/fasterq-dump→segemehl→bedtools 5′-wiggle→TSSpredator×2→merge; 8 open decisions D1–D8 in its header). Council-validated: 31-job DAG builds; T5/T8/T9 + Phase-B-from-zip run for real; all T10 stage CLIs audited correct. **Main Snakefile now carries REAL commands in EVERY rule** (echo/touch mocks removed; `results/<task>.done` sentinels kept so the DAG order holds, `&& touch {output}` appended). LIVE today: T11–T14 + PT3/PT4/PT5/PT6; TEMPLATE-with-defects: PT1/T18–T21/T23/T24/T28; SCRIPT-not-yet-written (rule fails until built): PT2/T15/T16/T22/T25–27/T29–32. Validated: dry-run 31 jobs + real PT3 (wrote pt3_cv_results.csv) + real T12 (14,659 leaders). NB `snakemake --cores 4` now executes real commands and stops at the first unwritten script; `snakemake -n` is the wiring test.
+- T3 Snakemake scaffold + SLURM — Swasti — ✅ (`infrastructure/T3/snakemake_scaffold/`). **Rewired 2026-06**: Phase B (`collect_bakta_tsv`, T11–T14) now runs FOR REAL (config-driven `bakta_dir`, real `.tsv` outputs; T11 fed by a flat-`.tsv` staging rule that symlinks the nested Bakta dirs); T15–T32 + pre-tasks stay mock but every `# real:` now names the actual script + exact args (fixed the bogus `scripts/*.py {input} {output}` refs, the PT6 `validate_lock_schema.py`→`validate_promoters.py` name, PT5 `cd`, T18/T19 `.sh` filename bug). Validated by AI council: `snakemake -n` builds the full 30-job DAG; real run produced T11 (22,760 rows/166 genomes) → T12 (14,659 leaders). `config.yaml` now has real paths/params. **Real-shell pass (2026-06)**: `bakta_dir` may be a `.zip` (HPC4: `all_bakta_output.zip`) → new `extract_bakta` rule unzips it (collect symlinks made absolute). Phase A now carries REAL shell too: T5 (unzip genomes), T6 (bakta loop, opt-in regen — needs a bakta env + DB), T7/T8/T9 (cp/run+cp; T8 re-run gives the real 3,963 RegulonDB rows), T7b still a stub (its published-TSS tables aren't staged). T10 mock→ real 6-stage `data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh` (datasets→prefetch/fasterq-dump→segemehl→bedtools 5′-wiggle→TSSpredator×2→merge; 8 open decisions D1–D8 in its header). Council-validated: 31-job DAG builds; T5/T8/T9 + Phase-B-from-zip run for real; all T10 stage CLIs audited correct. **Main Snakefile now carries REAL commands in EVERY rule** (echo/touch mocks removed; `results/<task>.done` sentinels kept so the DAG order holds, `&& touch {output}` appended). LIVE today: T11–T14 + PT3/PT4/PT5/PT6; TEMPLATE-with-defects: PT1/T18–T21/T23/T24/T28; SCRIPT-not-yet-written (rule fails until built): PT2/T15/T16/T22/T25–27/T29–32. Validated: dry-run 31 jobs + real PT3 (wrote pt3_cv_results.csv) + real T12 (14,659 leaders). NB `snakemake --cores 4` now executes real commands and stops at the first unwritten script; `snakemake -n` is the wiring test.
 - T4 Conda env + deploy — Swasti — ✅ **deployed + GPU-verified on HPC4 (2026-06)**: built from
   `environment.yml`; a GPU job confirms `torch.cuda.is_available()`=True + `torch.version.cuda`=12.8
   (clean single **cu128** stack — the old 12.1-conda / cu13-pip frankenstein was rebuilt out).
@@ -257,7 +257,7 @@ rebalance, so confirm current owners with Oak.
   `--extra-index-url` and `prokbert @ git+…`). The 6 env gotchas that cost us hours are in DEPLOY.md:
   `source <base>/etc/profile.d/conda.sh` **before** activate; `conda env create` (no `mamba` on base);
   `chmod -R g+rX … 2>/dev/null`; `PYTHONNOUSERSITE=1` + `MKL_THREADING_LAYER=GNU` baked into the env's
-  `activate.d`; the lock pip-sources. Lock + env edits commit from the Mac. (`infrastructure/T4/`)
+  `activate.d`; the lock pip-sources. Lock + env edits commit from the Mac. (`infrastructure/conda-environments/`)
 
 **Pre-tasks (learning + reusable code)**
 - PT1 Fine-tune loop on RegulonDB/DBTBS — Sine — 🟡 (check it runs on **GPU** not CPU)
@@ -267,11 +267,11 @@ rebalance, so confirm current owners with Oak.
   no Evo2 weights). Tooling in `huggingface_release/` (per-model cards + `upload_to_hf.py`, `--only`/`--dry-run`/
   `--public`). NB ProkBERT checkpoint ships weights + `models.py` but NOT the tokenizer → card loads tokenizer from
   base. Repos still PRIVATE (review → flip public). `huggingface_release/` is untracked in git. (dep PT1)
-- PT3 Metrics + CV stack — Seonyu — ✅ `pre-tasks/PT3/metrics_cv.py` (reused by T22/T23)
-- PT4 Calibration + FDR harness — Seonyu — 🟡 implemented `pre-tasks/PT4/calibration_fdr.py` (Snakefile
+- PT3 Metrics + CV stack — Seonyu — ✅ `prototypes/metrics-and-cv/metrics_cv.py` (reused by T22/T23)
+- PT4 Calibration + FDR harness — Seonyu — 🟡 implemented `prototypes/calibration-fdr/calibration_fdr.py` (Snakefile
   marks it LIVE; not independently re-verified this session). (dep PT3; reused by T26/T27)
-- PT5 Sliding-window inference on E. coli — Ishi — ✅ code fixed (batch-scoring); CSV regenerated → `mg1655_promoter_scores.csv` (242 MB, Git-LFS via the `pre-tasks/PT5/*.csv` rule; script now writes that exact name). Reused by T28. **2026-06:** re-run on HPC4 (SLURM GPU). Model = `neuralbioinfo/prokbert-mini-promoter` — the promoter **classifier**, NOT base `prokbert-mini` and NOT `…-long-promoter` (DEPLOY §7 mis-states "-long-promoter"; cache the ID the code actually names). Input `MG1655.fna` (E. coli K-12, `GCF_000005845.2`/`U00096.3`) is **not committed** — stage it in `pre-tasks/PT5/` first or it `FileNotFoundError`s; script is cwd-relative (run from that dir). NB the HPC4 `sliding_window_inference.py` is currently modified/uncommitted — review the diff before committing.
-- PT6 Validate pipeline + lock output schema — Swasti — 🟡 implemented `pre-tasks/PT6/validate_promoters.py` (coord logic incl. reverse strand verified — matched dist median 4 bp, signed median 0; locks the candidate-table schema for T32). Baseline finding: off-the-shelf `prokbert-mini-long-promoter` is weak genome-wide (recall 0.37, precision 0.036, ~2× enrichment over random) but 4 bp-accurate when it hits — the bar to beat after fine-tuning. (dep PT5)
+- PT5 Sliding-window inference on E. coli — Ishi — ✅ code fixed (batch-scoring); CSV regenerated → `mg1655_promoter_scores.csv` (242 MB, Git-LFS via the `prototypes/ecoli-sliding-window/*.csv` rule; script now writes that exact name). Reused by T28. **2026-06:** re-run on HPC4 (SLURM GPU). Model = `neuralbioinfo/prokbert-mini-promoter` — the promoter **classifier**, NOT base `prokbert-mini` and NOT `…-long-promoter` (DEPLOY §7 mis-states "-long-promoter"; cache the ID the code actually names). Input `MG1655.fna` (E. coli K-12, `GCF_000005845.2`/`U00096.3`) is **not committed** — stage it in `prototypes/ecoli-sliding-window/` first or it `FileNotFoundError`s; script is cwd-relative (run from that dir). NB the HPC4 `sliding_window_inference.py` is currently modified/uncommitted — review the diff before committing.
+- PT6 Validate pipeline + lock output schema — Swasti — 🟡 implemented `prototypes/pipeline-validation/validate_promoters.py` (coord logic incl. reverse strand verified — matched dist median 4 bp, signed median 0; locks the candidate-table schema for T32). Baseline finding: off-the-shelf `prokbert-mini-long-promoter` is weak genome-wide (recall 0.37, precision 0.036, ~2× enrichment over random) but 4 bp-accurate when it hits — the bar to beat after fine-tuning. (dep PT5)
 
 **Phase A — data acquisition & curation**
 - T5 Download Clostridium genomes — Salimah — ✅ 166 RefSeq genomes (taxon 1485)
@@ -287,11 +287,11 @@ rebalance, so confirm current owners with Oak.
   the login node for the genome fetch. Skips LFS pointers / missing inputs gracefully. **In-genus training-positive
   source (§7).** Al-Bassam 2018 *C. ljungdahlii* TSS have since been downloaded + extracted (1,245 primary TSS,
   `evaluation-and-calibration/ljungdahlii_holdout_tss.tsv`) but are used as the **held-out** in-genus validation
-  genome (Regime C / T33 validation), deliberately NOT added as training positives. (`data-acquisition-and-curation/T7/`)
+  genome (Regime C / T33 validation), deliberately NOT added as training positives. (`data-acquisition-and-curation/tss-literature/`)
 - T8 Normalise RegulonDB+DBTBS → Parquet — Leo — ✅ **4,336** (3,963 RegulonDB + 373 DBTBS), landed on
   `main` (commit `82d9bbb`): `run_t8_pipeline.py` reads the committed `DBTBS_prom.fa` (Sine's 373 σA
   set, 81 bp) + `PromoterS_Set.txt`, asserts both sources non-empty, and reproducibly regenerates
-  `curated_positive_promoters.parquet`. `data-acquisition-and-curation/T8/`
+  `curated_positive_promoters.parquet`. `data-acquisition-and-curation/curated-promoters/`
 - T9 Curate synthetic promoters → `literature_promoters.tsv` — Salimah — ✅ 93 promoters merged + cleaned into one `literature_promoters.tsv` via re-runnable `build_literature_promoters.py`: C. acetobutylicum 120 bp cloning scaffold trimmed → ~50 bp promoter, 7 alignment-gap hyphens stripped → clean ACGT, strengths kept verbatim with `strength_unit`, `original_sequence` retained lossless. Verified 93/93 clean ACGT, reconstruction exact. NB C. phytofermentans (25) is out-of-genus (→ *Lachnoclostridium*), flagged `in_genus=False`. Held out → eval T24/T26.
 - T10 Re-process dRNA-seq w/ TSSpredator — Sine — ✅ **re-run + verified on HPC4 (2026-06): over-call
   fixed → 1,746 enriched primary TSS** (was 170,766; the merged `inputs/tss_sites.gff3`). Root cause was
@@ -304,12 +304,12 @@ rebalance, so confirm current owners with Oak.
   (and not passed to T15's `--positives`). (`tss_prep.smk` / `run_tss_pipeline.sh`; dep T6,T7)
 
 **Phase B — dataset construction** (land in `dataset-construction/`)
-- T11 Housekeeping gene set — Sine — ✅ ran on HPC4 → **22,760** housekeeping genes / 166 genomes (`dataset-construction/T11/define_housekeeping.py`; selects by product per §9). (dep T6)
-- T12 Operon detection (+ contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: (a) nested Bakta path (`<genome>_genomic_output/<genome>_genomic.gff3`); (b) **reverse-strand leader bug** — now clusters then picks the most-upstream gene strand-aware (min-start on `+`, **max-stop on `−`**). Ran on 166 genomes → 22,760 loci → 14,659 leaders; `+` leaders 7064/7064 and `−` leaders independently verified correct (`dataset-construction/T12/operon_detection.py`). (dep T6,T11)
-- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna` path; ran end-to-end (236/236 windows, all 300 bp clean ACGT, ~72% AT). Reused by T28. Its windows are INFERRED positives → T15 treats them as **silver / down-weighted** (`--silver-weight 0.3`); §7 open decision now **resolved** (verified in-genus positives come from T7b). (`dataset-construction/T13/upstream_extraction.py`) (dep T11,T12)
-- T14 Four-class negatives incl. SRS — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna`/`.gff3` path; ran end-to-end → all four classes generate (SRS/CDS/Downstream/Intergenic). Minor: `random` is unseeded (non-reproducible negatives) — add a `--seed` before locking the dataset. (`dataset-construction/T14/negative_set_generation.py`) (dep T6,T13)
+- T11 Housekeeping gene set — Sine — ✅ ran on HPC4 → **22,760** housekeeping genes / 166 genomes (`dataset-construction/housekeeping-genes/define_housekeeping.py`; selects by product per §9). (dep T6)
+- T12 Operon detection (+ contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: (a) nested Bakta path (`<genome>_genomic_output/<genome>_genomic.gff3`); (b) **reverse-strand leader bug** — now clusters then picks the most-upstream gene strand-aware (min-start on `+`, **max-stop on `−`**). Ran on 166 genomes → 22,760 loci → 14,659 leaders; `+` leaders 7064/7064 and `−` leaders independently verified correct (`dataset-construction/operon-detection/operon_detection.py`). (dep T6,T11)
+- T13 Upstream-region extraction (100–300 bp, + contig-end exclusion) — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna` path; ran end-to-end (236/236 windows, all 300 bp clean ACGT, ~72% AT). Reused by T28. Its windows are INFERRED positives → T15 treats them as **silver / down-weighted** (`--silver-weight 0.3`); §7 open decision now **resolved** (verified in-genus positives come from T7b). (`dataset-construction/upstream-extraction/upstream_extraction.py`) (dep T11,T12)
+- T14 Four-class negatives incl. SRS — Seonyu — ✅ **fixed + verified 2026-06**: nested Bakta `.fna`/`.gff3` path; ran end-to-end → all four classes generate (SRS/CDS/Downstream/Intergenic). Minor: `random` is unseeded (non-reproducible negatives) — add a `--seed` before locking the dataset. (`dataset-construction/negative-sets/negative_set_generation.py`) (dep T6,T13)
 - T15 CD-HIT clustering + cluster-aware splits — Sine — ✅ **run + verified on HPC4 (2026-07)**:
-  `dataset-construction/T15/cdhit_splits.py` harmonises the 5 sources, re-windows to 81 bp (T13 → gene-PROXIMAL
+  `dataset-construction/clustering-and-splits/cdhit_splits.py` harmonises the 5 sources, re-windows to 81 bp (T13 → gene-PROXIMAL
   crop; T14 SRS **regenerated** as 81 bp dinucleotide shuffles of the re-windowed positives), `cd-hit-est`
   clusters, then splits cluster-disjoint. **Eval is VERIFIED-ONLY:** T13 silver clusters are pinned to TRAIN
   (`StratifiedGroupKFold` over eligible-only), so val/test hold only verified positives (~87/6.4/6.4, NOT
@@ -317,21 +317,21 @@ rebalance, so confirm current owners with Oak.
   train is effectively 50/50 — verified negatives land at ~0.633).** Ran on the extended data → **47,088 rows:
   train 40,442 / val 3,323 / test 3,323; train pos_mass==neg_mass==11,919 (50/50); val/test verified-only ~29%
   positive; leakage check PASS.** Decisions: window=81, silver-weight 0.3, T9 held out (`t9_train_fraction=0`). (dep T8,T7b,T13,T14)
-- T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ✅ **run on HPC4 (2026-07)**: `dataset-construction/T16/tokenise.py`
+- T16 Per-model tokenisation (ProkBERT/NT/CNN) — Leo — ✅ **run on HPC4 (2026-07)**: `dataset-construction/tokenisation/tokenise.py`
   → `results/T16/{prokbert,nt,cnn}/{train,val,test}` (ProkBERT 78 tok, NT **67 tok**, CNN one-hot (N,81,4)).
   ⚠️ NT=67 tok is higher than a typical 6-mer NT tokenisation (~15–18) — worth a sanity-check before the heavy T19 run. (dep T15)
 
 **Phase C — model training**
 - T17 Finalise fine-tuning recipe — **Sanaa** — 🟡 via the T21 sweep (template defaults = starting recipe; sweep tunes them). T19's slight overfit-after-epoch-2 ⇒ its LR has room to drop.
-- T18 ProkBERT-mini fine-tune — **Sanaa** — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.876 / test 0.872, weighted, full 40,442-row train.** `model-training/T18/train_prokbert.py`. Session bug-fixes: v5 `warmup_ratio` (feature-detect), `remove_unused_columns=False` (the `weight` KeyError). (dep T4,T16)
-- T19 NT v2 250M LoRA fine-tune — Sanaa — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.853 / test 0.841, weighted, LoRA 0.507% trainable.** Runs on the **`nt-tf4x`** (transformers 4.57) env, NOT 5.3.0 (`infrastructure/T4/NT_ENV.md`); `--no-grad-checkpoint`. `model-training/T19/train_nt_lora.py`. (dep T4,T16)
-- T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4: 0.9 val AUPRC 0.811; 0.6 retrain val 0.784 / test 0.804.** `model-training/T20/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on; `--data-dir` defaults to `results/T16/cnn`). **+ CNN-v2 (2026-08): multi-encoding fusion (one-hot+ENAC+di/tri-nuc) `model-training/T20/train_cnn_v2.py`, 0.6 val 0.827 / test 0.848 — a 4th ensemble model; reads T16/cnn one-hot (reconstructs seqs), wired through T22/modular_eval/genome_inference/T24; scores are optimistic → needs T26 calibration.** (dep T4,T16)
-- T21 Hyperparameter sweep — Sanaa+Oak — ✅ **run on 0.6 for all 4 models (2026-08)** incl. cnn_v2 (now in `SWEEP_CONFIG`; `--data-dir` via extra_args). `results/T21_06/{model}/best_params.json`, 15 trials × `--sweep-epochs 4` proxy, two-env split. Winners retrained at full epochs → `results/T21_final_06`. **Key result: the earlier sweep was on 0.9 data, so T21_final ran 0.9-tuned knobs; re-sweeping recovered ~⅔ of ProkBERT's genome-scale drop (see §10) → adopt `T21_final_06/prokbert`.** (`model-training/T21/hyperparameter_sweep.py`; dep T18,T19,T20)
+- T18 ProkBERT-mini fine-tune — **Sanaa** — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.876 / test 0.872, weighted, full 40,442-row train.** `model-training/prokbert/train_prokbert.py`. Session bug-fixes: v5 `warmup_ratio` (feature-detect), `remove_unused_columns=False` (the `weight` KeyError). (dep T4,T16)
+- T19 NT v2 250M LoRA fine-tune — Sanaa — ✅ **run + verified on HPC4 (2026-07): val AUPRC 0.853 / test 0.841, weighted, LoRA 0.507% trainable.** Runs on the **`nt-tf4x`** (transformers 4.57) env, NOT 5.3.0 (`infrastructure/conda-environments/NT_ENV.md`); `--no-grad-checkpoint`. `model-training/nucleotide-transformer/train_nt_lora.py`. (dep T4,T16)
+- T20 Custom 1D CNN from scratch — Yany — ✅ **run + verified on HPC4: 0.9 val AUPRC 0.811; 0.6 retrain val 0.784 / test 0.804.** `model-training/cnn/train_cnn.py` (weighted-mean loss on T16 `weight`; BatchNorm on; `--data-dir` defaults to `results/T16/cnn`). **+ CNN-v2 (2026-08): multi-encoding fusion (one-hot+ENAC+di/tri-nuc) `model-training/cnn/train_cnn_v2.py`, 0.6 val 0.827 / test 0.848 — a 4th ensemble model; reads T16/cnn one-hot (reconstructs seqs), wired through T22/modular_eval/genome_inference/T24; scores are optimistic → needs T26 calibration.** (dep T4,T16)
+- T21 Hyperparameter sweep — Sanaa+Oak — ✅ **run on 0.6 for all 4 models (2026-08)** incl. cnn_v2 (now in `SWEEP_CONFIG`; `--data-dir` via extra_args). `results/T21_06/{model}/best_params.json`, 15 trials × `--sweep-epochs 4` proxy, two-env split. Winners retrained at full epochs → `results/T21_final_06`. **Key result: the earlier sweep was on 0.9 data, so T21_final ran 0.9-tuned knobs; re-sweeping recovered ~⅔ of ProkBERT's genome-scale drop (see §10) → adopt `T21_final_06/prokbert`.** (`model-training/hyperparameter-sweep/hyperparameter_sweep.py`; dep T18,T19,T20)
 
 **Phase D — evaluation & calibration**
 - T22 Metrics suite (AUROC/AUPRC/MCC/F1) — Yany — 🟡 **4-model test predictions + metrics run at 0.6** (`T22/predict_and_score.py` → `results/T22`), plus `modular_eval.py` negatives-by-class → `results/T25b`; consolidated into the 3-regime `evaluation-and-calibration/species_metrics_report.{tex,pdf}` + `negatives_by_class.csv` (council-audited). (dep PT3,T18,T19,T20)
-- T23 Cluster-level 5-fold CV — Yany — 📄 `evaluation-and-calibration/T23/` (dep T15,T18-20)
-- T24 Cross-species external holdout — Yany — 🟡 **cnn_v2 wired in (`--models …,cnn_v2`, `--cnn-v2-model-path`); 4-model 0.6 refresh of the T9 + out-of-genus *C. phytofermentans* composition-matched holdout queued on HPC4** (the report's Regime-B out-of-genus numbers are still pre-0.6 until this runs). `evaluation-and-calibration/T24/` (dep T9,T18-20)
+- T23 Cluster-level 5-fold CV — Yany — 📄 `evaluation-and-calibration/cross-validation/` (dep T15,T18-20)
+- T24 Cross-species external holdout — Yany — 🟡 **cnn_v2 wired in (`--models …,cnn_v2`, `--cnn-v2-model-path`); 4-model 0.6 refresh of the T9 + out-of-genus *C. phytofermentans* composition-matched holdout queued on HPC4** (the report's Regime-B out-of-genus numbers are still pre-0.6 until this runs). `evaluation-and-calibration/external-holdout/` (dep T9,T18-20)
 - T25 Sigma-factor-stratified eval — Seonyu+Oak — ⬜ (dep T10,T22)
 - T26 Calibration regressor (AT covariate) — Ishi — 🟡 **three per-model Platt(+AT) calibration scripts
   wired for CV model-selection (not yet run on HPC4)**: `calibrate_cnn.py` / `prokbert_calib.py` /
@@ -373,14 +373,14 @@ rebalance, so confirm current owners with Oak.
 
 **Phase E — mining & motif annotation**
 - T28 Sliding-window inference on Clostridium — Swasti — ✅ **RUN on the TARGET (2026-08)**: the deployment mine
-  uses **`mining-and-motif-annotation/T28/mine_3model.sbatch`** (N-model, default = the 3-model set ProkBERT + cnn_v2
+  uses **`mining-and-motif-annotation/genome-scan/mine_3model.sbatch`** (N-model, default = the 3-model set ProkBERT + cnn_v2
   + Evo2; Evo2 via `evo2_scan_restricted --align-grid`, others via `genome_inference`; `align_tracks.py` reconciles
   grids → T29). Validated on both held-out genomes (clj/cau, §10) then **mined _C. butyricum_ `g409755`** (job 534196)
   → **173,947-window shortlist `results/regimeC/mine3_g409755/g409755_shortlist_3m_restricted.csv`** (target-mine mode,
   `TRUTH=""`). The earlier `scan_ensemble.sbatch` (4 xs models full-genome, benchmark-if-truth) remains for
   full-genome/validation runs. Runbook `mining-and-motif-annotation/T28_T29_RUN_CLAUDE.md`. (dep PT6,T13,T20,T21)
-- T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — 📄 **template written + unit-verified (2026-08)**: `mining-and-motif-annotation/T29/ensemble_rank_percentile.py` joins the N per-model tracks on `(contig,start,strand)`, per-model percentile rank, mean → ensemble track whose `promoter_score` is a drop-in for `genome_fp_benchmark`. Calibration-invariant (correct on raw pre-T26 scores). Fails loud on window-grid mismatch; optional `--regions` restricted shortlist. Local synthetic tests pass (exact means, strand-aware restriction, mismatch guard). Not yet run on real tracks. (dep T28)
-- T30 Locus-level peak calling — Ishi — ✅ **RUN on the target g409755 (2026-08)**: `mining-and-motif-annotation/T30/call_peaks.py`
+- T29 Ensemble aggregation (mean rank-percentile) — Swasti/Salimah — 📄 **template written + unit-verified (2026-08)**: `mining-and-motif-annotation/ensemble-aggregation/ensemble_rank_percentile.py` joins the N per-model tracks on `(contig,start,strand)`, per-model percentile rank, mean → ensemble track whose `promoter_score` is a drop-in for `genome_fp_benchmark`. Calibration-invariant (correct on raw pre-T26 scores). Fails loud on window-grid mismatch; optional `--regions` restricted shortlist. Local synthetic tests pass (exact means, strand-aware restriction, mismatch guard). Not yet run on real tracks. (dep T28)
+- T30 Locus-level peak calling — Ishi — ✅ **RUN on the target g409755 (2026-08)**: `mining-and-motif-annotation/peak-calling/call_peaks.py`
   `--min-score 0.9 --merge 81` on the 173,947-window shortlist → **10,933 windows ≥0.9 → 3,167 promoter calls**
   (`results/regimeC/mine3_g409755/g409755_peaks.csv`); **912 with ≥5 supporting windows** (confident), 882 single-window (noise).
   Runs on the login node (pure pandas, no GPU). (dep T29)
@@ -465,7 +465,7 @@ rebalance, so confirm current owners with Oak.
   - ⚠️ **CONFIRMED INERT in current code (2026-06):** no trainer applies it. T18/T19 are unwritten; **T20's
     template (L538–544) builds a `WeightedRandomSampler` from inverse class-frequency — it ignores AND
     conflicts with the T15 weight** (re-balances by class but leaves silver at ~75% of positives → the
-    AT-trap). Trainers MUST apply `weight` as a per-sample loss weight (T20 fix+run: `model-training/T20/YANY_T20_RUN_CLAUDE.md`);
+    AT-trap). Trainers MUST apply `weight` as a per-sample loss weight (T20 fix+run: `model-training/cnn/YANY_T20_RUN_CLAUDE.md`);
     until then T13 trains at full weight and training is negative-skewed.
 - **Contig-end exclusion** (T12/T13): the target assembly isn't a complete genome, so drop
   loci whose upstream region is truncated by a contig boundary.
@@ -482,7 +482,7 @@ rebalance, so confirm current owners with Oak.
 - *C. beijerinckii* NCIMB 8052 → `GCF_000016965.1` · DSM 6423 → `GCF_900010805.1`
 - *C. ljungdahlii* ATCC 55383 (=DSM 13528) → `GCF_000143685.1` (NC_014328.1)
 
-**T7 dRNA-seq/TSS data split** (see `data-acquisition-and-curation/T7/README.md`):
+**T7 dRNA-seq/TSS data split** (see `data-acquisition-and-curation/tss-literature/README.md`):
 - 47 SRA runs, **3 assay types**. Only **20 dRNA-seq** runs (Soutourina 2020 TAP-based ×2 +
   Fuchs 2021 TEX ×18, all *Clostridioides difficile*) go through **TSSpredator** — use
   `SRR_dRNAseq_for_TSSpredator.txt`. The **27** Capp-Switch (Hocq 2022) + 5′-RNA-seq
@@ -571,7 +571,7 @@ select by **product description**, not the gene-symbol field.
   + `NZ_CP040629.1` (pCB_2 8,060), ~4.71 Mb — vs g409755's 96-contig `NZ_AQQF01000…` draft. This is also
   the assembly the oxidative-stress/inducible work already used (`NZ_CP040626/627`, locus prefix `FF104`).
   **A turnkey re-mine (T28→T32) on it is prepped: `mining-and-motif-annotation/REMINE_g131795_CLAUDE.md`
-  + `mining-and-motif-annotation/T28/prep_g131795.sh`** (tag `g131795`, TARGET-MINE `TRUTH=""`, STEP=10).
+  + `mining-and-motif-annotation/genome-scan/prep_g131795.sh`** (tag `g131795`, TARGET-MINE `TRUTH=""`, STEP=10).
   Run it on HPC4, then re-run T26/T27 on the same assembly so calibration + FDR + the candidate table all
   share one coordinate frame. NB coords on `NZ_CP0406xx.1` are NOT position-joinable to the g409755
   912/306/100 tiers (different assembly) — re-run `split_candidate_tiers.py` on `g131795_candidates.tsv`.
@@ -598,7 +598,7 @@ select by **product description**, not the gene-symbol field.
 (MMseqs2, reviewer rec), and Phase-D evaluation regenerated for four models across three regimes.**
 - **0.6 four-model balanced numbers** (weighted, full 40,451-row train / 3,318 verified-only test): **ProkBERT
   val 0.878 / test AUPRC 0.884**, **NT-LoRA 0.855 / 0.854** (`nt-tf4x` env), **CNN 0.784 / 0.804**, and a **new
-  4th model CNN-v2** (multi-encoding fusion, `model-training/T20/train_cnn_v2.py`) **val 0.827 / test 0.848**.
+  4th model CNN-v2** (multi-encoding fusion, `model-training/cnn/train_cnn_v2.py`) **val 0.827 / test 0.848**.
   0.6 barely moved the balanced numbers vs the old 0.9 splits → the earlier scores were not leakage-inflated.
 - **CNN-v2 is the round's standout:** best composition-matched SRS AUROC (0.924, cleanest motif-learning signal)
   AND best restricted genome-scale precision at recall 0.5–0.9. It reads the T16/cnn one-hot data (reconstructs
@@ -620,7 +620,7 @@ select by **product description**, not the gene-symbol field.
   with cnn_v2, so the mean-rank drops; this
   empirically CONFIRMS dropping CNN-v1 (the species report's open question). Member numbers reproduce the unified
   step-10 grid exactly (ProkBERT 64.4/47.7, cnn_v2 64.4/47.2) → pipeline consistent. Pieces: `mine_3model.sbatch`
-  (now N-model via `MODELS=`, RUN-suffixed outputs) + `mining-and-motif-annotation/T29/align_tracks.py` (grid
+  (now N-model via `MODELS=`, RUN-suffixed outputs) + `mining-and-motif-annotation/ensemble-aggregation/align_tracks.py` (grid
   reconcile) + Evo2 `--align-grid`. NB the ensemble ranks over the RESTRICTED candidate space (Evo2 can't scan
   full-genome), which is the right universe for a mine.
 - **TARGET MINED — _C. butyricum_ DSM 10702 (`g409755`, GCF_000409755.1) 3-model shortlist DELIVERED (2026-08;
@@ -698,7 +698,7 @@ select by **product description**, not the gene-symbol field.
 Next: the rest of Phase D (T25 sigma-strat,
 T26 calibration — note CNN-v2 needs it, T27 FDR) + Phase E (T28 mining on the target, T29 four-model rank-percentile
 ensemble which is calibration-invariant, T30–T32). Runbook: `evaluation-and-calibration/REGEN_EVAL_0.6.md`.
-**Two envs (`infrastructure/T4/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
+**Two envs (`infrastructure/conda-environments/NT_ENV.md`):** 5.3.0 for everything; 4.57 (`nt-tf4x`) for NT only.
 **Needs attention:** PT2 (unwritten) · PT1 GPU re-run · PT6 needs a RegulonDB TSS table · Regime B out-of-genus numbers
 in the report are still pre-0.6 (refresh queued) · CNN-v2 genome scan is slow (per-window Python featurisation; bump
 `--step` or vectorise if needed) · keep the shared `/project` clone **pull-only**.

@@ -35,7 +35,7 @@ Run (CPU is fine — a few sklearn matmuls over the track):
   # track scored WITH genome_inference --emit-logit (has logit + at_fraction): no FASTA needed
   python apply_calibrator.py \
       --track  results/regimeC/clj_cnn_v2_track.csv \
-      --calibrator evaluation-and-calibration/T26/calib_06/cnn_v2/cnn_v2_calibrator_at.joblib \
+      --calibrator evaluation-and-calibration/calibration/calib_06/cnn_v2/cnn_v2_calibrator_at.joblib \
       --out    results/regimeC/clj_cnn_v2_calib_track.csv
   # older track with only promoter_score + a score+AT calibrator: add --genome to supply AT
   #   ... --genome C_ljungdahlii.fna

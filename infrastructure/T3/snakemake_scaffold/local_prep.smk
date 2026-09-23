@@ -70,7 +70,7 @@ rule t6_bakta_annotation:
     # Bakta 1.11.4 / DB v6.0 light. REGENERATE only — needs (a) the `bakta` binary (NOT in the
     # T4 envs; install a dedicated env: `micromamba create -p /project/igem2026/envs/bakta -c conda-forge
     # -c bioconda bakta`) and (b) config[bakta_db] (~30GB, not in repo; `bakta_db download --type light`).
-    # The committed data-acquisition-and-curation/T6/all_bakta_output.zip is canonical (Phase B reads it
+    # The committed data-acquisition-and-curation/bakta-annotations/all_bakta_output.zip is canonical (Phase B reads it
     # via config[bakta_dir]); point config[bakta_dir] at this output only if you re-annotate.
 
 # --- T7 / T8 / T9 : the light inputs/ staging (real) ----------------------------
@@ -88,18 +88,18 @@ rule t8_normalise_refdbs:
         # capture the absolute output path first, then cd. Re-running regenerates the real ~3,963-row
         # RegulonDB parquet (the committed one is a stale 2-row placeholder). DBTBS half still 0 rows (§9).
         "OUT=$(pwd)/{output} && "
-        "cd {REPO} && python data-acquisition-and-curation/T8/run_t8_pipeline.py && "
+        "cd {REPO} && python data-acquisition-and-curation/curated-promoters/run_t8_pipeline.py && "
         "mkdir -p $(dirname $OUT) && "
-        "cp data-acquisition-and-curation/T8/curated_positive_promoters.parquet $OUT"
+        "cp data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet $OUT"
 
 rule t9_curate_synthetic_promoters:
     output: "inputs/literature_promoters.tsv"
     shell:
         # build_literature_promoters.py is __file__-relative + takes no args; it writes
-        # data-acquisition-and-curation/T9/literature_promoters.tsv, which we stage into inputs/.
-        "python {REPO}/data-acquisition-and-curation/T9/build_literature_promoters.py && "
+        # data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv, which we stage into inputs/.
+        "python {REPO}/data-acquisition-and-curation/synthetic-promoters/build_literature_promoters.py && "
         "mkdir -p inputs && "
-        "cp {REPO}/data-acquisition-and-curation/T9/literature_promoters.tsv {output}"
+        "cp {REPO}/data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv {output}"
 
 rule t9_split_train:
     # §7 option b: split T9's VERIFIED in-genus C. acetobutylicum promoters into a TRAINING subset
@@ -111,7 +111,7 @@ rule t9_split_train:
         train="inputs/literature_promoters_train.parquet",
         holdout="inputs/literature_promoters_holdout.tsv",
     shell:
-        "python {REPO}/data-acquisition-and-curation/T9/split_t9_for_training.py "
+        "python {REPO}/data-acquisition-and-curation/synthetic-promoters/split_t9_for_training.py "
         "--in {input} --train-frac {config[t9_train_fraction]} --seed {config[random_seed]} "
         "--train-out {output.train} --holdout-out {output.holdout}"
 
@@ -122,8 +122,8 @@ rule t7b_published_tss:
     # ingester (extract_published_tss.py) on any TSS table staged in T7/published_tss/. With NO table
     # staged it writes an EMPTY but schema-valid parquet (pipeline still runs; 0 in-genus positives).
     # The TSS coordinate tables are paper supplements that must be downloaded by hand —
-    # see data-acquisition-and-curation/T7/PUBLISHED_TSS_README.md for sources + the column env vars.
+    # see data-acquisition-and-curation/tss-literature/PUBLISHED_TSS_README.md for sources + the column env vars.
     output: "inputs/published_tss_promoters.parquet"
     shell:
         "OUT=$(pwd)/{output} REPO={REPO} "
-        "bash {REPO}/data-acquisition-and-curation/T7/build_published_tss.sh"
+        "bash {REPO}/data-acquisition-and-curation/tss-literature/build_published_tss.sh"

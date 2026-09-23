@@ -1,0 +1,140 @@
+{
+  "device": "cuda",
+  "n_total": 279,
+  "n_positive": 93,
+  "n_negative": 186,
+  "n_convergent": 130,
+  "n_cds": 56,
+  "cv_folds": 5,
+  "cv_repeats": 5,
+  "l2_C": 1.0,
+  "tol": 0.005,
+  "chosen": "score+AT / unregularized",
+  "chosen_features": [
+    "logit",
+    "at_fraction"
+  ],
+  "selection_reason": "score / l2 0.5669 not better than score / unregularized 0.5670 by tol 0.005 -> keep simpler; score+AT / unregularized 0.4812 beats score / unregularized 0.5670 by > tol 0.005 -> adopt; score+AT / l2 0.4806 not better than score+AT / unregularized 0.4812 by tol 0.005 -> keep simpler",
+  "seed": 42,
+  "window": 81,
+  "input_tensor_shape": [
+    279,
+    4,
+    81
+  ],
+  "model_output_shape": [
+    279,
+    2
+  ],
+  "architecture": {
+    "input_channels": 4,
+    "conv1_filters": 64,
+    "conv2_filters": 128,
+    "conv3_filters": 256,
+    "kernel_size": 7,
+    "use_batch_norm": true
+  },
+  "dropout_rate": 0.3,
+  "metrics": {
+    "raw": {
+      "brier": 0.21825852562841402,
+      "log_loss": 0.6363015322269574,
+      "auroc": 0.7145912822291595,
+      "auprc": 0.5912764489949146,
+      "ece": 0.14781659041544354
+    },
+    "candidates": {
+      "score / unregularized": {
+        "brier": 0.19218743450543746,
+        "brier_std": 0.0007066916758302987,
+        "log_loss": 0.56703628408844,
+        "log_loss_std": 0.0025369730781400627,
+        "auroc": 0.7103133310209273,
+        "auroc_std": 0.002890738804486756,
+        "auprc": 0.580942509798954,
+        "auprc_std": 0.007401093360078224,
+        "ece": 0.03819702326049383,
+        "ece_std": 0.010726002012244709,
+        "features": [
+          0
+        ],
+        "penalty": "unregularized"
+      },
+      "score / l2": {
+        "brier": 0.1921156024774777,
+        "brier_std": 0.0006868865984989286,
+        "log_loss": 0.5668875155776897,
+        "log_loss_std": 0.0023901524400547548,
+        "auroc": 0.7104405133541449,
+        "auroc_std": 0.00285172267992674,
+        "auprc": 0.5811543360115871,
+        "auprc_std": 0.00723118830967399,
+        "ece": 0.03587000197434088,
+        "ece_std": 0.009239630077771583,
+        "features": [
+          0
+        ],
+        "penalty": "l2"
+      },
+      "score+AT / unregularized": {
+        "brier": 0.15585755465978246,
+        "brier_std": 0.001122982510548813,
+        "log_loss": 0.48122138895871747,
+        "log_loss_std": 0.004825965720352923,
+        "auroc": 0.8281997918834547,
+        "auroc_std": 0.0033394858501164613,
+        "auprc": 0.6867979724781695,
+        "auprc_std": 0.004524515519174464,
+        "ece": 0.0414170613296379,
+        "ece_std": 0.011083509569149065,
+        "features": [
+          0,
+          1
+        ],
+        "penalty": "unregularized"
+      },
+      "score+AT / l2": {
+        "brier": 0.15607263523511658,
+        "brier_std": 0.001089450461804184,
+        "log_loss": 0.48057784752732235,
+        "log_loss_std": 0.004231288302653214,
+        "auroc": 0.82831541218638,
+        "auroc_std": 0.003321020873496831,
+        "auprc": 0.6869420528476574,
+        "auprc_std": 0.0046626243520111925,
+        "ece": 0.04461423180262683,
+        "ece_std": 0.008756582051829354,
+        "features": [
+          0,
+          1
+        ],
+        "penalty": "l2"
+      }
+    },
+    "calibrated_oof": {
+      "brier": 0.1556022712123773,
+      "log_loss": 0.48027837063096135,
+      "auroc": 0.8293444328824142,
+      "auprc": 0.6866589367736862,
+      "ece": 0.029373367549942103
+    },
+    "calibrated_logit_at_oof": {
+      "brier": 0.1556022712123773,
+      "log_loss": 0.48027837063096135,
+      "auroc": 0.8293444328824142,
+      "auprc": 0.6866589367736862,
+      "ece": 0.029373367549942103
+    }
+  },
+  "paths": {
+    "model_class": "/project/igem2026/cb-promoter-mining/model-training/cnn/train_cnn.py",
+    "checkpoint": "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn/best_model.pt",
+    "params_json": "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final/cnn/params.json",
+    "positives": "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv",
+    "convergent_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/convergent_intergenic_negatives.tsv",
+    "cds_negatives": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/cds_negatives.tsv",
+    "calibrator_at": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_3/cnn/cnn_calibrator_at.joblib",
+    "predictions_csv": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_3/cnn/cnn_calibration_predictions.csv",
+    "metrics_json": "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_3/cnn/cnn_calibration_metrics.json"
+  }
+}

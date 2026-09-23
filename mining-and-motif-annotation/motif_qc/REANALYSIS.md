@@ -3,7 +3,7 @@
 Re-run of the "cross-element contamination" check from R. Swastika's report (2026-09-19),
 rebuilt on the actual files in this repo rather than reconstructed PWMs:
 
-- **motifs:** `mining-and-motif-annotation/T31/sigma_a_promoter.meme` — the pipeline's own MEME
+- **motifs:** `mining-and-motif-annotation/motif-annotation/sigma_a_promoter.meme` — the pipeline's own MEME
   model (canonical `TATAAT` −10 / `TTGACA` −35, width 6), with an **AT-rich background baked in**
   (A/T = 0.35, C/G = 0.15).
 - **candidates:** `g131795_ranked_seq.tsv` (929 rows, the delivered table with `minus10_seq` /

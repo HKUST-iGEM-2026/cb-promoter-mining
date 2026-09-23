@@ -1,15 +1,15 @@
 # =====================================================================
 # Phase A (HPC4 part) — T10 TSSpredator.  Runs ON HPC4, not locally.
 #
-# REAL pipeline now: the rule calls data-acquisition-and-curation/T10/run_tss_pipeline.sh
+# REAL pipeline now: the rule calls data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh
 # (6 stages: reference -> SRA download -> segemehl align -> 5' wiggle -> TSSpredator x2
 # -> merge to inputs/tss_sites.gff3). See that script's header for the tool list and the
 # 8 open decisions (D1-D8) the team must lock before a real run.
 #
 #     # on HPC4, after uploading the local_prep outputs into inputs/:
 #     #  1) on the LOGIN node (internet): stages 1-2 + fetch the TSSpredator JAR
-#     bash <repo>/data-acquisition-and-curation/T10/run_tss_pipeline.sh 1   # reference
-#     bash <repo>/data-acquisition-and-curation/T10/run_tss_pipeline.sh 2   # download reads
+#     bash <repo>/data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh 1   # reference
+#     bash <repo>/data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh 2   # download reads
 #     #  2) then submit the compute stages (3-6) via the profile:
 #     snakemake -s tss_prep.smk --workflow-profile profiles/slurm
 #
@@ -36,6 +36,6 @@ rule t10_tsspredator:
         # a node with internet + CPUs, which on SuperPOD is usually NOT the case, so prefer the
         # split invocation. C. difficile = Clostridioides (out of genus 1485): cross-species-adjacent.
         "OUT_GFF=$(pwd)/{output} REPO={REPO} "
-        "bash {REPO}/data-acquisition-and-curation/T10/run_tss_pipeline.sh --all"
+        "bash {REPO}/data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh --all"
     # real (regenerate the cdiff genome + wig tracks the .conf files reference, then run both
     #       fixed configs fuchs_config_hpc.conf + soutourina_tap_config.conf — see CONFIG_FIX_README.md)

@@ -38,6 +38,6 @@ Three different AI models each score the DNA independently, and we combine their
 Running the pipeline on the HKUST SuperPOD ("HPC4")? Start here:
 
 - **[`infrastructure/HPC4_GUIDE.md`](infrastructure/HPC4_GUIDE.md)** — step-by-step for everyone: login, environment activation, submitting SLURM jobs, where to put files, common gotchas.
-- **[`infrastructure/T4/DEPLOY.md`](infrastructure/T4/DEPLOY.md)** — building/locking the shared conda environment (one-time).
+- **[`infrastructure/conda-environments/DEPLOY.md`](infrastructure/conda-environments/DEPLOY.md)** — building/locking the shared conda environment (one-time).
 - **[`CLAUDE.md`](CLAUDE.md)** — full project context, task table, and conventions.
 

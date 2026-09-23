@@ -16,7 +16,7 @@ Outputs (into --out):
                                 flank-preserving from the positives' context).
 
 Next:
-  python dataset-construction/T15/cdhit_splits.py \
+  python dataset-construction/clustering-and-splits/cdhit_splits.py \
       --positives <out>/published_tss_ctx.parquet <out>/upstream_regions_ctx.parquet \
       --negatives <out>/negatives_struct_ctx.parquet \
       --identity 0.6 --window 81 --out results/T15_ctx
@@ -33,7 +33,7 @@ SCAF = f"{REPO}/infrastructure/T3/snakemake_scaffold"
 T7B_PARQUET = f"{SCAF}/inputs/published_tss_promoters.parquet"
 T13_TSV = f"{SCAF}/results/T13/upstream_regions.tsv"
 T14_TSV = f"{SCAF}/results/T14/negative_set.tsv"
-T7_REF_DIR = f"{REPO}/data-acquisition-and-curation/T7/ref"
+T7_REF_DIR = f"{REPO}/data-acquisition-and-curation/tss-literature/ref"
 BAKTA_DIR = f"{SCAF}/results/bakta/all_bakta_output"
 
 CORE_LEN = 81

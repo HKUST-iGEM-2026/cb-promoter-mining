@@ -14,7 +14,7 @@ Two hard rules:
 
 1. **NT-LoRA loads ONLY in the `nt-tf4x` env** (transformers 4.57). The other three load in
    `promoter-mining-hpc4` (transformers 5.3). Loading NT in the 5.3 env fails in several ways,
-   one silent. See `infrastructure/T4/NT_ENV.md`.
+   one silent. See `infrastructure/conda-environments/NT_ENV.md`.
 2. **Sequences must be the 81 bp training window.** ProkBERT/NT/CNN expect 81 bp; CNN-v2's
    `predict_proba` will center-pad/crop to 81 for you, but feed 81 bp when you can.
 
@@ -94,7 +94,7 @@ Rebuild the architecture from the saved config, then load the state_dict. Input 
 
 ```python
 import importlib.util, json, torch, numpy as np
-tcnn = _load(f"{REPO}/model-training/T20/train_cnn.py", "train_cnn")   # REPO = repo root
+tcnn = _load(f"{REPO}/model-training/cnn/train_cnn.py", "train_cnn")   # REPO = repo root
 cfg  = json.load(open(f"{RES}/T21_final/cnn/metrics.json")).get("config", {})
 keys = ("conv1_filters","conv2_filters","conv3_filters","kernel_size","dropout_rate","use_batch_norm")
 model = tcnn.PromoterCNN(input_channels=4, sequence_length=81, **{k: cfg[k] for k in keys if k in cfg})
@@ -115,7 +115,7 @@ length-fitting, batching).
 
 ```python
 import importlib.util, json, torch
-v2  = _load(f"{REPO}/model-training/T20/train_cnn_v2.py", "train_cnn_v2")
+v2  = _load(f"{REPO}/model-training/cnn/train_cnn_v2.py", "train_cnn_v2")
 cfg = json.load(open(f"{RES}/T21_final/cnn_v2/config.json"))
 model = v2.build_model_from_config(cfg, device="cpu")
 model.load_state_dict(torch.load(f"{RES}/T21_final/cnn_v2/best_model.pt", map_location="cpu"))
@@ -127,5 +127,5 @@ probs = v2.predict_proba(model, seqs, "cpu", enac_window=int(cfg.get("enac_windo
 - Raw scores are uncalibrated (CNN-v2 especially runs optimistic). For rank/ensemble use that is
   fine (rank-percentile is calibration-invariant); for a fixed 0.5 threshold, apply T26 calibration first.
 - To reproduce a whole-genome scan or the test-set metrics, don't script it by hand — run
-  `evaluation-and-calibration/genome_inference.py` and `evaluation-and-calibration/T22/predict_and_score.py`
+  `evaluation-and-calibration/genome_inference.py` and `evaluation-and-calibration/metrics/predict_and_score.py`
   (see `evaluation-and-calibration/REGEN_EVAL_0.6.md`).

@@ -7,7 +7,7 @@ Replaces create_positives.py's context step, fixing two real bugs:
   1. T7b (Hocq/Al-Bassam published TSS) got N-padded. Its coordinates are ENCODED in
      promoter_id ("{source}_{contig}_{pos}_{strand}") and its genome is the RefSeq assembly
      (e.g. NC_003030.1), which is NOT in the Bakta set. Here T7b is carved from the staged
-     RefSeq FASTAs (data-acquisition-and-curation/T7/ref/) using the EXACT extract_published_tss
+     RefSeq FASTAs (data-acquisition-and-curation/tss-literature/ref/) using the EXACT extract_published_tss
      framing (81 bp, +1 at 0-based offset 60), so the core reproduces the stored sequence.
 
   2. Bakta names every contig contig_1..contig_N, so one global {contig: seq} dict COLLIDES
@@ -36,8 +36,8 @@ REPO = "/project/igem2026/cb-promoter-mining"
 SCAF = f"{REPO}/infrastructure/T3/snakemake_scaffold"
 T7B_PARQUET = f"{SCAF}/inputs/published_tss_promoters.parquet"
 T13_TSV = f"{SCAF}/results/T13/upstream_regions.tsv"
-T8_PARQUET = f"{REPO}/data-acquisition-and-curation/T8/curated_positive_promoters.parquet"
-T7_REF_DIR = f"{REPO}/data-acquisition-and-curation/T7/ref"
+T8_PARQUET = f"{REPO}/data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet"
+T7_REF_DIR = f"{REPO}/data-acquisition-and-curation/tss-literature/ref"
 BAKTA_DIR = f"{SCAF}/results/bakta/all_bakta_output"
 
 CORE_LEN = 81

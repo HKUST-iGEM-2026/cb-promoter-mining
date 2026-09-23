@@ -1,6 +1,6 @@
 {
   "inputs": {
-    "meme": "mining-and-motif-annotation/T31/sigma_a_promoter.meme",
+    "meme": "mining-and-motif-annotation/motif-annotation/sigma_a_promoter.meme",
     "table": "g131795_ranked_seq.tsv",
     "declared_background_ACGT": [
       0.35,
