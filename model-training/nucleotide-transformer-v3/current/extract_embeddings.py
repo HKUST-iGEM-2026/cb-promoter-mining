@@ -6,10 +6,18 @@ from transformers import AutoModelForMaskedLM, AutoTokenizer
 from datasets import load_dataset
 from torch.utils.data import DataLoader
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def main():
     model_dir = "./results_ntv3_full/final_model"
     model_id = "InstaDeepAI/NTv3_650M_pre"
-    data_dir = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx"
+    data_dir = os.path.join(PROMOTER_RESULTS, "T15_ctx")
     
     print(f"Loading tokenizer from: {model_id}")
     tokenizer = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)

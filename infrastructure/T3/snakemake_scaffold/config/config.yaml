@@ -1,15 +1,15 @@
 # Config for the promoter-mining pipeline.
-# Override the data paths for HPC4 — the defaults point at the local dev mounts.
+# Data paths. Override any of them with --config key=value.
 
 # --- Data locations ---
 # T6 Bakta outputs. Accepts EITHER:
-#   - a .zip (HPC4): its top folder all_bakta_output/ holds the 166 nested
+#   - a .zip: its top folder all_bakta_output/ holds the 166 nested
 #     <genome>_genomic_output/<genome>_genomic.{gff3,fna,tsv} — rule extract_bakta unzips it; or
 #   - an already-extracted directory (local dev) whose children are <genome>_genomic_output/.
 # Phase B (T11-T14) auto-detects which and normalises internally.
 # A RELATIVE path is resolved against the repo root, so it works wherever the repo is pulled
-# (HPC4, your Mac, etc.) — the zip ships inside the repo via Git-LFS. Use an ABSOLUTE path only to
-# point at an out-of-repo copy, e.g. --config bakta_dir=/Users/oak23/Downloads/bakta_outputs
+# (a laptop, a cluster, etc.) — the zip ships inside the repo via Git-LFS. Use an ABSOLUTE path only to
+# point at an out-of-repo copy, e.g. --config bakta_dir=/data/bakta_outputs
 bakta_dir: "data-acquisition-and-curation/bakta-annotations/all_bakta_output.zip"
 
 # T5 genomes: 166 RefSeq .fna inside one Git-LFS zip. Source for the reference
@@ -19,7 +19,7 @@ genomes_zip: "data-acquisition-and-curation/clostridium-genomes/Clostridium_geno
 # T6 Bakta DB (light, ~30 GB) — ONLY needed to REGENERATE annotations (local_prep t6 rule).
 # The committed all_bakta_output.zip is the canonical artifact; re-running bakta is opt-in.
 # Download once: `bakta_db download --output <dir> --type light`, then point here.
-bakta_db: "/project/igem2026/bakta_db/db-light"
+bakta_db: "/path/to/bakta/db-light"
 
 # T7 dRNA-seq accession list consumed by T10 (TSSpredator): 20 runs.
 srr_list: "data-acquisition-and-curation/tss-literature/SRR_dRNAseq_for_TSSpredator.txt"
@@ -28,8 +28,8 @@ srr_list: "data-acquisition-and-curation/tss-literature/SRR_dRNAseq_for_TSSpreda
 upstream_window_bp: 300     # T12 contig-end window + T13 extraction window (bp)
 operon_max_dist_bp: 100     # T12 max intra-operon gene gap (bp)
 cdhit_identity: 0.6         # T15 clustering identity (reviewer: 0.6, stricter anti-leakage). <0.8 auto-routes to MMseqs2 — cd-hit-est can't cluster DNA below ~0.8
-random_seed: 42             # T15 split seed (NB: T14 has no --seed yet — see CLAUDE.md §6)
-t9_train_fraction: 0.0      # Hold ALL of T9 out for eval (T24/T26). The §7 "option b" of splitting T9
+random_seed: 42             # T15 split seed (NB: T14 has no --seed yet)
+t9_train_fraction: 0.0      # Hold ALL of T9 out for eval (T24/T26). The "option b" of splitting T9
                             # into training was a workaround for when T7b was empty; T7b now supplies
                             # ~1,434 verified in-genus positives, so T9 (only ~51bp, would need N-padding)
                             # stays fully held out. Set >0 only to put padded T9 back into the T15 train split.

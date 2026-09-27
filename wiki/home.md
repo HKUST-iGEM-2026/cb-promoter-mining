@@ -17,12 +17,17 @@ engineering it. Finding promoters by hand in the lab is slow and expensive, so w
 them straight out of the genome with machine learning, and give the wet lab a validated shortlist to
 test?**
 
+
+![Pipeline overview, phases A to E](figures/F15_pipeline_overview.png)
+
+***Figure 1.** The five phases of the pipeline. The target genome enters only at the mining stage — it is excluded from every training step, which is what makes mining it a genuine prediction rather than recall.*
+
 ## What we did
 
 We trained an **ensemble of three DNA machine-learning models** to recognize promoters, combined their
-votes, and slid them across the *C. butyricum* genome. The pipeline turns **~174,000 candidate windows
-into 912 high-confidence promoter candidates**, of which **100 carry the textbook two-box promoter
-signature** — the shortlist we hand to the wet lab.
+votes, and slid them across the *C. butyricum* genome. The pipeline narrows well over a hundred thousand
+candidate windows down to **929 high-confidence promoter candidates**, of which **45 carry the textbook
+two-box promoter signature** — the shortlist we hand to the wet lab.
 
 The hard part, and the thing that makes this a real research contribution: *Clostridium* genomes are
 extremely **AT-rich** (only ~28–32% G+C), and the promoter signal itself is AT-rich, so naive methods
@@ -49,6 +54,7 @@ drown in false positives. Much of our design exists to beat this **"AT-trap."**
 - **Method:** 3-model ML ensemble (a fine-tuned genomic language model + a custom neural network + a
   foundation-model probe), combined by rank and filtered with statistical false-discovery control and
   motif confirmation
-- **Headline result:** 912 high-confidence candidates → **100 canonical promoter candidates** for
+- **Headline result:** 929 high-confidence candidates → **45 canonical promoter candidates** for
   wet-lab characterization
-- **Open contribution:** three models published on Hugging Face + a fully documented, reusable pipeline
+- **Open contribution:** three models published openly on Hugging Face at
+  [huggingface.co/CloBiT](https://huggingface.co/CloBiT), plus a fully documented, reusable pipeline

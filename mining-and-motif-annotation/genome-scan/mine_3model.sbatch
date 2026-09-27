@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=mineN
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -41,15 +39,15 @@
 # second reuses them. (Temp files are job-unique, so a concurrent submit won't corrupt, just waste work.)
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 EVO2=$REPO/model-training/Evo2
 T29DIR=$REPO/mining-and-motif-annotation/ensemble-aggregation
 RC=$DIR/regimeC
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4
-EVO2_ENV=/project/igem2026/envs/evo2
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"
+EVO2_ENV="${ENV_EVO2:?set it or source env.sh}"
+CONDA_BASE=$(conda info --base)
 
 # ---- config (override from the submit line) ----
 export RC
@@ -75,7 +73,8 @@ extra_args() { case "$1" in
     cnn)      echo "--model-type cnn --batch-size 512" ;;
 esac; }
 
-export HF_HOME=/project/igem2026/hf_shared HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 export PYTHONNOUSERSITE=1 MKL_THREADING_LAYER=GNU
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 

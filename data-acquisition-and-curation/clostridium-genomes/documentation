@@ -15,3 +15,9 @@ Files downloaded:
 - Clostridium_genomes_v2_166.zip
 
 Number of genomes: 166
+
+Note: the set includes both validation strains, C. ljungdahlii DSM 13528 (GCF_000143685.1, the same
+assembly the genome-scale benchmark scans) and C. autoethanogenum DSM 10061 (GCF_001484725.1; the
+benchmark scans GCF_000484505.1). Their genomes therefore contribute housekeeping-upstream positives
+and negative windows to training, though their published TSS never do. No C. butyricum strain is in
+the set.

@@ -19,17 +19,17 @@ What it does:
   * Selects the best epoch on, and reports, WEIGHTED AUPRC (sklearn.average_precision_score) — the
     project's metric convention — computed on val AND test with the weight column.
 
-NTv3 specifics (infrastructure/NTV3_ENV.md): single-base tokenization; sequence length must be a
+NTv3 specifics: single-base tokenization; sequence length must be a
 multiple of 128 (7 downsamples). T15_xs_ctx's `sequence_context` is built at a fixed 384 bp (=3x128),
 N-padded only at contig ends, so every row is already a valid fixed length — no [PAD] needed, and the
 attention mask is all-ones. Keep --max-length equal to the context length the dataset was built at.
 
 ENV: the HF/torch env the NTv3 remote code runs in (the one that produced results_ntv3_full) — NOT the
 `ntv3-jax` env (that's the separate InstaDeep JAX package). trust_remote_code pulls the bundled
-modeling_ntv3_pretrained.py from the HF cache (set HF_HOME / HF_HUB_OFFLINE on HPC4).
+modeling_ntv3_pretrained.py from the HF cache (set HF_HOME / HF_HUB_OFFLINE on the cluster).
 
   python finetune_ntv3_classifier.py \
-      --data-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_xs_ctx \
+      --data-dir $PROMOTER_RESULTS/T15_xs_ctx \
       --model-id InstaDeepAI/NTv3_650M_pre --seq-col sequence_context --max-length 384 \
       --out ./results_ntv3_xs_ctx --epochs 3 --batch-size 8 --grad-accum 4 --lr 1e-5
 """

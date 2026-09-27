@@ -11,7 +11,7 @@ the gap (LoRA AUPRC - probe AUPRC) = what fine-tuning buys.
 Method: frozen NT -> mean-pool the last hidden state over real tokens -> logistic regression -> AUPRC.
 This mirrors the Nucleotide Transformer paper's own "probing" evaluation.
 
-Run on HPC4 (needs the NT checkpoint pre-staged + a GPU):
+Run on a cluster (needs the NT checkpoint pre-staged + a GPU):
     python nt_linear_probe.py --data-dir results/T16/nt
 """
 import argparse

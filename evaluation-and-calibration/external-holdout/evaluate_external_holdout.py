@@ -14,8 +14,8 @@ Design choices
 
 Notes
 -----
-- ProkBERT/CNN should run in promoter-mining-hpc4 env.
-- NT adapter should run in nt-tf4x env for strict compatibility.
+- ProkBERT/CNN should run in $ENV_MAIN env.
+- NT adapter should run in $ENV_NT env for strict compatibility.
 """
 
 from __future__ import annotations
@@ -324,7 +324,7 @@ def evaluate_all(
 
     # Save PER-MODEL predictions, overall metrics, and species breakdown. Per-model files mean that
     # running this script twice into the same --out (prokbert,cnn in one env, then nt_lora in the
-    # nt-tf4x env) ACCUMULATES results instead of the second run clobbering the first.
+    # $ENV_NT env) ACCUMULATES results instead of the second run clobbering the first.
     for model_name, probs in probs_by_model.items():
         pd.DataFrame({
             "species": species,

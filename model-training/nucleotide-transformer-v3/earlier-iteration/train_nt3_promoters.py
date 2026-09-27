@@ -7,6 +7,14 @@ from transformers import AutoModel, AutoTokenizer
 import optax
 from flax import linen as nn
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 class PromoterClassifier(nn.Module):
     @nn.compact
     def __call__(self, x):
@@ -16,7 +24,7 @@ class PromoterClassifier(nn.Module):
         return jnp.squeeze(x, axis=-1)
 
 def load_parquet_split(split_name):
-    path = f"/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx/{split_name}.parquet"
+    path = os.path.join(PROMOTER_RESULTS, f"T15_ctx/{split_name}.parquet")
     print(f"Loading {split_name} split from {path}...")
     return pd.read_parquet(path)
 

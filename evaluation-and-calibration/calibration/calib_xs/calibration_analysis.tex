@@ -9,7 +9,7 @@
 \begin{document}
 \section*{T26 --- Calibration Analysis (all models)}
 
-Consolidated from \texttt{/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib\_xs} --- 4 model(s): cnn, cnn\_v2, nt\_lora, prokbert. Each model's raw promoter score is recalibrated with an AT-content-aware Platt regressor (\texttt{StandardScaler $\to$ LogisticRegression([logit, AT])}), selected by 5x5 stratified CV.
+Consolidated from \texttt{evaluation-and-calibration/calibration/calib\_xs} --- 4 model(s): cnn, cnn\_v2, nt\_lora, prokbert. Each model's raw promoter score is recalibrated with an AT-content-aware Platt regressor (\texttt{StandardScaler $\to$ LogisticRegression([logit, AT])}), selected by 5x5 stratified CV.
 
 \textbf{Eval set:} 279 sequences --- 93 positives, 186 negatives (130 convergent-intergenic + 56 CDS-interior). Window 81 bp.
 
@@ -21,10 +21,10 @@ Consolidated from \texttt{/project/igem2026/cb-promoter-mining/evaluation-and-ca
 \hline
 Model & chosen calibrator & features & checkpoint / adapter & n\_conv / n\_cds \\
 \hline
-cnn & score+AT / unregularized & logit, at\_fraction & \texttt{/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake\_scaffold/results/T21\_xs/cnn/best\_model.pt} & 130 / 56 \\
-cnn\_v2 & score+AT / unregularized & logit, at\_fraction & \texttt{/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake\_scaffold/results/T21\_xs/cnn\_v2/best\_model.pt} & 130 / 56 \\
-nt\_lora & score+AT / unregularized & logit, at\_fraction & \texttt{/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake\_scaffold/results/T21\_xs/nt\_lora/best\_adapter} & 130 / 56 \\
-prokbert & score+AT / unregularized & logit, at\_fraction & \texttt{/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake\_scaffold/results/T21\_xs/prokbert/best\_model} & 130 / 56 \\
+cnn & score+AT / unregularized & logit, at\_fraction & \texttt{infrastructure/T3/snakemake\_scaffold/results/T21\_xs/cnn/best\_model.pt} & 130 / 56 \\
+cnn\_v2 & score+AT / unregularized & logit, at\_fraction & \texttt{infrastructure/T3/snakemake\_scaffold/results/T21\_xs/cnn\_v2/best\_model.pt} & 130 / 56 \\
+nt\_lora & score+AT / unregularized & logit, at\_fraction & \texttt{infrastructure/T3/snakemake\_scaffold/results/T21\_xs/nt\_lora/best\_adapter} & 130 / 56 \\
+prokbert & score+AT / unregularized & logit, at\_fraction & \texttt{infrastructure/T3/snakemake\_scaffold/results/T21\_xs/prokbert/best\_model} & 130 / 56 \\
 \hline
 \end{tabular}%
 }

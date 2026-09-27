@@ -15,7 +15,7 @@ What it does, for any HF model id (ProkBERT, Nucleotide Transformer, ...):
 A linear-probe AUPRC well above the prevalence baseline means the pretrained representation is already
 worth fine-tuning; the gap to the fine-tuned model (T18/T19) is how much fine-tuning adds.
 
-Run (no fine-tuning needed; pre-stage the model on the login node, see infrastructure/HPC4_GUIDE.md):
+Run (no fine-tuning needed; on offline compute nodes pre-stage the model first, see docs/SETUP.md):
   python embedding_probe.py --model-id neuralbioinfo/prokbert-mini --data results/T15/splits.parquet
   python embedding_probe.py --model-id InstaDeepAI/nucleotide-transformer-v2-250m-multi-species --data results/T15/splits.parquet
 

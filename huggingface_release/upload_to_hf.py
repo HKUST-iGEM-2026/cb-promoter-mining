@@ -3,29 +3,34 @@
 upload_to_hf.py — publish the three HKUST iGEM 2026 deployment models to the Hugging Face Hub,
 each with its model card (the sibling <repo>/README.md).
 
-  prokbert-mini-clostridium-promoter        ProkBERT-mini fine-tune (HPC4 checkpoint dir)   CC-BY-NC-4.0
-  cnn-fusion-clostridium-promoter           multi-encoding fusion CNN (HPC4 checkpoint dir) CC-BY-4.0
+  prokbert-mini-clostridium-promoter        ProkBERT-mini fine-tune (local checkpoint dir)   CC-BY-NC-4.0
+  cnn-fusion-clostridium-promoter           multi-encoding fusion CNN (local checkpoint dir) CC-BY-4.0
   evo2-logreg-clostridium-promoter-probe    logreg probe on Evo2-7B embeddings (in-repo)    CC-BY-4.0
 
   ⚠ RECONSTRUCTED 2026-09-11 to match huggingface_release/README.md. The original was never committed
   to git and was accidentally overwritten; this rebuild follows the documented interface (HF_OWNER +
-  two HPC4 checkpoint paths below, --only / --dry-run / --public). Sanity-check it before you push.
+  two checkpoint paths below, --only / --dry-run / --public). Sanity-check it before you push.
 
-No token lives in this file. It uses the token cached by `huggingface-cli login` (your step). Repos are
-created PRIVATE; review on the Hub, then make public in the UI or re-run with --public.
+All three live at https://huggingface.co/CloBiT. Re-running this updates them in place (create_repo uses
+exist_ok=True). --public only applies to a repo this script creates; it never changes an existing repo's
+visibility (use the Hub's Settings page, or HfApi().update_repo_settings(repo_id, private=False)).
+
+No token lives in this file. It uses the token cached by `hf auth login` (your step), which must
+have WRITE access to the CloBiT org.
 
   pip install -U huggingface_hub
-  huggingface-cli login                 # WRITE token
-  #   edit HF_OWNER + the two HPC4 paths below
-  python upload_to_hf.py --only evo2    # evo2 needs no HPC4 paths — its files are in-repo
+  hf auth login                         # WRITE token for the CloBiT org
+  export PROKBERT_CKPT=<dir> CNN_CKPT=<dir>   # or edit the two paths below
+  python upload_to_hf.py --only evo2    # evo2 needs no checkpoint paths — its files are in-repo
   python upload_to_hf.py --dry-run      # check what each repo would receive
-  python upload_to_hf.py                # push all three (private)
+  python upload_to_hf.py --public       # push all three (only affects repos this run CREATES)
 """
-# ================= EDIT THESE =================
-HF_OWNER = "CloBiT"      # your HF org or username
-PROKBERT_CKPT = "/Users/oak23/cb-ckpts/prokbert_best_model"   # ProkBERT fine-tune checkpoint DIR (config.json + *.safetensors + tokenizer)
-CNN_CKPT = "/Users/oak23/cb-ckpts/cnn_v2"                     # CNN-v2 checkpoint DIR (best_model.pt + config.json)
-# =============================================
+# ================= EDIT THESE, or set the environment variables of the same name =================
+import os
+HF_OWNER = os.environ.get("HF_OWNER", "CloBiT")      # the published org — see https://huggingface.co/CloBiT
+PROKBERT_CKPT = os.environ.get("PROKBERT_CKPT", "/path/to/prokbert/best_model")  # ProkBERT checkpoint DIR (config.json + *.safetensors)
+CNN_CKPT = os.environ.get("CNN_CKPT", "/path/to/cnn_v2")                         # CNN-v2 checkpoint DIR (best_model.pt + config.json)
+# ================================================================================================
 
 import argparse
 import os
@@ -68,7 +73,7 @@ def main():
     try:
         who = api.whoami()["name"]
     except Exception:
-        sys.exit("Not logged in. Run `huggingface-cli login` with a WRITE token first (your step).")
+        sys.exit("Not logged in. Run `hf auth login` with a WRITE token first (your step).")
     print(f"auth: {who}   owner: {HF_OWNER}   visibility: {'PUBLIC' if a.public else 'private'}")
 
     names = [a.only] if a.only else list(MODELS)

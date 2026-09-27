@@ -18,8 +18,8 @@ so the two never drift, and is a self-contained compilable document unless `--te
   4. Autopsy     — what the calibrator got most wrong: per-source error (raw vs calib), rows the
                    calibrator made worse than raw, right->wrong flips, and the worst-N rows.
 
-Stdlib only (no numpy / sklearn / torch), so it runs anywhere — locally or on HPC4 — without the
-conda env and without tripping the ~/.local numpy shadowing gotcha (CLAUDE.md S9).
+Stdlib only (no numpy / sklearn / torch), so it runs anywhere — locally or on a cluster — without the
+conda env and without tripping the ~/.local numpy shadowing gotcha (see docs/SETUP.md).
 
 Usage:
   python analyze_calibration.py                          # ./calib_2 -> calibration_analysis.{md,tex}

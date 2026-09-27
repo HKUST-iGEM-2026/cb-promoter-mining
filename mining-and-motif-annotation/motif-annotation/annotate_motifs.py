@@ -72,7 +72,7 @@ def extract(peaks, genome, window, flank):
 def run_fimo(motif, fasta, outdir, thresh):
     if not shutil.which("fimo"):
         raise SystemExit("`fimo` is not on PATH. Activate the MEME-suite (bio) env first, e.g. "
-                         "`conda activate /project/igem2026/envs/<bio env>` (environment-bio.yml).")
+                         "`conda activate $ENV_MEME` (docs/SETUP.md).")
     # --norc: the extracted sequences are ALREADY on the reading strand, so only scan the + strand.
     subprocess.run(["fimo", "--norc", "--thresh", str(thresh), "--oc", outdir, motif, fasta], check=True)
     return os.path.join(outdir, "fimo.tsv")

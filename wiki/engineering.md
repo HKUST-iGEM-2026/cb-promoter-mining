@@ -31,7 +31,12 @@ next design. The most important cycles:
   on this set.
 - **Test.** Balanced test performance was strong (AUPRC up to ~0.88).
 - **Learn.** Necessary but not sufficient: a strong balanced score does not prove genome-scale
-  usefulness. We needed a genome-scale test on **held-out genomes**.
+  usefulness. We needed a genome-scale test on **validation genomes**.
+
+
+![Balanced AUPRC against genome-scale precision](figures/F13_balanced_vs_genome.png)
+
+***Figure 1.** The measurement that forced Cycle 3: the balanced ranking and the genome-scale ranking are close to inverses of each other.*
 
 ## Cycle 3 — Discovering that "best on the test" ≠ "best on the genome"
 
@@ -40,7 +45,7 @@ next design. The most important cycles:
 - **Build & Test.** The rankings **flipped** depending on the metric:
   - A Nucleotide-Transformer model had the 2nd-best balanced score but **collapsed at genome scale**.
   - A frozen **Evo2-7B** foundation-model probe had the **worst** balanced score yet was the **best at
-    genome scale** on both held-out genomes.
+    genome scale** on both validation genomes.
 - **Learn.** This is our central scientific lesson: **select deployment models by the genome-scale
   metric, not the balanced one.** It reshaped our ensemble choice (see Cycle 5).
 
@@ -72,8 +77,14 @@ next design. The most important cycles:
 - **Design.** Run the finished 3-model ensemble on *C. butyricum* and produce a wet-lab-ready list.
 - **Build.** Scanned the genome → aggregated by rank-percentile → called peaks → confirmed −10/−35
   motifs → wrote a candidate table.
-- **Test.** ~174,000 candidate windows collapsed to **912 high-confidence candidates**, **100** with the
-  full canonical two-box architecture.
+- **Test.** On our first pass, over a fragmented draft assembly, ~174,000 candidate windows collapsed to
+  912 high-confidence candidates. We then re-ran the entire mine on the **complete reference assembly**
+  of the same strain, which is the delivered result: **929 high-confidence candidates**, **45** of them
+  with the full canonical two-box architecture.
+- **Learn.** Comparing the two mines was itself informative. The confident set barely moved
+  (912 → 929), but the motif tiers shifted sharply (306 → 180 with a −10 box; 100 → 45 canonical).
+  The **ensemble score ranking is robust**; the motif labels depend on a motif rediscovered from
+  scratch on each run. So we rank on score and treat "canonical" as a soft annotation, not a filter.
 - **Learn.** The end-to-end pipeline works and generalizes; the remaining validation is experimental
   (wet lab), and the next refinement is **iterative hard-negative mining** to cut false positives
   further. See [Results](results.md).

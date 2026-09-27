@@ -5,9 +5,9 @@
 # Reproduces TSS from the 20 dRNA-seq runs (Fuchs 2021 TEX x18 + Soutourina 2020
 # TAP x2) and writes the pipeline target $OUT_GFF (inputs/tss_sites.gff3).
 #
-# Runs on HPC4 (SuperPOD). It is split into stages with different needs:
+# Runs on a cluster. It is split into stages with different needs:
 #   stages 1,2 + the JAR fetch  -> LOGIN node (need internet)
-#   stages 3,4,5                -> COMPUTE CPU job (no internet; --partition=preempt)
+#   stages 3,4,5                -> COMPUTE CPU job (no internet needed)
 #   stage 6                     -> trivial, anywhere
 # Because compute nodes have no internet, run stages 1-2 (and the one-time JAR
 # download) on the login node first, then submit stages 3-6 as a CPU job.
@@ -38,7 +38,7 @@
 #      Methods doc). No pre-normalization here -> no double-normalization.
 #  D8  RESOLVED: stage-6 merge keeps enriched PRIMARY TSS reproducible in >=2 reps (TAP set >=1).
 #      NB: C. difficile is OUT OF GENUS (taxon 272563, not 1485) -> cross-species-adjacent support; the in-genus
-#      empirical positives come from the published-table path (T7b). Revisit the filter alongside CLAUDE.md §7.
+#      empirical positives come from the published-table path (T7b). Revisit the filter if T10 is ever promoted to a training source.
 #
 # !! SMOKE TEST FIRST: run one SRR (e.g. SRR11573852 TAP+) through stages 2-5 and eyeball that
 #    <SRR>_forward.wig has a 5' spike just upstream of a known + strand gene before the full 20-run launch.
@@ -46,10 +46,10 @@
 set -euo pipefail
 
 # ---- config (override via env) ----
-# WORK must equal the directory the .conf files point at (genome_N / wig paths),
-# currently /project/igem2026/xzhangjj/cdiff_tss — change BOTH here and in the .conf together.
-WORK="${WORK:-/project/igem2026/xzhangjj/cdiff_tss}"
-REPO="${REPO:-/project/igem2026/cb-promoter-mining}"
+# WORK holds the reference, reads, BAMs and wiggles (tens of GB). The .conf files write it as
+# <TSS_WORK>; stage 5 fills that in, so the configs never need editing.
+REPO="${REPO:-${PROMOTER_REPO:-$(cd "$(dirname "$0")/../.." && pwd)}}"
+WORK="${WORK:-$REPO/infrastructure/T3/snakemake_scaffold/results/T10_work}"
 SRR_LIST="${SRR_LIST:-$REPO/data-acquisition-and-curation/tss-literature/SRR_dRNAseq_for_TSSpredator.txt}"
 FUCHS_CONF="${FUCHS_CONF:-$REPO/data-acquisition-and-curation/cdifficile-drnaseq/fuchs_config_hpc.conf}"
 TAP_CONF="${TAP_CONF:-$REPO/data-acquisition-and-curation/cdifficile-drnaseq/soutourina_tap_config.conf}"
@@ -127,8 +127,10 @@ stage5_tsspredator() { # COMPUTE (no internet)
   [ -f "$JAR" ] || { echo "ERR: TSSpredator JAR missing at $JAR — fetch on the login node:"; \
     echo "  wget -O $JAR https://uni-tuebingen.de/fileadmin/Uni_Tuebingen/Fakultaeten/InfoKogni/WSI/IntegTranskript/Softwareprojekte/TSSPredator/TSSpredator-1.1beta.jar"; exit 1; }
   cd "$WORK"
-  java -Xmx8g -jar "$JAR" "$FUCHS_CONF"    # -> result_fuchs/
-  java -Xmx8g -jar "$JAR" "$TAP_CONF"      # -> result_tap/
+  for CONF in "$FUCHS_CONF" "$TAP_CONF"; do   # -> result_fuchs/, result_tap/
+    sed "s#<TSS_WORK>#$WORK#g" "$CONF" > "$WORK/run_$(basename "$CONF")"
+    java -Xmx8g -jar "$JAR" "$WORK/run_$(basename "$CONF")"
+  done
   echo "[T10.5] TSSpredator done (expect LOW THOUSANDS of TSS — see D5)"
 }
 

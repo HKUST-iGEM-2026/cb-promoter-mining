@@ -7,21 +7,21 @@ per-example probabilities. MCC (and any threshold-based metric) needs the confus
 raw predictions — so this script re-runs inference to produce them. The saved predictions ALSO feed
 T26 (calibration) and T27 (empirical FDR), so this is the reusable prediction backbone, not a one-off.
 
-AUPRC uses sklearn.average_precision_score (CLAUDE.md §7), never auc(recall, precision).
+AUPRC uses sklearn.average_precision_score, never auc(recall, precision).
 
 TWO-ENV SPLIT — run ONE model at a time in the right env:
-  # in promoter-mining-hpc4 (transformers 5.3.0):
+  # in $ENV_MAIN (transformers 5.3.0):
   python predict_and_score.py --model prokbert \
      --model-path <SCAF>/results/T21_final/prokbert/best_model \
      --data-dir  <SCAF>/results/T16/prokbert --out results/T22
   python predict_and_score.py --model cnn \
      --model-path <SCAF>/results/T20/best_model.pt \
      --data-dir  <SCAF>/results/T16/cnn --out results/T22
-  # in nt-tf4x (transformers 4.57) — NT only:
+  # in $ENV_NT (transformers 4.57) — NT only:
   python predict_and_score.py --model nt \
      --model-path <SCAF>/results/T21_final/nt_lora/best_adapter \
      --data-dir  <SCAF>/results/T16/nt --out results/T22
-  (<SCAF> = /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold)
+  (<SCAF> = infrastructure/T3/snakemake_scaffold)
 
 Writes  <out>/<model>_test_predictions.csv  (label, prob, pred)  and  <out>/<model>_metrics.json.
 """
@@ -145,7 +145,7 @@ def main():
         model = AutoModelForSequenceClassification.from_pretrained(
             args.model_path, trust_remote_code=True).to(device).eval()
         probs = probs_transformer(model, enc, device)
-    else:  # nt — run this in the nt-tf4x env
+    else:  # nt — run this in the $ENV_NT env
         from transformers import AutoModelForSequenceClassification
         from peft import PeftModel
         base = AutoModelForSequenceClassification.from_pretrained(
@@ -161,7 +161,7 @@ def main():
         "model": args.model, "n": int(len(y)), "n_pos": int(y.sum()),
         "prevalence": float(y.mean()), "threshold": args.threshold,
         "auroc": float(roc_auc_score(y, probs)),
-        "auprc": float(average_precision_score(y, probs)),   # §7: average_precision, NOT auc(recall, precision)
+        "auprc": float(average_precision_score(y, probs)),   # use average_precision, NOT auc(recall, precision)
         "mcc":   float(matthews_corrcoef(y, preds)),
         "f1":    float(f1_score(y, preds, zero_division=0)),
     }

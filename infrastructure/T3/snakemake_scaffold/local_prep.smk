@@ -1,10 +1,10 @@
 # =====================================================================
 # Phase A (LOCAL part) — T5-T9 one-shot prep.  Real commands (not mock).
 #
-# Produces the "starting state" under inputs/, uploaded to HPC4. The main
+# Produces the "starting state" under inputs/, uploaded to the cluster. The main
 # Snakefile (Phase B onwards) consumes these; it does not build them.
 #
-#     snakemake -s local_prep.smk --cores 4          # light staging: T7,T8,T9 (+T7b stub)
+#     snakemake -s local_prep.smk --cores 4          # light staging: T7, T7b, T8, T9
 #
 # Real-shell status of each rule (2026-06):
 #   T5  extract genomes      — REAL (unzip the committed curated zip -> results/genomes/)
@@ -13,12 +13,12 @@
 #                              and Phase B reads it via config[bakta_dir]. Run on demand:
 #                                snakemake -s local_prep.smk results/bakta/all_bakta_output.zip
 #   T7  dRNA-seq SRR list    — REAL (copies the curated accession list)
-#   T8  RegulonDB->parquet   — REAL (runs run_t8_pipeline.py; E. coli ~3,963 — DBTBS half still empty, §9)
+#   T8  RegulonDB->parquet   — REAL (runs run_t8_pipeline.py: 3,963 RegulonDB + 373 DBTBS = 4,336)
 #   T9  literature promoters — REAL (runs build_literature_promoters.py -> 93 promoters)
-#   T7b published in-genus TSS — STUB: script is ready but its input TSS tables are NOT in the repo
-#                                (see comment) -> stays a touch until the data is staged.
+#   T7b published in-genus TSS — REAL (build_published_tss.sh on the committed Hocq 2022 workbook:
+#                                5,759 positives). Needs ncbi-datasets-cli + internet for the genomes.
 #
-# T10 (TSSpredator) is on HPC4 -> tss_prep.smk.
+# T10 (TSSpredator) is on the cluster -> tss_prep.smk.
 # =====================================================================
 
 import os
@@ -30,7 +30,7 @@ rule all:
         "inputs/SRR_dRNAseq_for_TSSpredator.txt",  # T7  -> input to T10 (tss_prep.smk)
         "inputs/reference_promoters.parquet",      # T8  -> REFDB
         "inputs/literature_promoters.tsv",         # T9  -> LIT_PROM (full curated set)
-        "inputs/literature_promoters_train.parquet",  # T9-split (§7 b) -> in-genus training positives (T15)
+        "inputs/literature_promoters_train.parquet",  # T9-split (option b) -> in-genus training positives (T15)
         "inputs/published_tss_promoters.parquet",  # T7b -> in-genus positives -> training (T15)
 
 # --- T5 / T6 : genome + annotation regenerate path (real; not in `all`) ---------
@@ -68,7 +68,7 @@ rule t6_bakta_annotation:
         echo "[T6] re-annotated; wrote all_bakta_output.zip"
         """
     # Bakta 1.11.4 / DB v6.0 light. REGENERATE only — needs (a) the `bakta` binary (NOT in the
-    # T4 envs; install a dedicated env: `micromamba create -p /project/igem2026/envs/bakta -c conda-forge
+    # T4 envs; install a dedicated env: `conda create -n bakta -c conda-forge
     # -c bioconda bakta`) and (b) config[bakta_db] (~30GB, not in repo; `bakta_db download --type light`).
     # The committed data-acquisition-and-curation/bakta-annotations/all_bakta_output.zip is canonical (Phase B reads it
     # via config[bakta_dir]); point config[bakta_dir] at this output only if you re-annotate.
@@ -85,8 +85,8 @@ rule t8_normalise_refdbs:
     output: "inputs/reference_promoters.parquet"
     shell:
         # run_t8_pipeline.py takes no args and uses a RELATIVE OUTPUT_DIR -> must run from repo root;
-        # capture the absolute output path first, then cd. Re-running regenerates the real ~3,963-row
-        # RegulonDB parquet (the committed one is a stale 2-row placeholder). DBTBS half still 0 rows (§9).
+        # capture the absolute output path first, then cd. Writes 4,336 rows (3,963 RegulonDB from
+        # PromoterS_Set.txt + 373 DBTBS from DBTBS_prom.fa, both committed).
         "OUT=$(pwd)/{output} && "
         "cd {REPO} && python data-acquisition-and-curation/curated-promoters/run_t8_pipeline.py && "
         "mkdir -p $(dirname $OUT) && "
@@ -102,7 +102,7 @@ rule t9_curate_synthetic_promoters:
         "cp {REPO}/data-acquisition-and-curation/synthetic-promoters/literature_promoters.tsv {output}"
 
 rule t9_split_train:
-    # §7 option b: split T9's VERIFIED in-genus C. acetobutylicum promoters into a TRAINING subset
+    # Option b: split T9's VERIFIED in-genus C. acetobutylicum promoters into a TRAINING subset
     # (-> T15) + an eval HOLDOUT (-> T24/T26). Family-aware + seeded (split_t9_for_training.py).
     # Set config[t9_train_fraction]=0 to disable (T9 then stays 100% held out, the original behaviour).
     # NB: when enabled, T24/T26 must eval on literature_promoters_holdout.tsv, NOT the full T9.
@@ -117,12 +117,13 @@ rule t9_split_train:
 
 rule t7b_published_tss:
     # In-genus VERIFIED positives from published TSS tables (Hocq 2022 C. acetobutylicum,
-    # Al-Bassam 2018 C. ljungdahlii) — the §7 fix for "no in-genus positive in training".
+    # Al-Bassam 2018 C. ljungdahlii) — the fix for "no in-genus positive in training".
     # build_published_tss.sh stages the C. ljungdahlii ref from the T5 zip and runs the production
-    # ingester (extract_published_tss.py) on any TSS table staged in T7/published_tss/. With NO table
-    # staged it writes an EMPTY but schema-valid parquet (pipeline still runs; 0 in-genus positives).
-    # The TSS coordinate tables are paper supplements that must be downloaded by hand —
-    # see data-acquisition-and-curation/tss-literature/PUBLISHED_TSS_README.md for sources + the column env vars.
+    # ingester (extract_published_tss.py) on the committed Hocq 2022 workbook in published_tss/:
+    # C. acetobutylicum 1,434 + C. beijerinckii 4,325 = 5,759. Its genomes are fetched with
+    # ncbi-datasets-cli; without it (or internet) those strains are skipped and the parquet can be
+    # EMPTY while the pipeline still runs, so check the printed count. Do NOT stage the Al-Bassam
+    # C. ljungdahlii table there: it would be ingested, and C. ljungdahlii is the validation genome.
     output: "inputs/published_tss_promoters.parquet"
     shell:
         "OUT=$(pwd)/{output} REPO={REPO} "

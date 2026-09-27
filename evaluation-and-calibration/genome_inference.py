@@ -11,12 +11,12 @@ Scans PER CONTIG (multi-replicon safe) and per strand, streaming batches to CSV.
 
 Handles all four ensemble members:
   * ProkBERT (T18)  — full HF model.        --model-path results/T18/best_model  --model-id neuralbioinfo/prokbert-mini
-  * NT (T19)        — LoRA adapter (auto).   --model-path results/T19/best_adapter --model-id InstaDeepAI/nucleotide-transformer-v2-250m-multi-species  (nt-tf4x env)
+  * NT (T19)        — LoRA adapter (auto).   --model-path results/T19/best_adapter --model-id InstaDeepAI/nucleotide-transformer-v2-250m-multi-species  ($ENV_NT env)
   * CNN (T20)       — from-scratch, one-hot. --model-path results/T20/best_model.pt  --model-type cnn
   * CNN-v2          - from-scratch, ENAC + dri/trinucleotide.  
 Model type is auto-detected (a `.pt` path => cnn; an `adapter_config.json` => LoRA; else full HF).
 
-HPC4: export HF_HOME=/project/igem2026/hf_cache ; HF_HUB_OFFLINE=1 ; request a GPU.
+Offline compute nodes: pre-stage models into HF_HOME, then export HF_HUB_OFFLINE=1 ; request a GPU.
 """
 import argparse
 import json

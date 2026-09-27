@@ -19,7 +19,7 @@ Fixed bugs from prior versions:
   5. No headers saved for traceability
   6. NT was wired to HuggingFace AutoTokenizer; NTv3 actually ships as JAX
   7. batch_np_tokenize does NOT auto-round to /128 — caller must N-pad the
-     raw string first (per NTV3_ENV.md smoke test); now handled here
+     raw string first (per the NTv3 smoke test); now handled here
   8. NT path used get_pretrained_ntv3_model (needs HF weights); replaced with
      get_ntv3_tokenizer() which runs locally, no weights or HF needed
   9. NT had no attention_mask; now produces all-ones mask because N-padded
@@ -52,7 +52,7 @@ from collections import Counter
 
 # NOTE: torch is intentionally NOT imported at module top. The NTv3 path runs
 # in the `ntv3-jax` env, which has no torch installed (JAX and torch are kept
-# separate on purpose — see NTV3_ENV.md). torch is imported lazily inside the
+# separate on purpose — see docs/SETUP.md). torch is imported lazily inside the
 # CNN/ProkBERT paths only, so `--model nt` never requires it.
 
 VALID_DNA = set("ACGTN")
@@ -414,7 +414,7 @@ def encode_nt(sequences, model_name, pad_multiple=128, pad_length=None,
     except ImportError:
         print(
             "ERROR: `nucleotide_transformer_v3` (JAX) not installed. This must "
-            "run inside the ntv3-jax environment (see NTV3_ENV.md).",
+            "run inside the ntv3-jax environment (see docs/SETUP.md).",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -878,8 +878,7 @@ Examples:
         "NTv3_100M_pre, NTv3_8M_pre). Bare name, NOT an 'InstaDeepAI/...' HF "
         "repo path. Avoid *_8kb variants. Tokenization is identical across "
         "sizes, so NTv3_8M_pre tokenizes cheaply even if you'll run 650M. "
-        "(NTV3_ENV.md pre-stages 100M by default — pre-stage 650M if you keep "
-        "this default.)",
+        "(Pre-stage whichever checkpoint you pick; this default is 650M.)",
     )
     parser.add_argument(
         "--nt-pad-multiple", type=int, default=128,

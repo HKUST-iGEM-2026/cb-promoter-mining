@@ -4,7 +4,7 @@ join_fdr_qvalues.py — attach T27 empirical-FDR q-values to the T32 candidate t
 
 Now that the mine (T28->T32) and the FDR (T27) run on the SAME assembly (GCF_014131795.1 = DSM 10702
 complete), their coordinates are comparable, so each candidate promoter can be annotated with the FDR
-peak that covers it — the join that CLAUDE.md §9 was blocked on when the mine was g409755 and the FDR
+peak that covers it — the join that was blocked when the mine was g409755 and the FDR
 ran on T26's 4-contig assembly.
 
 Matches by genomic-interval overlap on (chromosome/contig, strand):

@@ -10,12 +10,12 @@
 # pos+strand), and builds the restrict-scan candidate regions. Run on the LOGIN node (needs internet for
 # `datasets`); fast (<2 min). Then submit C_cau_scan.sbatch.
 #
-#   source /project/igem2026/cb-promoter-mining/env.sh
-#   conda activate /project/igem2026/envs/promoter-mining-hpc4    # has ncbi-datasets-cli
+#   source ${PROMOTER_REPO}/env.sh
+#   conda activate ${ENV_MAIN}    # has ncbi-datasets-cli
 #   bash evaluation-and-calibration/prep_cau_regimeC.sh
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 EVAL=$REPO/evaluation-and-calibration
 RES=$REPO/infrastructure/T3/snakemake_scaffold/results
 OUT=$RES/regimeC

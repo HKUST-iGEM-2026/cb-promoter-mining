@@ -1,12 +1,21 @@
+import os
 import sys
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def main():
     print("=== Training Scaled Classifier on NTv3 Embeddings ===", flush=True)
-    data_dir = "/project/igem2026/cb-promoter-mining/nt3_embeddings"
+    data_dir = os.path.join(PROMOTER_REPO, "nt3_embeddings")
 
     # Load data
     X_train = np.load(f"{data_dir}/train_X.npy")

@@ -47,6 +47,11 @@ literature:
 - **Motif confirmation.** Finally we look for the actual −10/−35 boxes in each candidate, so the
   shortlist is not just "high-scoring" but structurally plausible.
 
+
+![Leakage-safe dataset construction](figures/F16_dataset_construction.png)
+
+***Figure 3.** 50,190 windows of 81 bp. Sequences are clustered at 0.6 identity and whole clusters are assigned to a single split, so a near-duplicate cannot leak from train into test. Silver (inferred) positives are pinned to train at weight 0.3, leaving validation and test holding verified promoters only.*
+
 ## Honest framing: an enriched candidate list, not a perfect map
 
 A design decision as important as any model choice: **we frame the deliverable correctly.** No method
@@ -62,9 +67,10 @@ Good design is worthless if the evaluation lies to you. Two safeguards:
 - **Cluster-aware data splits.** Near-identical sequences are grouped (by sequence-identity clustering)
   and whole groups are kept on one side of the train/validation/test split. Without this, near-
   duplicates leak across the split and inflate scores.
-- **Held-out genomes.** The target *C. butyricum* is **never** in training. Two additional in-genus
-  genomes (*C. ljungdahlii*, *C. autoethanogenum*) are held out entirely and used to measure real
-  **genome-scale** performance — which is very different from balanced-test performance.
+- **Validation genomes.** The target *C. butyricum* is **never** in training. Two further in-genus
+  genomes (*C. ljungdahlii*, *C. autoethanogenum*) measure real **genome-scale** performance, which is
+  very different from balanced-test performance. Their experimentally mapped start sites are never
+  used in training, though both genomes are among the 166 that supply inferred training examples.
 
 This distinction produced our most important scientific finding: **the model that looks best on a
 balanced test is not the model that performs best on a real genome.** See [Model](model.md) and

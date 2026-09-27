@@ -35,7 +35,7 @@ Outputs:
                                      auroc_allneg, ci_lo, ci_hi, auroc_srs, srs_ci_lo, srs_ci_hi)
   results/T25/stratified_eval.md    (readable tables + the coverage/limits header)
 
-sklearn + pandas; runs in the main promoter-mining-hpc4 env. Run from the scaffold dir:
+sklearn + pandas; runs in the main $ENV_MAIN env. Run from the scaffold dir:
   python evaluation-and-calibration/sigma-factor-stratified/sigma_stratified.py
 """
 import argparse

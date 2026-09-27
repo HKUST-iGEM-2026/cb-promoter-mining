@@ -4,6 +4,14 @@ import torch
 from transformers import AutoModelForMaskedLM, AutoTokenizer, TrainingArguments, Trainer
 from datasets import load_dataset
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def main():
     model_id = "InstaDeepAI/NTv3_650M_pre"
     output_dir = "./results_ntv3_full"
@@ -14,7 +22,7 @@ def main():
     
     # Load actual pre-split parquet datasets from the pipeline results path
     print("Loading datasets from cluster parquet files...")
-    data_dir = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx"
+    data_dir = os.path.join(PROMOTER_RESULTS, "T15_ctx")
     
     dataset = load_dataset(
         "parquet",

@@ -48,11 +48,11 @@ much, and the true generalisation number is lower. This does NOT by itself say
 the model is bad — it says re-measure after decorrelating context across splits
 (and confirm at genome scale, Regime C).
 
-USAGE (HPC4)
+USAGE
 ------------
-  conda activate /project/igem2026/envs/promoter-mining-hpc4   # pandas+pyarrow+numpy
+  conda activate $ENV_MAIN   # pandas+pyarrow+numpy
   python dataset-construction/clustering-and-splits/context_leakage_check.py \
-      --data-dir /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_xs_ctx \
+      --data-dir $PROMOTER_RESULTS/T15_xs_ctx \
       --seq-col sequence_context --core-col sequence \
       --out results/T15_xs_ctx_context_leakage.csv
 

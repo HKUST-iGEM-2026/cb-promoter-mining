@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=ntv3_regimeC
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -22,21 +20,21 @@
 #   (uses the xs model by default; MODEL=... to point elsewhere, STEP=1 for a denser scan)
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 RC=$DIR/regimeC
-ENV=${ENV:-/project/igem2026/envs/promoter-mining-hpc4}
+ENV=${ENV:-${ENV_MAIN}}
 MODEL=${MODEL:-$DIR/ntv3_xs_ctx_classifier/final_model}
 STEP=${STEP:-10}
 BS=${BS:-32}
 OUT=$RC/ntv3
 mkdir -p "$OUT"
 
-export HF_HOME=${HF_HOME:-/project/igem2026/hf_$USER}
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
 export HF_TOKEN_PATH=${HF_TOKEN_PATH:-/tmp/hf_notoken_$USER}
 export HF_HUB_OFFLINE=1 PYTHONNOUSERSITE=1 MKL_THREADING_LAYER=GNU
-source /cm/shared/apps/Anaconda3/2023.09-0/etc/profile.d/conda.sh
+source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$ENV"
 
 python -c "import torch; assert torch.cuda.is_available(), 'NO GPU'; print('GPU:', torch.cuda.get_device_name(0))"

@@ -38,9 +38,10 @@ for the team (mainly wet-lab, human practices, education, and personal details) 
 
 ## Notes on accuracy
 
-- Dry-lab numbers (model metrics, the 912 / 306 / 100 candidate tiers, genome-scale precision) come
+- Dry-lab numbers (model metrics, the 929 / 180 / 45 candidate tiers, genome-scale precision) come
   straight from our project records and code — but **re-check them against your latest run** before
-  publishing, as some evaluation is still being finalized.
+  publishing, as some evaluation is still being finalized. The tiers are the re-mine on the complete
+  reference assembly; an earlier draft-assembly mine reported 912 / 306 / 100 and is superseded.
 - Medal criteria change year to year. Confirm the exact 2026 required pages and criteria on the official
   [iGEM Medals page](https://competition.igem.org/judging/medals) before you rely on the mapping above.
 - Tone is written for a **public/judging** audience (biology explained, HPC/ops detail kept light). The

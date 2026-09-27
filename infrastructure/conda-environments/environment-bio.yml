@@ -1,4 +1,4 @@
-# Promoter Mining — HPC4 bioinformatics CLI environment (companion to environment.yml)
+# Promoter Mining — bioinformatics CLI environment (companion to environment.yml)
 #
 # WHY a second env: the MEME suite and the heavy read-processing tools need an older
 # `icu`/`libcurl` than the modern conda-forge base in environment.yml, so they CANNOT
@@ -6,12 +6,9 @@
 #   - T10 (TSSpredator): sra-tools, segemehl, openjdk (runs the JAR)
 #   - T31 (motif annotation): meme  -> provides FIMO for -10/-35 scanning
 #
-# Build this ONLY if you own T10 (Sine) or T31 (Leo). The GPU/training people don't need it.
-# Build it with micromamba (fast solver), same as the main env:
+# Build this ONLY if you run T10 or T31. Training does not need it.
 #
-#   ~/bin/micromamba create -y \
-#     -p /project/igem2026/envs/promoter-mining-bio \
-#     -f /project/igem2026/cb-promoter-mining/infrastructure/conda-environments/environment-bio.yml
+#   conda env create -f infrastructure/conda-environments/environment-bio.yml
 #
 name: promoter-mining-bio
 

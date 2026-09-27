@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=t28_scan_t29_ens
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -18,7 +16,7 @@
 # (same as C_cau_scan.sbatch); percentiles are therefore genome-wide, which is what you want.
 # Resume-safe: a completed per-model track is skipped on requeue.
 #
-# PREREQ (login node): stage the genome + candidate regions (+ optional truth) — see T28_T29_RUN_CLAUDE.md.
+# PREREQ (login node): stage the genome + candidate regions (+ optional truth) — see docs/PIPELINE.md.
 # SUBMIT:  sbatch mining-and-motif-annotation/genome-scan/scan_ensemble.sbatch
 set -eo pipefail
 
@@ -27,7 +25,7 @@ set -eo pipefail
 # clone pull-only). e.g.:
 #   TAG=clj FASTA=$RC/clj.fna REGIONS=$RC/clj_candidate_regions.bed TRUTH=$EVAL/ljungdahlii_holdout_tss.tsv \
 #     sbatch mining-and-motif-annotation/genome-scan/scan_ensemble.sbatch
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 TAG=${TAG:-clj}                                  # short genome tag -> goes in every output filename
 FASTA=${FASTA:-$REPO/PATH/TO/genome.fna}         # the genome to scan (single- or multi-record FASTA)
 REGIONS=${REGIONS:-$REPO/PATH/TO/candidate_regions.bed}  # make_candidate_regions.py output (restrict-scan space)
@@ -43,10 +41,11 @@ DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 T29=$REPO/mining-and-motif-annotation/ensemble-aggregation/ensemble_rank_percentile.py
 OUT=$DIR/regimeC/mine_$TAG ; mkdir -p "$OUT"
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4
-NT_ENV=/project/igem2026/envs/nt-tf4x
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
-export HF_HOME=/project/igem2026/hf_shared HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"
+NT_ENV="${ENV_NT:?set it or source env.sh}"
+CONDA_BASE=$(conda info --base)
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 
 # ---- the deployed pre-T26 PRIMARY set = the xs (cross-species-augmented) checkpoints ----

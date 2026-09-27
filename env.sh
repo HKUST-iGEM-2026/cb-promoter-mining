@@ -1,20 +1,50 @@
-# Shared HPC4 environment for the promoter-mining pipeline.
-# Source this at the top of every job / interactive session, THEN conda-activate the
-# right env (promoter-mining-hpc4 for everything except NT; nt-tf4x for NT):
+# Environment contract for the promoter-mining pipeline.
 #
-#   source /project/igem2026/cb-promoter-mining/env.sh
-#   conda activate /project/igem2026/envs/promoter-mining-hpc4   # or .../nt-tf4x for NT
+# Source this once per session or at the top of a job script, then activate the
+# conda environment you need:
 #
-# One source of truth so nobody hand-copies (and fat-fingers) the HF variables.
+#   source /path/to/cb-promoter-mining/env.sh
+#   conda activate "$ENV_MAIN"        # or $ENV_NT / $ENV_EVO2 / $ENV_MEME
+#
+# Everything below is overridable: export a variable before sourcing and that
+# value wins. Nothing here is specific to any one machine or cluster.
 
-# Shared, group-readable HuggingFace cache (models + trust_remote_code modules), offline.
-# NOTE: /project/igem2026/hf_cache is a teammate's PRIVATE (mode-700) dir — do NOT use it.
-# hf_shared is the group-readable one; rebuild with:  cp -a ~/hf_cache/. /project/igem2026/hf_shared/
-export HF_HOME=/project/igem2026/hf_shared
-export HF_HUB_OFFLINE=1
-export HF_TOKEN_PATH=/tmp/hf_notoken_$USER   # steer HF away from any token file (avoids the shared-token PermissionError)
+# --- Repo root -------------------------------------------------------------
+# Resolved from this file's own location, so any clone works.
+_env_sh="${BASH_SOURCE[0]:-$0}"
+export PROMOTER_REPO="${PROMOTER_REPO:-$(cd "$(dirname "$_env_sh")" && pwd)}"
+unset _env_sh
 
-# Make everything created by a job that sources this file group-readable (files 640, dirs 750),
-# so teammates can read results/checkpoints without a manual chmod. SLURM jobs don't source
-# ~/.bashrc, so setting umask here is what actually covers job outputs.
-umask 0027
+# --- Conda environment names ----------------------------------------------
+# Plain names by default, so `conda activate "$ENV_MAIN"` works anywhere. Set
+# these to absolute prefixes instead if you install envs in a shared location:
+#   export ENV_MAIN=/shared/envs/promoter-mining
+export ENV_MAIN="${ENV_MAIN:-promoter-mining}"    # everything except the cases below
+export ENV_NT="${ENV_NT:-promoter-nt}"            # Nucleotide Transformer only (not deployed)
+export ENV_EVO2="${ENV_EVO2:-promoter-evo2}"      # the Evo2 probe
+export ENV_MEME="${ENV_MEME:-promoter-meme}"      # MEME suite / FIMO
+
+# --- Where outputs go ------------------------------------------------------
+# Pipeline artifacts (checkpoints, score tracks, candidate tables). Point this
+# at scratch or a shared volume if the clone is on a small disk.
+export PROMOTER_RESULTS="${PROMOTER_RESULTS:-$PROMOTER_REPO/infrastructure/T3/snakemake_scaffold/results}"
+
+# --- Model cache -----------------------------------------------------------
+# Left to the Hugging Face default (~/.cache/huggingface) unless you set it.
+# On a cluster whose compute nodes have no internet, point HF_HOME at a shared
+# directory, pre-download there from a login node, then set HF_HUB_OFFLINE=1 in
+# the job so a cache miss fails fast instead of hanging.
+#   export HF_HOME=/shared/hf_cache
+#   export HF_HUB_OFFLINE=1
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+
+# --- Scheduler (optional) --------------------------------------------------
+# Only used if you submit the .sbatch scripts. Leave unset on a cluster that
+# needs no account, or if you are not using Slurm at all. The scripts carry no
+# site-specific #SBATCH directives; pass what your site requires:
+#   sbatch --account="$SLURM_ACCOUNT" --partition="$SLURM_PARTITION" job.sbatch
+
+# --- Stop a stray user-site install from shadowing the env -----------------
+# A leftover ~/.local numpy or torch takes precedence over the conda env and
+# fails with errors like "_ARRAY_API not found". This is the fix.
+export PYTHONNOUSERSITE=1

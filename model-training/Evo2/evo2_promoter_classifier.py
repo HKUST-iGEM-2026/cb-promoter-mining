@@ -14,8 +14,9 @@ WHY THIS FILE CHANGED (2026-08):
   3. `best = lin` was hard-coded; now auto-picked on WEIGHTED val AUPRC.
 Paths are flags with shared defaults (was a personal dir / a top-level pkl).
 
-  python evo2_promoter_classifier.py --emb-dir /project/igem2026/cb-promoter-mining/evo2_embeddings
+  python evo2_promoter_classifier.py --emb-dir $PROMOTER_REPO/evo2_embeddings
 """
+import os
 import argparse
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
@@ -25,6 +26,14 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import StratifiedKFold, cross_val_score
 from sklearn.metrics import classification_report, roc_auc_score, average_precision_score
 import joblib
+
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
 
 
 def load(emb_dir, split):
@@ -40,8 +49,8 @@ def load(emb_dir, split):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--emb-dir", default="/project/igem2026/cb-promoter-mining/evo2_embeddings")
-    ap.add_argument("--out", default="/project/igem2026/cb-promoter-mining/model-training/Evo2/evo2_promoter_classifier.pkl")
+    ap.add_argument("--emb-dir", default=os.path.join(PROMOTER_REPO, "evo2_embeddings"))
+    ap.add_argument("--out", default=os.path.join(PROMOTER_REPO, "model-training/Evo2/evo2_promoter_classifier.pkl"))
     a = ap.parse_args()
 
     X_tr, y_tr, w_tr = load(a.emb_dir, "train")

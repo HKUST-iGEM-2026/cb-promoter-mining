@@ -34,7 +34,7 @@ echo "=== VERDICT / next step ================================================="
 have_pos=0; [ -s inputs/published_tss_promoters.parquet ] && [ -s inputs/reference_promoters.parquet ] && have_pos=1
 have_b=0;   [ -s results/T13/upstream_regions.tsv ] && [ -s results/T14/negative_set.tsv ] && have_b=1
 if [ "$have_pos" = 0 ]; then
-  echo "  ✗ Phase A positives (T7b/T8) are EMPTY -> stage them first (see STEP 2A in Claude's message)."
+  echo "  ✗ Phase A positives (T7b/T8) are EMPTY -> stage them first (see docs/PIPELINE.md)."
 elif [ "$have_b" = 0 ]; then
   echo "  ✗ Phase B (T13/T14) MISSING -> run:  snakemake --cores 4 results/T14/negative_set.tsv"
   echo "    then:                               snakemake --cores 4 results/T15.done"

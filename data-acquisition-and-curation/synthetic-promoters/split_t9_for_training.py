@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-T9-split (CLAUDE.md §7 option b): make a portion of T9's VERIFIED in-genus C. acetobutylicum
+T9-split (option b; superseded once T7b supplied verified in-genus positives): make a portion of T9's VERIFIED in-genus C. acetobutylicum
 promoters available to TRAINING (T15) instead of holding out 100% for evaluation. The split is
 FAMILY-AWARE and seeded, so near-identical promoter-library variants don't straddle train/holdout
 (a first-pass leakage guard; T15's CD-HIT step does the rigorous cluster-aware split downstream).

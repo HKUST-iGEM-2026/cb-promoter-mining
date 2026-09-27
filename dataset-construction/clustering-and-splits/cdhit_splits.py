@@ -9,11 +9,11 @@ What it does
 ------------
 Combines the labelled positive + negative DNA windows, removes near-duplicate *leakage* by
 clustering with CD-HIT-EST, and writes cluster-disjoint 80/10/10 train/val/test splits so that
-no near-identical sequence ever straddles two splits (otherwise CV scores inflate — CLAUDE.md §7).
+no near-identical sequence ever straddles two splits (otherwise CV scores inflate).
 
 **Eval is VERIFIED-only:** T13 silver (inferred) positives are pinned to TRAIN, so val/test never hold
 inferred labels — they measure performance on verified promoters, not the "AT-rich upstream = promoter"
-assumption that would reward the §1 AT-trap during model selection.
+assumption that would reward the AT-trap during model selection.
 
 Wired in the T3 Snakefile (rule t15_cdhit_splits) as:
 
@@ -36,17 +36,17 @@ The three DECISIONS (all exposed as CLI flags so you can sweep them):
                         null). T9 (~51 bp) is N-padded — see the T9 note below.
   2. --silver-weight 0.3  T13 is INFERRED (not experimentally confirmed). Down-weight it so the model
                         learns the -10/-35 motif from VERIFIED data, not "AT-rich upstream = promoter"
-                        (the §1 AT-rich false-positive trap). 1.0 = trust it fully; 0.0 = drop it.
+                        (the AT-rich false-positive trap). 1.0 = trust it fully; 0.0 = drop it.
                         NB down-weighting silver alone skews TRAIN negative-heavy, so step 6b rescales
                         TRAIN negative weights to a ~50/50 effective prior. The `weight` column =
                         label-confidence x class-balance; trainers MUST apply it as a per-sample loss
                         weight (else it is inert and T13 trains at full weight — the AT-trap).
-  3. --neg-per-pos 1.0  negatives per positive (~50/50 per §7). 0 = keep all and balance via class
+  3. --neg-per-pos 1.0  negatives per positive (~50/50 by convention). 0 = keep all and balance via class
                         weights at train time instead.
 
   T9 (~49-52 bp) — RECOMMENDATION: hold it fully out for eval (config t9_train_fraction=0). N-padding
   ~37% of an 81 bp window is a poor substitute, and now that T7b supplies ~1,434 verified in-genus
-  positives the "split T9 into training" workaround (§7 option b, made when T7b was empty) is no longer
+  positives the "split T9 into training" workaround (option b, made when T7b was empty) is no longer
   needed. The code still pads T9 if it is passed, so nothing breaks — but the splits are cleaner without it.
 """
 import argparse, os, sys, subprocess, shutil, random, collections
@@ -377,7 +377,7 @@ def main():
 
     # 6. cluster-disjoint, label-stratified 80/10/10 — EVAL (val/test) is VERIFIED-ONLY -----
     #    T13 silver positives carry INFERRED labels (the "AT-rich upstream = promoter" assumption);
-    #    selecting / early-stopping on them would reward the AT-trap (§1). So any CLUSTER holding a
+    #    selecting / early-stopping on them would reward the AT-trap. So any CLUSTER holding a
     #    silver positive is pinned to TRAIN, and only verified-positive + negative clusters are eligible
     #    for val/test. Splitting at the cluster level keeps the leakage guarantee intact.
     #    ALSO pin CROSS-SPECIES (in_genus=False) positives to TRAIN: the target C. butyricum is

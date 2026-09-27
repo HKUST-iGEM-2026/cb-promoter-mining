@@ -3,5 +3,5 @@
 results/
 logs/
 
-# Phase A starting state (produced locally / uploaded to HPC4, not source)
+# Phase A starting state (produced locally / uploaded to the cluster, not source)
 inputs/

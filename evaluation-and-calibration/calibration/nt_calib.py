@@ -23,13 +23,13 @@ What it does
    by > --tol log loss, else the simpler model wins), then REFIT on the full calibration set. Raw vs
    calibrated (Brier / log-loss / AUROC / AUPRC / ECE) is reported.
 
-NOTE: run this on the `nt-tf4x` env (transformers 4.57), NOT the 5.3.0 env — NT's remote code is
-v4-era (infrastructure/conda-environments/NT_ENV.md). The compat shims below are guarded so it ALSO loads on v5, but
+NOTE: run this on the `$ENV_NT` env (transformers 4.57), NOT the 5.3.0 env — NT's remote code is
+v4-era (docs/SETUP.md). The compat shims below are guarded so it ALSO loads on v5, but
 NT was trained + validated on 4.57. Calibration is prevalence-dependent: this 93:186 (1:2) set
 calibrates to that operating point, not genome-wide promoter prevalence.
 
-HPC4 adapter path (0.6 final retrain): /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter
-Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
+Example adapter path (0.6 final retrain): $PROMOTER_RESULTS/T21_final_06/nt_lora/best_adapter
+Run (one GPU): see the sbatch snippet at the bottom of this file.
 """
 import argparse
 import json
@@ -232,7 +232,7 @@ def load_nt_model(base_id: str, adapter_dir: Path, device):
 
     # --- v5-compat shim: NT's cached remote code imports two head-pruning utils that transformers v5
     #     REMOVED. Only imported (not called) at load, so re-supplying them lets NT load on v5. Guarded,
-    #     so it's inert on the v4.57 nt-tf4x env NT actually runs on. (copied from train_nt_lora.py) ---
+    #     so it's inert on the v4.57 $ENV_NT env NT actually runs on. (copied from train_nt_lora.py) ---
     import transformers.pytorch_utils as _tpu
     if not hasattr(_tpu, "find_pruneable_heads_and_indices"):
         def _fphi(heads, n_heads, head_size, already_pruned_heads):
@@ -460,7 +460,7 @@ if __name__ == "__main__":
     main()
 
 
-# --- run on one GPU (HPC4 / SuperPOD) -------------------------------------------------------------
-# NB use the nt-tf4x env (transformers 4.57), NOT the 5.3.0 env (infrastructure/conda-environments/NT_ENV.md).
-# srun --account=igem2026 --partition=preempt --gpus-per-node=1 --requeue \
+# --- run on one GPU (Slurm) -------------------------------------------------------------
+# NB use the $ENV_NT env (transformers 4.57), NOT the 5.3.0 env (docs/SETUP.md).
+# srun --gpus-per-node=1 --requeue \
 #      python evaluation-and-calibration/calibration/nt_calib.py

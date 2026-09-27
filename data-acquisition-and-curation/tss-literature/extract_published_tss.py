@@ -3,11 +3,11 @@
 T7b — turn a published in-genus *Clostridium* TSS table into 81 bp promoter POSITIVES
 that feed the training split (T15). Production version (was extract_published_tss_template.py).
 
-WHY (CLAUDE.md §7): the fine-tune's training positives currently contain NO verified in-genus
+WHY: the fine-tune's training positives currently contain NO verified in-genus
 Clostridium promoter. The genuine in-genus signal we have but don't use is the PUBLISHED TSS
 from in-genus 5'-end studies: Hocq 2022 (*C. acetobutylicum*) and Al-Bassam 2018
 (*C. ljungdahlii*). This ingests those tables -> verified in-genus positives in the SAME schema
-as T8's parquet, so T15 concatenates them. See PUBLISHED_TSS_README.md for where to get the tables.
+as T8's parquet, so T15 concatenates them. See docs/PIPELINE.md for where to get the tables.
 
 INPUT : a published TSS table (CSV/TSV) with a genomic position + strand column, plus the matching
         reference-genome FASTA. Column names are configurable (papers differ).
@@ -17,7 +17,7 @@ OUTPUT: a parquet with columns
 WINDOW FRAMING (must match RegulonDB / PT5 / PT6): 81 bp, TSS (+1) at 0-based offset 60
 (1-based position 61) -> genomic window [-60,+20] around the TSS.
 
-REFERENCE GENOMES (CLAUDE.md §8):
+REFERENCE GENOMES (confirm each version against the paper's Methods):
   C. acetobutylicum ATCC 824  -> GCF_000008765.1 (chromosome NC_003030.1 + pSOL1 NC_001988.2)  [2 replicons -> --contig-col REQUIRED]
   C. ljungdahlii    DSM 13528 -> GCF_000143685.1 (NC_014328.1)                                  [single replicon]
 
@@ -157,7 +157,8 @@ def main():
         f"no TSS mapped to a clean 81 bp window — check --contig-col / accession parity "
         f"(genome replicons: {list(genome)}); drop reasons: {dropped}")
     out.to_parquet(args.out, index=False)
-    print(f"{args.species}: wrote {len(out)} verified in-genus positives -> {args.out} "
+    kind = "cross-species" if args.out_of_genus else "verified in-genus"
+    print(f"{args.species}: wrote {len(out)} {kind} positives -> {args.out} "
           f"({before - len(out)} duplicate ids removed; dropped {dropped}). Concatenate with the T8 parquet in T15.")
 
 

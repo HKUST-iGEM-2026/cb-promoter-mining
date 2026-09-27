@@ -4,22 +4,22 @@ score_promoters.py — load one trained model and score sequences for P(promoter
 
 Single hand-off entry point. Run it in the RIGHT conda env (NT is the exception):
 
-  source /project/igem2026/cb-promoter-mining/env.sh
+  source $PROMOTER_REPO/env.sh
 
-  # ProkBERT / CNN / CNN-v2  -> promoter-mining-hpc4 env:
-  conda activate /project/igem2026/envs/promoter-mining-hpc4
+  # ProkBERT / CNN / CNN-v2  -> $ENV_MAIN env:
+  conda activate $ENV_MAIN
   python score_promoters.py --model prokbert --fasta seqs.fa --out scores.csv
   python score_promoters.py --model cnn      --fasta seqs.fa --out scores.csv
   python score_promoters.py --model cnn_v2   --fasta seqs.fa --out scores.csv
 
-  # NT-LoRA  -> nt-tf4x env ONLY (transformers 4.57):
-  conda activate /project/igem2026/envs/nt-tf4x
+  # NT-LoRA  -> $ENV_NT env ONLY (transformers 4.57):
+  conda activate $ENV_NT
   python score_promoters.py --model nt --fasta seqs.fa --out scores.csv
 
 Input : a FASTA of ~81 bp sequences. Output: CSV with columns id,prob (prob = P(promoter),
 uncalibrated softmax[:,1]). CNN-v2 auto-fits length to 81 bp; the others truncate/pad to 81.
-Defaults point at the deployed 0.6 models (T21_final); use --models-dir to point elsewhere
-(e.g. .../results/T21_final_06 for the re-swept set, or .../results/T18 for the old 0.9 ProkBERT).
+Defaults to results/models_deployed/ (symlinks you create, see docs/MODELS.md). The deployed set is
+results/T21_xs; pass it, or any earlier round, with --models-dir.
 """
 import argparse
 import csv
@@ -29,11 +29,18 @@ import os
 
 import numpy as np
 
-# Repo root = this file's directory, so it works from any clone.
-REPO = os.path.dirname(os.path.abspath(__file__))
-# The DEPLOYED best-of-each set (symlinks): ProkBERT = the 0.6-swept model (T21_final_06),
-# NT/CNN/CNN-v2 = the current 0.6 models (T21_final). See LOADING_MODELS.md. Override with --models-dir.
-DEFAULT_MODELS_DIR = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/models_deployed"
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__))))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
+REPO = PROMOTER_REPO
+# models_deployed/ = symlinks to the set scored by default; docs/MODELS.md links it to T21_xs, the
+# deployed set. Override with --models-dir.
+DEFAULT_MODELS_DIR = os.path.join(PROMOTER_RESULTS, "models_deployed")
 NT_BASE = "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species"
 
 
@@ -78,7 +85,7 @@ def main():
     ap.add_argument("--fasta", required=True, help="FASTA of ~81 bp sequences")
     ap.add_argument("--out", required=True, help="output CSV (id,prob)")
     ap.add_argument("--models-dir", default=DEFAULT_MODELS_DIR,
-                    help="dir holding prokbert/nt_lora/cnn/cnn_v2 checkpoints (default: deployed 0.6 models)")
+                    help="dir holding prokbert/nt_lora/cnn/cnn_v2 checkpoints (default: results/models_deployed)")
     a = ap.parse_args()
 
     import torch

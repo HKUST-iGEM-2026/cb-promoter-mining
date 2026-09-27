@@ -52,6 +52,14 @@ import sys
 import urllib.parse
 from collections import Counter, defaultdict
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 # ---- genome registry: filenames are retained even though C. phytofermentans is now
 # ---- classified outside Clostridium (Lachnoclostridium); source_strain label per request.
 GENOMES = [
@@ -61,7 +69,7 @@ GENOMES = [
      "species": "Lachnoclostridium phytofermentans", "strain": "phytofermentans"},
 ]
 
-DEFAULT_DIR = "/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration"
+DEFAULT_DIR = os.path.join(PROMOTER_REPO, "evaluation-and-calibration/calibration")
 
 VALID_BASES = set("ACGT")
 _COMP = str.maketrans("ACGT", "TGCA")

@@ -3,8 +3,8 @@
 # call for those motifs (FIMO). Recovers the -10/-35 boxes and tells T32 which calls actually carry them.
 #
 # Needs the MEME suite -> run in the BIO env (infrastructure/conda-environments/environment-bio.yml, meme>=5.5):
-#   source /cm/shared/apps/Anaconda3/2023.09-0/etc/profile.d/conda.sh
-#   conda activate /project/igem2026/envs/<bio-env>     # the env that has `meme` + `fimo` on PATH
+#   source "$(conda info --base)/etc/profile.d/conda.sh"
+#   conda activate "$ENV_MEME"     # the env that has `meme` + `fimo` on PATH (docs/SETUP.md)
 #   bash annotate_motifs.sh candidates_top.fasta candidates.fasta t31_out
 #
 # Sequences are already in reading orientation (extract_call_sequences.py revcomp'd the - strand), so

@@ -25,12 +25,12 @@ What it does
    by > --tol log loss, else the simpler model wins), then REFIT on the full calibration set. Raw vs
    calibrated (Brier / log-loss / AUROC / AUPRC / ECE) is reported.
 
-NOTE: run on the main `promoter-mining-hpc4` env (transformers 5.3.0) — ProkBERT loads clean there
-(unlike NT, which needs the nt-tf4x env). Calibration is prevalence-dependent: this 93:186 (1:2) set
+NOTE: run on the main `$ENV_MAIN` env (transformers 5.3.0) — ProkBERT loads clean there
+(unlike NT, which needs the $ENV_NT env). Calibration is prevalence-dependent: this 93:186 (1:2) set
 calibrates to that operating point, not genome-wide promoter prevalence.
 
-HPC4 model path (0.6 final retrain): /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model
-Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
+Example model path (0.6 final retrain): $PROMOTER_RESULTS/T21_final_06/prokbert/best_model
+Run (one GPU): see the sbatch snippet at the bottom of this file.
 """
 import argparse
 import json
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     main()
 
 
-# --- run on one GPU (HPC4 / SuperPOD) -------------------------------------------------------------
-# NB the main promoter-mining-hpc4 env (transformers 5.3.0) — ProkBERT loads clean there (NOT nt-tf4x).
-# srun --account=igem2026 --partition=preempt --gpus-per-node=1 --requeue \
+# --- run on one GPU (Slurm) -------------------------------------------------------------
+# NB the main $ENV_MAIN env (transformers 5.3.0) — ProkBERT loads clean there (NOT $ENV_NT).
+# srun --gpus-per-node=1 --requeue \
 #      python evaluation-and-calibration/calibration/prokbert_calib.py

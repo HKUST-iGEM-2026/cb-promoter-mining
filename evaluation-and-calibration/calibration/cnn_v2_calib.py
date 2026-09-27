@@ -34,7 +34,7 @@ convention), so short windows get a lot of N padding; pass --strict-length to ha
 Calibration is prevalence-dependent: this 93:186 (1:2) set calibrates to that operating point, not
 genome-wide promoter prevalence.
 
-Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
+Run (one GPU): see the sbatch snippet at the bottom of this file.
 """
 import argparse
 import importlib.util
@@ -462,7 +462,7 @@ if __name__ == "__main__":
     main()
 
 
-# --- run on one GPU (HPC4 / SuperPOD) -------------------------------------------------------------
-# srun --account=igem2026 --partition=preempt --gpus-per-node=1 --requeue \
+# --- run on one GPU (Slurm) -------------------------------------------------------------
+# srun --gpus-per-node=1 --requeue \
 #      python evaluation-and-calibration/calibration/cnn_v2_calib.py \
 #        --model-dir infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2

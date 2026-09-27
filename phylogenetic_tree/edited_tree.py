@@ -1,9 +1,18 @@
+import os
 from ete3 import Tree, TreeStyle, TextFace, NodeStyle
 import pandas as pd
 from pathlib import Path
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 HERE = Path(__file__).parent
-GENOME_LIST = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/clostridium-genomes/genome_list.tsv"
+GENOME_LIST = os.path.join(PROMOTER_REPO, "data-acquisition-and-curation/clostridium-genomes/genome_list.tsv")
 REMAP = HERE / "gtdb_remap.tsv"   # our_accession -> GTDB tree_leaf (built once from bac120_taxonomy_r226)
 
 # accession -> species name (e.g. "GCF_000007625.1" -> "Clostridium tetani E88")

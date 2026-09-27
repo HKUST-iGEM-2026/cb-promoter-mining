@@ -15,12 +15,20 @@ import os
 import sys
 import argparse
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def load_data():
     """Load and combine positive datasets from T13, T7, and T8 directories"""
     frames = []
     
     # 1. Load T13 upstream regions
-    t13_path = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T13/upstream_regions.tsv"
+    t13_path = os.path.join(PROMOTER_RESULTS, "T13/upstream_regions.tsv")
     if os.path.exists(t13_path):
         df_t13 = pd.read_csv(t13_path, sep='\t')
         df_t13['source_type'] = 'upstream_region'
@@ -30,7 +38,7 @@ def load_data():
     # 2. Load T7b published TSS positives (Hocq 2022, in-genus verified, ~5,759 rows).
     #    NB: "T7 - all.csv" is the 47-run literature-search CATALOG (SRA accessions + citations),
     #    NOT promoters — that was the bug that gave 47 rows. The real positives are the parquet below.
-    t7_path = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/inputs/published_tss_promoters.parquet"
+    t7_path = os.path.join(PROMOTER_RESULTS, "../inputs/published_tss_promoters.parquet")
     if os.path.exists(t7_path):
         df_t7 = pd.read_parquet(t7_path)
         df_t7['source_type'] = 't7b_published_tss'
@@ -47,7 +55,7 @@ def load_data():
         frames.append(df_t7)
         print(f"📥 Loaded T7b: {len(df_t7)} rows")
 
-    t8_path = "/project/igem2026/cb-promoter-mining/data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet"
+    t8_path = os.path.join(PROMOTER_REPO, "data-acquisition-and-curation/curated-promoters/curated_positive_promoters.parquet")
     if os.path.exists(t8_path):
         df_t8 = pd.read_parquet(t8_path)
         df_t8['source_type'] = 't8_curated_positive'
@@ -64,7 +72,7 @@ def load_data():
 
 def load_all_genomes():
     """Load all Bakta genome files into a global contig dictionary"""
-    base = "/project/igem2026/cb-promoter-mining"
+    base = PROMOTER_REPO
     bakta_dir = f"{base}/infrastructure/T3/snakemake_scaffold/results/bakta/all_bakta_output"
     genome_dict = {}
     
@@ -182,7 +190,7 @@ def main():
                     res[col] = row[col]
             results.append(res)
             
-    output_dir = Path("/project/igem2026/cb-promoter-mining/positives_with_context/output")
+    output_dir = Path(os.path.join(PROMOTER_REPO, "positives_with_context/output"))
     output_dir.mkdir(parents=True, exist_ok=True)
     
     result_df = pd.DataFrame(results)

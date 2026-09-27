@@ -1,7 +1,5 @@
 #!/bin/bash 
 #SBATCH --job-name=xs_C_ljung_scan
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --time=08:00:00
@@ -22,13 +20,13 @@
 set -eo pipefail
 
 # --------------------------------------------------------------------------- paths
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results        # holds T21_xs/ + T16/
 EVAL=$REPO/evaluation-and-calibration
 T26=$EVAL/T26/calib_xs                                        # the xs calibrators live here
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4          # prokbert + cnn + cnn_v2 + all CPU steps
-NT_ENV=/project/igem2026/envs/nt-tf4x                         # NT only (transformers 4.57)
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"          # prokbert + cnn + cnn_v2 + all CPU steps
+NT_ENV="${ENV_NT:?set it or source env.sh}"                         # NT only (transformers 4.57)
+CONDA_BASE=$(conda info --base)
 
 OUTDIR=$DIR/regimeC/xs                                          # tracks + fp_* + analysis land here
 TRUTH=$EVAL/ljungdahlii_holdout_tss.tsv                       # 1,245 held-out primary TSS (committed)
@@ -41,13 +39,13 @@ mkdir -p "$OUTDIR"
 # Set CLJ_FASTA in the environment to override; otherwise we try to locate it.
 CLJ_FASTA=${CLJ_FASTA:-$OUTDIR/../clj.fna}
 if [[ ! -f "$CLJ_FASTA" ]]; then
-    CLJ_FASTA=$(find "$REPO" /project/igem2026 -name "*.fna" 2>/dev/null \
+    CLJ_FASTA=$(find "$REPO" -name "*.fna" 2>/dev/null \
                 | grep -iE "ljung|014328|143685" | head -1 || true)
 fi
 
 # --------------------------------------------------------------------------- HF offline cache (shared)
-export HF_HOME=/project/igem2026/hf_shared
-export HF_HUB_OFFLINE=1
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 export HF_TOKEN_PATH=/tmp/hf_notoken_$USER
 
 # --------------------------------------------------------------------------- preflight
@@ -105,7 +103,7 @@ else
     echo "contig  : truth has $NTC contigs; skipping single-replicon override — verify track/truth ids match."
 fi
 
-# --- calibrators load in MAIN_ENV (nt calibrator was fit under nt-tf4x -> catch sklearn skew now) ---
+# --- calibrators load in MAIN_ENV (nt calibrator was fit under $ENV_NT -> catch sklearn skew now) ---
 conda activate "$MAIN_ENV"
 for M in "${MODELS[@]}"; do
     python - "$(calib_path "$M")" <<'PY' || { echo "ERROR: calibrator failed to load in MAIN_ENV (sklearn version skew?): $(calib_path "$M")"; exit 1; }

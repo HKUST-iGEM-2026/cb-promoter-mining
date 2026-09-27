@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=evo2_clj_regimeC
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -30,16 +28,16 @@
 # Submit:  sbatch model-training/Evo2/C_evo2_ljung_scan.sbatch
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 EVO2=$REPO/model-training/Evo2
 OUT=$DIR/regimeC/evo2 ; mkdir -p "$OUT"
 EMB=$REPO/evo2_embeddings                        # cached T15_xs embeddings (from extract_embeddings.sbatch)
 PROBE=$OUT/evo2_probe_xs.pkl
-EVO2_ENV=/project/igem2026/envs/evo2
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
+EVO2_ENV="${ENV_EVO2:?set it or source env.sh}"
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"
+CONDA_BASE=$(conda info --base)
 
 FASTA=${CLJ_FASTA:-$DIR/regimeC/clj.fna}         # staged by the xs ljung scan (record MUST be NC_014328.1)
 REGIONS=$DIR/regimeC/clj_candidate_regions.bed   # model-independent; reused
@@ -48,14 +46,15 @@ STEP=10                                          # 7B model over ~1.4 Mb restric
 RECALLS=0.1,0.5,0.7,0.9
 TRACK=$OUT/clj_evo2_track.csv
 
-export HF_HOME=/project/igem2026/hf_shared HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 
 echo "=== preflight ==="
 for f in "$FASTA" "$REGIONS" "$TRUTH"; do
     [[ -f "$f" ]] || { echo "MISSING $f"; exit 1; }
 done
-[[ -d "$EMB" ]] || { echo "MISSING embeddings dir $EMB — run extract_embeddings.sbatch first"; exit 1; }
+[[ -s "$PROBE" || -d "$EMB" ]] || { echo "MISSING embeddings dir $EMB — run extract_embeddings.sbatch first"; exit 1; }
 
 # contig-id guard: evo2_scan_restricted.py emits the FASTA header as `contig` and (unlike
 # genome_inference.py) has NO --contig-name override — it only scores windows whose (contig,strand) is

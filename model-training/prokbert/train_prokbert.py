@@ -13,7 +13,7 @@ TWO CONTRACTS THIS SCRIPT HONORS (do not break them — T21 + T15/T16 depend on 
      and the model trains negative-skewed + silver-dominated. `--no-weight` disables it (ablation only).
   2. SWEEP CLI. Accepts `--sweep-trial`, `--output-dir`, and every hyperparameter T21 sweeps as a CLI
      flag; writes `<output-dir>/metrics.json` with `val_auprc` (the value T21 maximises) + prints
-     "Validation AUPRC: <x>". Selection metric is **AUPRC** (CLAUDE.md §7), never F1/accuracy.
+     "Validation AUPRC: <x>". Selection metric is **AUPRC** (average_precision_score), never F1/accuracy.
 
 Base model is plain prokbert-mini (NOT -mini-long, NOT -promoter): the 81 bp windows are short. The
 2-class head is randomly initialised on top of the pretrained backbone and learned here.
@@ -21,7 +21,7 @@ Base model is plain prokbert-mini (NOT -mini-long, NOT -promoter): the 81 bp win
 Run (standalone):
   python train_prokbert.py --data-dir results/T16/prokbert --output-dir results/T18
 Run (driven by the T21 sweep): T21 appends --sweep-trial N --output-dir <trial dir> --learning-rate … etc.
-NB pre-stage the tokenizer/model on the login node (HF_HOME + HF_HUB_OFFLINE=1); compute nodes are offline.
+NB on offline compute nodes, pre-stage the tokenizer/model first (HF_HOME + HF_HUB_OFFLINE=1).
 """
 import argparse
 import inspect
@@ -106,7 +106,7 @@ def compute_metrics(eval_pred):
     logits = np.asarray(logits, dtype=np.float32)
     probs = torch.softmax(torch.from_numpy(logits), dim=1)[:, 1].numpy()
     preds = (probs >= 0.5).astype(int)
-    return {"auprc": float(average_precision_score(labels, probs)),       # §7 selection metric
+    return {"auprc": float(average_precision_score(labels, probs)),       # the selection metric
             "auroc": float(roc_auc_score(labels, probs)),
             "f1": float(f1_score(labels, preds, zero_division=0))}
 

@@ -5,7 +5,6 @@
 #SBATCH --time=00:20:00
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
-#SBATCH --account=igem2026
 
 # Activate your environment
 source ~/.bashrc

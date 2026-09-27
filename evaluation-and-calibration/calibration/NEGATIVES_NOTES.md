@@ -52,7 +52,7 @@ inside trimmed bounds; every sequence exactly 52 bp / ACGT-only.
 | CDS negatives | one window, start+100..stop-100 | all non-overlapping in trimmed interior, **strand-oriented** |
 | dedup | none | yes (per file) |
 | seed | added late | seeded from the start |
-| dependencies | Biopython/pandas | **stdlib only** (avoids the `~/.local` numpy/pandas gotcha, CLAUDE.md §9) |
+| dependencies | Biopython/pandas | **stdlib only** (avoids the `~/.local` numpy/pandas gotcha) |
 
 Net: stricter and more reproducible than T14, at a different (shorter) window. The masking +
 trim make the convergent set cleaner than T14's raw gap sampling.

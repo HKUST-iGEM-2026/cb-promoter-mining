@@ -9,6 +9,26 @@ offset header + filters to canonical promoter TSS.
   Clostridium autoethanogenum       (Table S1)-> Class == P, deduped     [VALIDATION genome only]
 
 Run from this folder (data-acquisition-and-curation/additional-published-tss).
+
+WHERE EACH WORKBOOK COMES FROM (cite these; the model cards in huggingface_release/ repeat them):
+  R. cellulolyticum H10  Xu C, Huang R, Teng L, et al. Cellulosome stoichiometry in Clostridium
+                         cellulolyticum is regulated by selective RNA processing and stabilization.
+                         Nat Commun. 2015;6:6900. doi:10.1038/ncomms7900
+                         dRNA-seq BioProject PRJNA247408 (Exo/Hyb libraries — the same Exo/Hyb split
+                         named in Sheet1's own header).
+  B. licheniformis DSM13 Wiegand S, Dietrich S, Hertel R, Bongaerts J, et al. RNA-Seq of Bacillus
+                         licheniformis: active regulatory RNA features expressed within a productive
+                         fermentation. BMC Genomics. 2013;14:667. doi:10.1186/1471-2164-14-667
+                         Supplementary Table S5; dRNA-seq BioProject PRJNA188930 (SRR747881-747900).
+  C. autoethanogenum     de Souza Pinto Lemgruber R, Valgepea K, Gonzalez Garcia RA, de Bakker C,
+                         et al. A TetR-Family Protein (CAETHG_0459) Activates Transcription From a
+                         New Promoter Motif Associated With Essential Genes for Autotrophic Growth
+                         in Acetogens. Front Microbiol. 2019;10:2549. doi:10.3389/fmicb.2019.02549
+                         Supplementary File 1, Table S1; BioProject PRJNA428323. VALIDATION truth
+                         only, never training.
+
+The deployed split tags these sources Wiegand2013 and Xu2015 (not the --source values an older
+draft of docs/PIPELINE.md used); Hocq is Hocq2022, and T8 is T8_RegulonDB / T8_DBTBS.
 """
 import pandas as pd
 

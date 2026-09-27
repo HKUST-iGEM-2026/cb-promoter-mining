@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=t27_fdr_mine
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -25,7 +23,7 @@
 #   5) annotate_motifs.py        -> FIMO -10/-35 on the top-N (bio env)
 #
 # MODELS = the DEPLOYMENT 3-model ensemble (ProkBERT + cnn_v2 + Evo2) — NT-LoRA and CNN-v1 are dropped
-# (Oak's decision, 2026-08; see CLAUDE.md §10). Only these three are supported here. evo2 is special-cased
+# (Oak's decision, 2026-08; see the README, "Why three models?"). Only these three are supported here. evo2 is special-cased
 # (own scanner + env); prokbert/cnn_v2 go through genome_inference. T29 rank-percentile is
 # calibration-invariant, so members combine on raw scores. Per-model tracks are cached in $OUT and reused.
 # (You can restrict to a subset, e.g. MODELS="prokbert evo2", but not add other models.)
@@ -37,7 +35,7 @@
 # tiers) was mined on the 96-contig RefSeq WGS assembly g409755 = GCF_000409755.1 (contig ids
 # NZ_AQQF01000…). This FDR run MUST use the SAME assembly, or its peaks won't share coordinates with the
 # candidate table and can't be joined. The earlier results/cbut_xs/ run used T26's C_butyricum.fna — a
-# DIFFERENT 4-contig assembly (contig_1..4) — so those q-values do NOT map to the deliverable (CLAUDE.md §9).
+# DIFFERENT 4-contig assembly (contig_1..4) — so those q-values do NOT map to the deliverable.
 # Set G409755_FASTA / G409755_GFF below to the SAME files the mine used.
 #
 # SUBMIT (deployment 3-model, xs checkpoints — the default), after setting the two g409755 paths:
@@ -53,7 +51,7 @@
 #  cand_prokbert.csv / cand_cnn_v2.csv / cand_evo2.csv — T27 is resume-safe and reuses existing tracks.)
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 EVO2=$REPO/model-training/Evo2
@@ -61,10 +59,10 @@ T27=$REPO/evaluation-and-calibration/empirical-fdr
 T29DIR=$REPO/mining-and-motif-annotation/ensemble-aggregation
 T31DIR=$REPO/mining-and-motif-annotation/motif-annotation
 ANN=$REPO/evaluation-and-calibration/calibration/c_butyricum_annotation
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4
-EVO2_ENV=/project/igem2026/envs/evo2
-BIO_ENV=/project/igem2026/envs/meme
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"
+EVO2_ENV="${ENV_EVO2:?set it or source env.sh}"
+BIO_ENV="${ENV_MEME:?set it or source env.sh}"
+CONDA_BASE=$(conda info --base)
 
 # ---- config (override from the submit line) ----
 MODELSET=${MODELSET:-xs}                            # xs (T21_xs, DEPLOYED) or 06 (T21_final_06, leakage-safe)
@@ -77,15 +75,15 @@ TOPN=${TOPN:-80}
 UP=${UP:-300}; DOWN=${DOWN:-50}                     # candidate region = [gene_start-UP, gene_start+DOWN]
 # TARGET ASSEMBLY — set to the SAME g409755 files the mine used (mine_3model.sbatch FASTA + the GFF the
 # candidate-regions BED was built from). RefSeq WGS, contig ids NZ_AQQF01000…  ⚠️ NOT T26's 4-contig
-# C_butyricum.fna — that mismatch is why the old cbut_xs q-values don't map to the deliverable (CLAUDE.md §9).
-G409755_FASTA=${G409755_FASTA:-/project/igem2026/cb-promoter-mining/PATH_TO/g409755.fna}   # <-- SET ME
-G409755_GFF=${G409755_GFF:-/project/igem2026/cb-promoter-mining/PATH_TO/g409755.gff3}      # <-- SET ME
+# C_butyricum.fna — that mismatch is why the old cbut_xs q-values don't map to the deliverable.
+G409755_FASTA=${G409755_FASTA:-${PROMOTER_REPO}/PATH_TO/g409755.fna}   # <-- SET ME
+G409755_GFF=${G409755_GFF:-${PROMOTER_REPO}/PATH_TO/g409755.gff3}      # <-- SET ME
 GENOME=${GENOME:-$G409755_FASTA}
 GFF=${GFF:-$G409755_GFF}
 # Null pool stays as-is: it is scored INDEPENDENTLY (packed nullcat) and never shares coordinates with the
 # candidates, so promoter-free C. butyricum intergenic sequence is a valid composition-matched null whatever
 # assembly it came from. (Regenerating the cbut null from g409755 is optional, not required for correctness.)
-NULL_TSVS=${NULL_TSVS:-"$ANN/convergent_intergenic_negatives.tsv $EVAL/T26/c_acetobutylicum_annotation/convergent_intergenic_negatives.tsv $EVAL/T26/c_phytofermentans_annotation/convergent_intergenic_negatives.tsv"}
+NULL_TSVS=${NULL_TSVS:-"$ANN/convergent_intergenic_negatives.tsv $EVAL/calibration/c_acetobutylicum_annotation/convergent_intergenic_negatives.tsv $EVAL/calibration/c_phytofermentans_annotation/convergent_intergenic_negatives.tsv"}
 PROBE=${PROBE:-$DIR/regimeC/evo2/evo2_probe_xs.pkl}   # frozen T15_xs logreg probe (genome-agnostic)
 OUT=${OUT:-$T27/results/cbut_g409755_${MODELSET}} ; mkdir -p "$OUT"   # fresh dir — NOT the stale 4-contig cbut_xs
 
@@ -99,7 +97,8 @@ extra_args() { case "$1" in
 esac; }
 env_for() { case "$1" in evo2) echo "$EVO2_ENV" ;; *) echo "$MAIN_ENV" ;; esac; }
 
-export HF_HOME=/project/igem2026/hf_shared HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 export PYTHONNOUSERSITE=1 MKL_THREADING_LAYER=GNU
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 
@@ -132,7 +131,7 @@ done
 REGIONS=$OUT/cbut_candidate_regions.bed
 if [[ ! -s "$REGIONS" ]]; then
     echo "=== make_candidate_regions (up $UP / down $DOWN) ==="
-    [[ -f "$EVAL/make_candidate_regions.py" ]] || { echo "FATAL: missing $EVAL/make_candidate_regions.py — is the HPC4 clone up to date? (git pull)"; exit 1; }
+    [[ -f "$EVAL/make_candidate_regions.py" ]] || { echo "FATAL: missing $EVAL/make_candidate_regions.py — is the clone up to date? (git pull)"; exit 1; }
     python "$EVAL/make_candidate_regions.py" --gff "$GFF" --up "$UP" --down "$DOWN" --out "$REGIONS"
 else echo "=== skip candidate regions (exists) ==="; fi
 [[ -s "$REGIONS" ]] || { echo "FATAL: candidate regions BED not created at $REGIONS — check GFF $GFF"; exit 1; }

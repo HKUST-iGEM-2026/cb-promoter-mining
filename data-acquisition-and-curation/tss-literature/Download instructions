@@ -1,18 +1,19 @@
 T7 — Download / processing instructions (TWO paths)
 
 The 47 runs are NOT one dataset. Only the 20 dRNA-seq runs go through TSSpredator (T10);
-the other 27 (Capp-Switch, 5' RNA-seq) use the papers' published TSS tables. See README.md
+the other 27 (Capp-Switch, 5' RNA-seq) use the papers' published TSS tables. See docs/PIPELINE.md
 for the full rationale. (This supersedes the old single-list instructions, which downloaded
 all 47 locally with fastq-dump.)
 
 ============================================================
 PATH A — 20 dRNA-seq runs (C. difficile) -> TSSpredator (T10)
 ============================================================
-Run this ON HPC4 (SuperPOD) — don't pull tens of GB to a laptop and re-upload. sra-tools is
-already in the T4 conda env (prefetch, fasterq-dump).
+Run this on the machine that will run TSSpredator — don't pull tens of GB to a laptop and
+re-upload. sra-tools (prefetch, fasterq-dump) is in the TSS env built from
+infrastructure/conda-environments/environment-bio.yml (see docs/SETUP.md).
 
-  conda activate /project/igem2026/envs/promoter-mining-hpc4
-  cd <work dir>            # on /project or /scratch (see T4/DEPLOY.md)
+  conda activate promoter-mining-bio
+  cd <work dir>            # a volume with tens of GB free
 
   # fetch only the 20 TSSpredator-compatible runs
   prefetch --option-file <repo>/data-acquisition-and-curation/tss-literature/SRR_dRNAseq_for_TSSpredator.txt
@@ -20,22 +21,28 @@ already in the T4 conda env (prefetch, fasterq-dump).
       fasterq-dump --split-3 "$srr" -O . && gzip -f "${srr}"*.fastq
   done
 
-  # then, in T10:
+  # then, in T10 — data-acquisition-and-curation/cdifficile-drnaseq/run_tss_pipeline.sh does all of
+  # this (stage 2 downloads the reads itself, so the loop above is optional):
   #  - align to the CONFIRMED C. difficile assembly
-  #    (630 = AM180355 / NC_009089; 630Delta-erm = its own assembly — see README)
+  #    (630 = AM180355 / NC_009089; 630Delta-erm = its own assembly — see docs/PIPELINE.md)
   #  - build coverage/wiggle tracks
-  #  - run TSSpredator with the correct TEX+/TEX- pairing (README verify-item #1)
+  #  - run TSSpredator with the correct TEX+/TEX- pairing (the committed .conf files)
 
 ============================================================
 PATH B — 27 Capp-Switch + 5' RNA-seq runs -> published TSS tables
 ============================================================
-Do NOT reprocess these with TSSpredator (they have no TEX- control). Use the supplementary
-TSS tables from the papers and lift over to the matching in-genus assembly:
+Do NOT reprocess these with TSSpredator (they have no TEX- control). The papers' supplementary
+TSS tables are used instead, and both are already in the repo:
 
   - Hocq 2022 (Microbiol Spectr, doi:10.1128/spectrum.02288-21)
     C. acetobutylicum ATCC 824, C. beijerinckii NCIMB 8052 / DSM 6423 (~12,114 mapped TSS).
+    Committed as tss-literature/published_tss/hocq2022_cac_tss.xlsx; build_published_tss.sh
+    (Phase A) turns it into the 5,759 in-genus training positives.
   - Al-Bassam 2018 (Nat Commun, doi:10.1038/s41467-018-06993-6)
-    C. ljungdahlii ATCC 55383.
+    C. ljungdahlii ATCC 55383. This is VALIDATION truth, committed as
+    evaluation-and-calibration/ljungdahlii_holdout_tss.tsv (1,245 primary TSS). Never put an
+    Al-Bassam table in tss-literature/published_tss/: build_published_tss.sh would ingest it as
+    training positives.
 
   (The raw runs stay in the per-method CSVs if a non-TSSpredator caller is ever needed.)
 

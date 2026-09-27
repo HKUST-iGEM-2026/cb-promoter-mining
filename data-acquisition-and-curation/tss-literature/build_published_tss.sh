@@ -5,7 +5,7 @@
 # Stages reference genome(s), runs extract_published_tss.py on the published TSS tables in
 # T7/published_tss/, and concatenates. If no usable table is present — including when the T5 zip or
 # the supplements are still Git-LFS pointers (no `git lfs pull`) — it writes an EMPTY but schema-valid
-# parquet so the pipeline still runs. See PUBLISHED_TSS_README.md for sources.
+# parquet so the pipeline still runs. See docs/PIPELINE.md for sources.
 #
 # Confirmed table layouts (inspected 2026-06):
 #   Hocq 2022  hocq2022_cac_tss.xlsx  -> sheet ATCC_824_25RPM, cols Genome_position/Strand/Locus,
@@ -83,9 +83,9 @@ elif [ -n "$HOCQ" ]; then
   fi
 fi
 
-# --- Hocq 2022 — C. beijerinckii (two MORE strains in the SAME workbook; +~4,337 in-genus positives) ---
-# Same extractor, same intergenic_sense class — just the two unused 25RPM sheets. Genomes are staged from
-# the T5 zip (datasets fallback), and each contig-map is DERIVED from the genome's own FASTA headers
+# --- Hocq 2022 — C. beijerinckii (two MORE strains in the SAME workbook; +4,325 in-genus positives) ---
+# Same extractor, same intergenic_sense class — just the two unused 25RPM sheets. Neither genome is in
+# the T5 zip, so they are fetched with ncbi-datasets-cli; each contig-map is DERIVED from the genome's own FASTA headers
 # (chromosome = longest record; plasmids/phage matched by name) so no accession is hard-coded. Any genome
 # that can't be staged/mapped is skipped gracefully (fewer positives, never a crash).
 _stage_genome() {                     # $1 accession -> prints path to .fna (empty on failure)
@@ -131,7 +131,7 @@ PY
 _run_hocq_beij() {                    # $1 sheet  $2 accession  $3 comma-list of Locus labels
   local fna cmap
   fna="$(_stage_genome "$2")"
-  if [ -z "$fna" ]; then echo "[T7b] C. beijerinckii $2 genome not staged — skipping $1 (need 'git lfs pull' for the T5 zip, or ncbi-datasets-cli + internet)."; return 0; fi
+  if [ -z "$fna" ]; then echo "[T7b] C. beijerinckii $2 genome not staged — skipping $1 (needs ncbi-datasets-cli + internet; it is not in the T5 zip)."; return 0; fi
   cmap="$(_auto_contig_map "$fna" "$3")"
   if [ -z "$cmap" ]; then echo "[T7b] could not derive Locus->record map for $2 — skipping $1."; return 0; fi
   echo "[T7b] $1: contig-map = $cmap"
@@ -148,7 +148,7 @@ if [ -n "$HOCQ" ] && is_real "$HOCQ"; then
 fi
 
 if [ ${#PARTS[@]} -eq 0 ]; then
-  echo "[T7b] no usable published TSS tables -> writing an EMPTY (schema-valid) parquet. See $T7/PUBLISHED_TSS_README.md"
+  echo "[T7b] no usable published TSS tables -> writing an EMPTY (schema-valid) parquet. See $T7/docs/PIPELINE.md"
   python - "$OUT" <<'PY'
 import sys, pandas as pd
 cols=["species","promoter_id","sequence","strand","sigma_factor","source_db","in_genus","label"]

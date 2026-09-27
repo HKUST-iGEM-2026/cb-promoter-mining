@@ -10,19 +10,19 @@
 #     NZ_CP040629.1   plasmid pCB_2        8,060 bp    (total ~4,705,596 bp)
 # vs g409755 = GCF_000409755.1 = the 96-contig NZ_AQQF01000... draft WGS. This re-mine puts the Stage-1
 # deployment mine on the complete assembly, and is the natural CANONICAL target assembly for T26/T27 too
-# (see CLAUDE.md §9 assembly note — the draft/4-contig mismatch is why the T27 q-values didn't join the
-# candidate tiers).
+# (the draft/4-contig mismatch is why the T27 q-values didn't join the candidate tiers; see
+# docs/PIPELINE.md).
 #
 # TARGET MINE => NO truth (the target has no known TSS). This fetches genome+gff and builds the
 # restrict-scan candidate regions. Run on the LOGIN node (needs internet for `datasets`); fast (<2 min).
-# Then submit mine_3model.sbatch — see mining-and-motif-annotation/REMINE_g131795_CLAUDE.md.
+# Then submit mine_3model.sbatch — see docs/PIPELINE.md.
 #
-#   source /project/igem2026/cb-promoter-mining/env.sh
-#   conda activate /project/igem2026/envs/promoter-mining-hpc4     # has ncbi-datasets-cli
+#   source ${PROMOTER_REPO}/env.sh
+#   conda activate ${ENV_MAIN}     # has ncbi-datasets-cli
 #   bash mining-and-motif-annotation/genome-scan/prep_g131795.sh
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 EVAL=$REPO/evaluation-and-calibration
 RES=$REPO/infrastructure/T3/snakemake_scaffold/results
 OUT=$RES/regimeC/mine3_g131795       # == mine_3model.sbatch's OUT for TAG=g131795 (tracks land here too)

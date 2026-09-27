@@ -28,7 +28,15 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO = "/project/igem2026/cb-promoter-mining"
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
+REPO = PROMOTER_REPO
 SCAF = f"{REPO}/infrastructure/T3/snakemake_scaffold"
 T7B_PARQUET = f"{SCAF}/inputs/published_tss_promoters.parquet"
 T13_TSV = f"{SCAF}/results/T13/upstream_regions.tsv"

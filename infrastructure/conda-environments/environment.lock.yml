@@ -1,4 +1,4 @@
-name: /project/igem2026/envs/promoter-mining-hpc4
+name: promoter-mining
 channels:
   - bioconda
   - conda-forge
@@ -369,4 +369,3 @@ dependencies:
       - wandb==0.27.2
       - xxhash==3.7.0
       - yarl==1.24.2
-prefix: /project/igem2026/envs/promoter-mining-hpc4

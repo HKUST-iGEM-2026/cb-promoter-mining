@@ -5,3 +5,4 @@ results_ntv3_full/
 *.npy
 *.parquet
 .ipynb_checkpoints/
+wiki/

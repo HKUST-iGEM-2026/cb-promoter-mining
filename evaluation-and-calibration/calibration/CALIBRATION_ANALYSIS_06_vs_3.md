@@ -3,8 +3,8 @@
 Comparative read of the two consolidated reports:
 
 - [`calib_06/calibration_analysis.md`](calib_06/calibration_analysis.md) — calibrators fit on
-  **`results/T21_final_06/<model>`**: the **0.6-hyperparameter-swept** final models (the set CLAUDE.md §10
-  adopts for ProkBERT).
+  **`results/T21_final_06/<model>`**: the **0.6-hyperparameter-swept** final models (the set the project
+  adopted for ProkBERT).
 - [`calib_3/calibration_analysis.md`](calib_3/calibration_analysis.md) — calibrators fit on
   **`results/T21_final/<model>`**: the earlier final models carrying **0.9-swept hyperparameters**.
 
@@ -12,7 +12,7 @@ Comparative read of the two consolidated reports:
 same AT-aware Platt calibrator (`StandardScaler → LogisticRegression([logit, AT])`, unregularized chosen by
 5×5 stratified CV in every case), and the **same 279-sequence eval set** — 93 T9 positives + 186 genomic
 negatives (130 convergent-intergenic + 56 CDS-interior), 81 bp windows. Both model sets were **trained on the
-0.6-clustered data** (per CLAUDE.md §10, `T21_final` and `T21_final_06` differ only in which sweep tuned their
+0.6-clustered data** (`T21_final` and `T21_final_06` differ only in which sweep tuned their
 hyperparameters). So this is a clean A/B of the **0.6 hyperparameter re-sweep**, viewed through calibration.
 
 > The two takeaways sections in the source files are identical boilerplate; this document is the part that
@@ -25,14 +25,14 @@ hyperparameters). So this is a clean A/B of the **0.6 hyperparameter re-sweep**,
 | Model | Best checkpoint (by calibrated discrimination) | One-line verdict |
 |---|---|---|
 | **cnn_v2** | **`calib_3` (0.9-swept)** — cal AUROC **0.872**, AUPRC **0.769** | Best model in the whole comparison. The 0.6 re-sweep *regressed* it (→0.834/0.692). **Keep the T21_final checkpoint.** |
-| **prokbert** | **`calib_06` (0.6-swept)** — cal AUROC 0.799, AUPRC 0.643 | Effectively a tie (0.796/0.630 in calib_3); 0.6 wins on raw too. **Adopt T21_final_06**, consistent with §10's genome-scale finding. |
+| **prokbert** | **`calib_06` (0.6-swept)** — cal AUROC 0.799, AUPRC 0.643 | Effectively a tie (0.796/0.630 in calib_3); 0.6 wins on raw too. **Adopt T21_final_06**, consistent with the genome-scale finding. |
 | **nt_lora** | **`calib_06` (0.6-swept)** — cal AUROC 0.769, AUPRC 0.617 | The 0.9-swept nt raw ranker **collapsed below chance** (raw AUROC 0.470). 0.6 is decisively healthier, but nt is still the weakest member either way. |
 | **cnn** | ~tie (calib_06 0.833/0.701 vs calib_3 0.829/0.687) | The most *honest* calibrator (fewest rows harmed) in both runs; middling discrimination. Stable, not a leader. |
 
 **Headline:** the 0.6 re-sweep is **not uniformly better**. It clearly rescues **nt_lora** (from a sub-chance
 raw ranker) and marginally helps **prokbert**, but it **hurts cnn_v2** and barely moves **cnn** — which is
-exactly the mixed picture CLAUDE.md §10 reports ("cnn_v2/NT slightly DOWN = proxy noise, keep their current
-versions; adopt the 0.6-swept ProkBERT"). The calibration evidence independently corroborates a **mixed-checkpoint
+exactly the mixed picture the 0.6 re-sweep produced: cnn_v2 and NT slipped slightly, which reads as proxy
+noise, so they keep their current versions while ProkBERT adopts the 0.6-swept checkpoint. The calibration evidence independently corroborates a **mixed-checkpoint
 deployment**, not a blanket switch to `T21_final_06`.
 
 ---
@@ -55,14 +55,14 @@ Platt map is monotonic in the score alone, so these raw columns are the honest r
 
 - **nt_lora is the story.** With 0.9-swept knobs its raw AUROC is **0.470 — below the 0.5 coin-flip line**,
   i.e. on this genomic eval set it ranks negatives *above* positives. The 0.6 re-sweep pulls it back to a
-  weak-but-real 0.683. This is the same instability CLAUDE.md §10 flags at genome scale (NT's Regime-B in-genus
+  weak-but-real 0.683. This is the same instability seen at genome scale (NT's Regime-B in-genus
   AUROC "collapsed to chance, 0.440") — the calibration set reproduces it independently. Whatever the sweep is
   doing to NT, the 0.9 hyperparameters left it fundamentally broken on out-of-training composition.
 - **cnn_v2 goes the other way.** Its raw ranker is *stronger* with the old 0.9-swept knobs (0.775 vs 0.720
-  AUROC, 0.633 vs 0.586 AUPRC). The 0.6 re-sweep is a small but real regression here — consistent with §10
+  AUROC, 0.633 vs 0.586 AUPRC). The 0.6 re-sweep is a small but real regression here — consistent with
   treating cnn_v2's re-sweep drop as "proxy noise" and keeping the current version.
 - **cnn and prokbert are nearly sweep-invariant** (Δ ≤ 0.035). Their raw rankers don't care much which sweep
-  tuned them; for these two the 0.6 side is marginally ahead, which is enough (together with §10's genome-scale
+  tuned them; for these two the 0.6 side is marginally ahead, which is enough (together with the genome-scale
   evidence) to prefer `T21_final_06` for prokbert.
 
 ---
@@ -173,14 +173,14 @@ runs:
 | **CNN / cnn_v2** (liberal) | raw err **high** (CDS ~0.33–0.36, conv ~0.41–0.44) → over-calls AT-rich junk | raw err **low** (~0.31–0.40) |
 | **nt_lora / prokbert** (conservative) | raw err **low** (CDS ~0.06–0.18, conv ~0.10–0.22) → clean on negatives | raw err **high** (~0.56–0.86) → misses real promoters |
 
-**What this says.** The CNNs are exactly the AT-trap failure mode CLAUDE.md warns about (score AT-rich
+**What this says.** The CNNs are exactly the AT-trap failure mode the project is built to avoid (score AT-rich
 non-promoters as promoters); the transformers are the opposite (so wary of the AT-trap they reject genuine
 AT-rich promoters). Calibration nudges each family toward the middle — for CNNs it fixes the negatives (CDS err
 0.33→~0.10 after calibration), for transformers it fixes the positives (T9 err 0.86→0.58 for nt). **Because the
 raw errors are anti-correlated across families, the T29 mean-rank-percentile ensemble should cancel a chunk of
 both** — a liberal CNN vote and a conservative transformer vote average toward the truth. This is direct,
 per-class evidence that the four-model ensemble is well-motivated and not just redundancy (the two CNNs *are*
-correlated with each other — §10 flags them for T29 down-weighting — but the CNN-vs-transformer axis is the
+correlated with each other, which is why they are flagged for T29 down-weighting — but the CNN-vs-transformer axis is the
 real diversity).
 
 ---
@@ -216,11 +216,11 @@ final target scan it means: **calibrated scores will systematically under-rank l
    (transformers, §5) the null and signal overlap badly until calibrated. **Calibrate before T27**, and prefer
    the checkpoints with healthier raw rankers so the AT term is a top-up not a crutch (§4).
 3. **Recommended calibrated checkpoints (calibration-evidence view):**
-   - **prokbert → `T21_final_06` (calib_06)** — better raw + marginally better calibrated; matches §10.
+   - **prokbert → `T21_final_06` (calib_06)** — better raw + marginally better calibrated; matches the genome-scale result.
    - **nt_lora → `T21_final_06` (calib_06)** — the 0.9-swept nt is sub-chance raw; 0.6 is the only defensible
-     nt. (It remains the weakest member on every axis — §10's "weak link" — lean on the CNN family.)
+     nt. (It remains the weakest member on every axis, the round's "weak link" — lean on the CNN family.)
    - **cnn_v2 → `T21_final` (calib_3)** — best raw *and* calibrated discrimination; the 0.6 re-sweep regressed
-     it. Keep the current checkpoint, per §10.
+     it. Keep the current checkpoint.
    - **cnn → either** (sweep-invariant); take whichever checkpoint is already staged.
 4. **Do not read ECE as the deployment ranking.** `calib_3` has lower ECE everywhere but that does not make its
    checkpoints better for mining — nt_lora @ calib_3 is well-calibrated *and* sub-chance. Rank on AUPRC + raw
@@ -235,5 +235,5 @@ final target scan it means: **calibrated scores will systematically under-rank l
 <sub>Source tables: `calib_06/calibration_analysis.md` and `calib_3/calibration_analysis.md` (§2 metrics, §3 AT
 ablation, §4 per-class + worst-row breakdowns). Checkpoint provenance from each report's §1. `calib_06 =
 T21_final_06` (0.6-swept), `calib_3 = T21_final` (0.9-swept); both trained on 0.6-clustered data, calibrated on
-the identical 279-sequence set. Cross-references to CLAUDE.md §10 (deployment decisions) and the AT-trap
-rationale in §1/§7 of CLAUDE.md.</sub>
+the identical 279-sequence set. Deployment decisions and the AT-trap rationale are summarised in the repo
+[`README.md`](../../README.md).</sub>

@@ -3,8 +3,9 @@
 > **Standard URL:** `2026.igem.wiki/hkust/model`
 
 This is the core of our dry lab: a five-phase computational pipeline that turns raw genomes into a
-motif-annotated list of promoter candidates. Everything here is reproducible from our open code and
-[published models](contribution.md).
+motif-annotated list of promoter candidates. Everything here is reproducible from our open code and our
+[published models](contribution.md), which are on Hugging Face at
+[huggingface.co/CloBiT](https://huggingface.co/CloBiT).
 
 ---
 
@@ -17,6 +18,10 @@ A. Data           B. Dataset          C. Training        D. Evaluation        E.
    TSS, promoters    leakage-safe        fusion CNN,       calibration,         motif → ranked
                      windows             Evo2 probe        empirical FDR        candidate table
 ```
+
+![Pipeline overview, phases A to E](figures/F15_pipeline_overview.png)
+
+***Figure 1.** The five phases end to end.*
 
 The target genome, ***C. butyricum* DSM 10702, is deliberately excluded from every training step** so
 that mining it is a genuine prediction.
@@ -33,8 +38,13 @@ We gathered the raw material a promoter model needs:
   - *In-genus* (most valuable): empirical TSS from *C. acetobutylicum* and *C. beijerinckii*.
   - *Cross-species* (for generalization and AT-rich coverage): *E. coli* (RegulonDB), *Bacillus
     subtilis* (DBTBS), *B. licheniformis*, and *Ruminiclostridium cellulolyticum*.
+    *Erratum:* the *B. licheniformis* set was extracted against a genome assembly its published
+    coordinates don't fit, so those 888 windows (3.5% of the positives, training only) are
+    effectively random DNA rather than promoters. No evaluation data contains them: every evaluation
+    uses held-out sequences or genomes.
 - **Held-out data** for honest evaluation: synthetic promoters, an out-of-genus dRNA-seq dataset, and
-  the in-genus genomes *C. ljungdahlii* and *C. autoethanogenum* (kept entirely out of training).
+  the in-genus genomes *C. ljungdahlii* and *C. autoethanogenum*, whose mapped start sites were never
+  used in training (both genomes are among the 166 that supplied inferred positives and negatives).
 
 ## Phase B — Dataset construction
 
@@ -76,7 +86,7 @@ We evaluate in **three regimes**, because a model can look very different in eac
 1. **Balanced (Regime A):** the standard 50/50 test. Good for sanity, **misleading for deployment**.
 2. **Composition-matched / cross-species (Regime B):** can the model tell a promoter from an AT-matched
    non-promoter, including on species it never trained on?
-3. **Genome-scale (Regime C):** slide across a **held-out genome** and count real false positives at a
+3. **Genome-scale (Regime C):** slide across a **validation genome** and count real false positives at a
    given recall — the metric that actually predicts deployment behaviour.
 
 We then **calibrate** scores against AT content (so a "high" score is meaningful on the real, ~0.2%-
@@ -88,13 +98,18 @@ null built from non-promoter genomic windows, giving each candidate a **q-value*
 Our sharpest result is that **balanced-test ranking does not predict genome-scale ranking**:
 
 - The **Evo2 probe** has the *worst* balanced score but the **best** genome-scale precision on *both*
-  held-out genomes (fewest false-positive peaks).
+  validation genomes (fewest false-positive peaks).
 - A **Nucleotide-Transformer** model has a near-top balanced score but **collapses** at genome scale.
 - **ProkBERT** and the **fusion CNN** are strong co-leaders on the deployment metric.
 
 This is why we choose deployment models by the **genome-scale** metric, and it is a transferable lesson
 for anyone doing genome-wide prediction. (Illustrative genome-scale numbers are on the
 [Results](results.md) page.)
+
+
+![Null score distribution with candidate peaks overlaid](figures/F10_fdr_null_vs_candidates.png)
+
+***Figure 4. How we know these are not AT-rich flukes.** Candidate peaks land in the extreme upper tail of a promoter-free, AT-matched intergenic null. With 420 null windows the smallest achievable p-value is 1/421, so the empirical FDR validates the set as a whole — it does not rank it.*
 
 ## Phase E — Mining & annotation
 
@@ -117,5 +132,6 @@ and models.
 ## Reproducibility
 
 The pipeline is orchestrated as a workflow (Snakemake) with pinned software environments, and every
-model is trained from documented scripts. The three trained models are **published on Hugging Face** so
-anyone can reproduce or reuse them — see [Contribution](contribution.md).
+model is trained from documented scripts. The three trained models are **published openly on Hugging
+Face at [huggingface.co/CloBiT](https://huggingface.co/CloBiT)** so anyone can reproduce or reuse them —
+see [Contribution](contribution.md).

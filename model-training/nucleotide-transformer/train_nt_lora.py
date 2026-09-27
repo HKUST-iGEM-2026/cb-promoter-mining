@@ -10,7 +10,7 @@ attention_mask, label, weight, …), wraps `InstaDeepAI/nucleotide-transformer-v
 Same TWO CONTRACTS as T18 (keep them identical so T21 can drive all three models the same way):
   1. SAMPLE WEIGHT applied as a per-sample loss weight (WeightedTrainer). `--no-weight` = ablation.
   2. SWEEP CLI: `--sweep-trial`, `--output-dir`, every hyperparameter as a flag; write metrics.json
-     with `val_auprc` + print "Validation AUPRC: <x>". Selection metric = AUPRC (CLAUDE.md §7).
+     with `val_auprc` + print "Validation AUPRC: <x>". Selection metric = AUPRC (average_precision_score).
 
 LoRA: NT is an ESM model, so the attention projections are named query/key/value; we adapt
 target_modules=["query","value"] (the standard SEQ_CLS LoRA target) and keep the `classifier` head
@@ -18,7 +18,7 @@ trainable via modules_to_save. Backbone stays frozen -> trains ~1% of params, fi
 
 Run (standalone):  python train_nt_lora.py --data-dir results/T16/nt --output-dir results/T19
 Driven by T21:     T21 appends --sweep-trial N --output-dir <trial dir> --lora-r … --learning-rate … etc.
-NB pre-stage NT on the login node (HF_HOME + HF_HUB_OFFLINE=1); it ships pytorch_model.bin only (no safetensors).
+NB on offline compute nodes, pre-stage NT first (HF_HOME + HF_HUB_OFFLINE=1); it ships pytorch_model.bin only (no safetensors).
 """
 import argparse
 import inspect

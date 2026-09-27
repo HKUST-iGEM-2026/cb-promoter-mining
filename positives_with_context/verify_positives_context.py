@@ -10,9 +10,17 @@ from Bio.Seq import Seq
 from pathlib import Path
 import os
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def load_all_genomes():
     """Load all Bakta genome files into a global contig dictionary"""
-    base = "/project/igem2026/cb-promoter-mining"
+    base = PROMOTER_REPO
     bakta_dir = f"{base}/infrastructure/T3/snakemake_scaffold/results/bakta/all_bakta_output"
     genome_dict = {}
     

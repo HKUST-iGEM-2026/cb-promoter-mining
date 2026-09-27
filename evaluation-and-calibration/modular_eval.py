@@ -26,7 +26,7 @@ Outputs:
   <out>/modular_eval.md    readable tables
   <out>/modular_eval.csv   tidy rows
 
-sklearn + pandas; runs in the main promoter-mining-hpc4 env. From the scaffold dir:
+sklearn + pandas; runs in the main $ENV_MAIN env. From the scaffold dir:
   python evaluation-and-calibration/modular_eval.py --t15-dir results/T15 --t22-dir results/T22 --out results/T25b
 """
 import argparse

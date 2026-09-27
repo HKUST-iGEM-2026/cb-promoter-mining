@@ -1,11 +1,11 @@
-# Promoter Mining — HPC4 conda/mamba environment (Task T4)
+# Promoter Mining — main conda/mamba environment (Task T4)
 #
-# Scope: everything that runs on HPC4 — Phase B–E, T10 (TSSpredator), and the two GPU
-# pre-tasks on the cluster: PT1 (ProkBERT fine-tune) and PT5 (E. coli sliding-window
+# Scope: Phase B–E, T10 (TSSpredator), and the two GPU
+# pre-tasks: PT1 (ProkBERT fine-tune) and PT5 (E. coli sliding-window
 # inference). PT1/PT5 use the same torch/ProkBERT stack as T18/T28, already included below.
-# Build / verify / lock steps: see DEPLOY.md (same folder).
+# Build / verify / lock steps: see docs/SETUP.md.
 # Supersedes the earlier draft "task 4" (broken CUDA pin + out-of-scope packages).
-name: promoter-mining-hpc4
+name: promoter-mining
 
 channels:
   - conda-forge
@@ -39,9 +39,10 @@ dependencies:
   - samtools                 # faidx for upstream extraction (T13)
   - cd-hit>=4.8              # clustering for cluster-aware splits (T15, identity >=0.8)
   - mmseqs2                  # low-identity (0.6) clustering for T15 (cd-hit-est can't do DNA <~0.8)
+  - ncbi-datasets-cli        # `datasets download` — genome fetches in Phase A (T7b), the xs sources and mining prep
   # meme / sra-tools / segemehl / openjdk now live in environment-bio.yml — the MEME suite needs an
   # older icu/libcurl than this env's modern conda-forge base, so the heavy T10/T31 CLI tools can't
-  # co-solve with the PyTorch stack. Build that companion env only if you own T10 (Sine) or T31 (Leo).
+  # co-solve with the PyTorch stack. Build that companion env only if you run T10 or T31.
   # pybigwig moved to the pip section below (its conda build also conflicts on libcurl).
 
   # ---- Pipeline orchestration (matches the T3 SLURM scaffold) ----
@@ -49,14 +50,14 @@ dependencies:
 
   # ---- Deep learning (T18-T28) ----
   # torch + torchvision are installed via PIP from the CUDA-12.8 index (see the pip section), NOT
-  # conda: the SuperPOD H800 driver maxes at CUDA 12.8, and prokbert needs transformers>=4.56 which
+  # conda: our GPU driver maxed at CUDA 12.8 (repin for yours, docs/SETUP.md), and prokbert needs transformers>=4.56 which
   # needs a newer torch than the conda channel ships — and conda torch kept getting overridden by pip.
   - optuna                   # HPO / hyperparameter sweeps used by T18-T21 (replaces unused scikit-optimize)
 
   # ---- pip-only ----
   - pip
   - pip:
-    # torch + torchvision from the CUDA-12.8 build index (the H800 driver maxes at 12.8). The exact
+    # torch + torchvision from the CUDA-12.8 build index (change all three if your driver is older). The exact
     # +cu128 local versions force pip onto the cu128 builds — PyPI's default torch is a CUDA-13 build
     # the driver can't run (silent CPU fallback). Keep these listed FIRST so the rest see torch satisfied.
     - --extra-index-url https://download.pytorch.org/whl/cu128

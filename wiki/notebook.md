@@ -13,9 +13,10 @@ The computational work ran as a phased sprint followed by iterative refinement. 
 | Phase A | Collected 166 *Clostridium* genomes, re-annotated them, and curated promoter/TSS data from in-genus and AT-rich cross-species sources |
 | Phase B | Built the balanced, leakage-controlled 81 bp training windows (positives + four negative classes incl. SRS) |
 | Phase C | Trained the three models (fine-tuned ProkBERT, fusion CNN, Evo2 probe) |
-| Phase D | Three-regime evaluation on held-out genomes; discovered the balanced-vs-genome-scale gap; calibration & FDR |
+| Phase D | Three-regime evaluation on validation genomes; discovered the balanced-vs-genome-scale gap; calibration & FDR |
 | Refinement | Tightened data-leakage control (0.6 clustering), re-tuned hyperparameters, added the fusion CNN, selected the 3-model ensemble |
-| Phase E | Mined *C. butyricum* → peak calling → motif annotation → final candidate table (912 / 306 / 100) |
+| Phase E | Mined *C. butyricum* → peak calling → motif annotation → final candidate table |
+| Re-mine | Repeated the mine on the complete reference assembly and re-ran the false-discovery step on the same coordinates → the delivered 929 / 180 / 45 tiers |
 
 > **Placeholder.** Add specific dates and per-week detail from the team's records.
 

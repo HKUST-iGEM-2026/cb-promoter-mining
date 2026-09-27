@@ -8,14 +8,18 @@ AT-rich, non-model organism is documented and, where licensing allows, openly pu
 
 ## 1. Three open promoter models on Hugging Face
 
-We publish all three ensemble members as reusable models, each with a full model card (intended use,
+We publish all three ensemble members as reusable models at
+**[huggingface.co/CloBiT](https://huggingface.co/CloBiT)**, each with a full model card (intended use,
 training data, metrics, and limitations):
 
 | Model | What it is | License |
 |---|---|---|
-| `prokbert-mini-clostridium-promoter` | Fine-tuned ProkBERT-mini promoter classifier | CC-BY-NC-4.0 *(inherited from the base model — non-commercial)* |
-| `cnn-fusion-clostridium-promoter` | Multi-encoding fusion CNN, trained from scratch | CC-BY-4.0 |
-| `evo2-logreg-clostridium-promoter-probe` | Logistic-regression probe on frozen Evo2-7B embeddings | CC-BY-4.0 |
+| [`CloBiT/prokbert-mini-clostridium-promoter`](https://huggingface.co/CloBiT/prokbert-mini-clostridium-promoter) | Fine-tuned ProkBERT-mini promoter classifier | CC-BY-NC-4.0 *(inherited from the base model — non-commercial)* |
+| [`CloBiT/cnn-fusion-clostridium-promoter`](https://huggingface.co/CloBiT/cnn-fusion-clostridium-promoter) | Multi-encoding fusion CNN, trained from scratch | CC-BY-4.0 |
+| [`CloBiT/evo2-logreg-clostridium-promoter-probe`](https://huggingface.co/CloBiT/evo2-logreg-clostridium-promoter-probe) | Logistic-regression probe on frozen Evo2-7B embeddings | CC-BY-4.0 |
+
+Each takes an 81 bp DNA window with the transcription start site at a fixed position and returns the
+probability that it is a promoter.
 
 We were careful with licensing: the ProkBERT fine-tune inherits its base model's **non-commercial**
 terms, while the from-scratch CNN and the Evo2 probe are permissive. The Evo2 probe ships **only our
@@ -38,13 +42,16 @@ team can point it at a new genome and a new set of known promoters and re-run it
 We harmonized promoter/TSS data from several sources (*E. coli* RegulonDB, *B. subtilis* DBTBS,
 *B. licheniformis*, *Ruminiclostridium*, and in-genus *Clostridium* TSS) into a single, consistently
 windowed, leakage-controlled training set — a resource for any bacterial promoter-prediction effort.
-*(Please cite the original data sources; see each model card.)*
+*(Please cite the original data sources; see each model card.)* One caveat for reuse: in our training
+set the *B. licheniformis* windows came from the wrong reference assembly. Rebuild that source against
+`GCF_000008425.1` first; the repository's `docs/PIPELINE.md` shows how.
 
 ## 4. The *C. butyricum* candidate catalogue
 
-The mined candidate lists (912 high-confidence / 306 with a −10 box / 100 canonical) are themselves a
-contribution: a starting genetic-parts catalogue for anyone wanting to engineer *C. butyricum*. See
-[Results](results.md).
+The mined candidate lists (929 high-confidence / 180 with a −10 box / 45 canonical) are themselves a
+contribution: a starting genetic-parts catalogue for anyone wanting to engineer *C. butyricum*. Each
+entry carries coordinates, strand, predicted start site, score, motif annotation, a q-value, and its
+sequence. See [Results](results.md).
 
 ## 5. Methodological lessons (documented for the community)
 

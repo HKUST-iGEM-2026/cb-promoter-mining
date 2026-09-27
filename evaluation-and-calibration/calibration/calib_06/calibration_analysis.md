@@ -1,6 +1,6 @@
 # T26 — Calibration Analysis (all models)
 
-Consolidated from `/project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/calib_06` — 4 model(s): cnn, cnn_v2, nt_lora, prokbert. Each model's raw promoter score is recalibrated with an AT-content-aware Platt regressor (`StandardScaler -> LogisticRegression([logit, AT])`), selected by 5x5 stratified CV.
+Consolidated from `evaluation-and-calibration/calibration/calib_06` — 4 model(s): cnn, cnn_v2, nt_lora, prokbert. Each model's raw promoter score is recalibrated with an AT-content-aware Platt regressor (`StandardScaler -> LogisticRegression([logit, AT])`), selected by 5x5 stratified CV.
 
 **Eval set:** 279 sequences — 93 positives, 186 negatives (130 convergent-intergenic + 56 CDS-interior). Window 81 bp.
 
@@ -9,10 +9,10 @@ Consolidated from `/project/igem2026/cb-promoter-mining/evaluation-and-calibrati
 
 | Model | chosen calibrator | features | checkpoint / adapter | n_conv / n_cds |
 |---|---|---|---|---|
-| cnn | score+AT / unregularized | logit, at_fraction | `/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn/best_model.pt` | 130 / 56 |
-| cnn_v2 | score+AT / unregularized | logit, at_fraction | `/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2/best_model.pt` | 130 / 56 |
-| nt_lora | score+AT / unregularized | logit, at_fraction | `/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter` | 130 / 56 |
-| prokbert | score+AT / unregularized | logit, at_fraction | `/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model` | 130 / 56 |
+| cnn | score+AT / unregularized | logit, at_fraction | `infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn/best_model.pt` | 130 / 56 |
+| cnn_v2 | score+AT / unregularized | logit, at_fraction | `infrastructure/T3/snakemake_scaffold/results/T21_final_06/cnn_v2/best_model.pt` | 130 / 56 |
+| nt_lora | score+AT / unregularized | logit, at_fraction | `infrastructure/T3/snakemake_scaffold/results/T21_final_06/nt_lora/best_adapter` | 130 / 56 |
+| prokbert | score+AT / unregularized | logit, at_fraction | `infrastructure/T3/snakemake_scaffold/results/T21_final_06/prokbert/best_model` | 130 / 56 |
 
 > If any checkpoint path is under `results/T21/<model>/trial_*` (sweep trials) while the deployed/reported model is `T21_final_06/<model>`, that calibrator is fit on the wrong checkpoint and should be re-run with the matching `--model-dir`/`--trial-dir`/`--adapter-dir`.
 

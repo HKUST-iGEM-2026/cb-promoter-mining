@@ -1,11 +1,11 @@
 #!/bin/bash
-# verify_hpc4.sh — detailed correctness check of the HPC4 clone before Phase-C training.
+# verify_env.sh — detailed correctness check of the clone before Phase-C training.
 # Complements check_state.sh (which reports *what's run*); this checks *whether it's correct*.
 # Run on the LOGIN node (section E may download prokbert-mini if not cached):
-#     bash infrastructure/T3/snakemake_scaffold/verify_hpc4.sh
+#     bash infrastructure/T3/snakemake_scaffold/verify_env.sh
 # GPU (section D) is printed as a separate srun to run yourself.
 set -u
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 SC="$REPO/infrastructure/T3/snakemake_scaffold"
 cd "$REPO" || { echo "repo not found at $REPO"; exit 1; }
 
@@ -65,11 +65,11 @@ print("  ==> DATA:", "PASS" if ok else "PROBLEMS ABOVE (see !!)")
 PY
 
 echo; echo "===== D. GPU — run this separately (a 5-min job) ====="
-echo "  srun --account=igem2026 --partition=preempt --gpus-per-node=1 --time=00:05:00 \\"
+echo "  srun --gpus-per-node=1 --time=00:05:00 \\"
 echo "    python3 -c \"import torch; print('CUDA', torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')\""
 
 echo; echo "===== E. TRAINING-CODE SMOKE: prokbert-mini seq-clf loads + weighted loss on REAL T16 data ====="
-export HF_HOME=/project/igem2026/hf_cache
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
 python3 - "$SC" <<'PY'
 import sys, torch, pandas as pd
 SC = sys.argv[1]

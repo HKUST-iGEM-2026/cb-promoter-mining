@@ -8,9 +8,9 @@ the confusion matrix at a threshold — can't be computed from them. This re-run
 predictions, computes everything, and writes predictions.csv so MCC (at any threshold), T26 calibration,
 and T27 FDR all have what they need.
 
-Run PER MODEL in the matching env (see infrastructure/conda-environments/NT_ENV.md):
-  prokbert / cnn -> promoter-mining-hpc4  (transformers 5.3.0)
-  nt             -> nt-tf4x               (transformers 4.57)   [+ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"]
+Run PER MODEL in the matching env (see docs/SETUP.md):
+  prokbert / cnn -> $ENV_MAIN  (transformers 5.3.0)
+  nt             -> $ENV_NT               (transformers 4.57)   [+ export LD_LIBRARY_PATH="$CONDA_PREFIX/lib:$LD_LIBRARY_PATH"]
 
 Examples (run from .../infrastructure/T3/snakemake_scaffold so results/... resolves):
   python ../../evaluation-and-calibration/metrics/evaluate_test.py --model prokbert \
@@ -93,7 +93,7 @@ def full_metrics(labels, probs, thr=0.5):
     preds = (probs >= thr).astype(int)
     return {
         "auroc": float(roc_auc_score(labels, probs)),
-        "auprc": float(average_precision_score(labels, probs)),   # §7: average_precision, NOT auc(recall, precision)
+        "auprc": float(average_precision_score(labels, probs)),   # use average_precision, NOT auc(recall, precision)
         "mcc": float(matthews_corrcoef(labels, preds)),
         "f1": float(f1_score(labels, preds, zero_division=0)),
         "precision": float(precision_score(labels, preds, zero_division=0)),

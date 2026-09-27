@@ -31,7 +31,7 @@ NOTE on data length: T9 positives are ~52 bp and the genomic negatives are 52 bp
 --strict-length to hard-fail instead. Calibration is prevalence-dependent: this 93:186 (1:2) set
 calibrates to that operating point, not genome-wide promoter prevalence.
 
-Run (one GPU on HPC4): see the sbatch snippet at the bottom of this file.
+Run (one GPU): see the sbatch snippet at the bottom of this file.
 """
 import argparse
 import importlib.util
@@ -507,6 +507,6 @@ if __name__ == "__main__":
     main()
 
 
-# --- run on one GPU (HPC4 / SuperPOD) -------------------------------------------------------------
-# srun --account=igem2026 --partition=preempt --gpus-per-node=1 --requeue \
+# --- run on one GPU (Slurm) -------------------------------------------------------------
+# srun --gpus-per-node=1 --requeue \
 #      python evaluation-and-calibration/calibration/calibrate_cnn.py

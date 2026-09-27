@@ -5,7 +5,7 @@
 #
 #  This monolith hardcodes the OLD 4-MODEL ensemble [prokbert, nt, cnn, cnn_v2].
 #  The DEPLOYMENT ensemble is 3 models — prokbert + cnn_v2 + evo2 — with NT-LoRA
-#  and CNN-v1 dropped (Oak, 2026-08; see CLAUDE.md §10). Evo2 is NOT supported
+#  and CNN-v1 dropped (Oak, 2026-08; see the README, "Why three models?"). Evo2 is NOT supported
 #  here: it needs its own scanner/env, which is exactly why this file was split.
 #  Kept for history only; the live pipeline already runs the 3-model set.
 #
@@ -49,7 +49,7 @@ p-/q-values, not bare scores.
   which is calibration-invariant.
 
 PIPELINE (one reproducible entrypoint; the only reason it shells out is the conda-env split — NT
-needs transformers 4.57 in nt-tf4x, the rest need 5.3 in the main env, and one Python process cannot
+needs transformers 4.57 in $ENV_NT, the rest need 5.3 in the main env, and one Python process cannot
 host both. So genome_inference.py is run per model as a subprocess under the right env; all the
 statistics/aggregation happen in THIS process):
   1. candidate regions  = make_candidate_regions.py(gff)                       -> BED (upstream of genes)
@@ -76,12 +76,12 @@ GFF3, and the score track by contig id. This script PREFLIGHTS that the GFF3 seq
 the FASTA record ids and FAILS LOUD with both id sets printed if not — no silent 0-overlap run. The
 contig id is always carried in an explicit `contig` column, never positionally.
 
-  # on HPC4, inside a GPU job (see run_fdr_mine.sbatch):
+  # inside a GPU job (see run_fdr_mine.sbatch):
   python fdr_mine.py \
-      --genome   /project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/c_butyricum_annotation/C_butyricum.fna \
-      --gff      /project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/c_butyricum_annotation/C_butyricum.gff3 \
-      --null-tsv /project/igem2026/cb-promoter-mining/evaluation-and-calibration/calibration/c_butyricum_annotation/convergent_intergenic_negatives.tsv \
-      --model-root /project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results \
+      --genome   $PROMOTER_REPO/evaluation-and-calibration/calibration/c_butyricum_annotation/C_butyricum.fna \
+      --gff      $PROMOTER_REPO/evaluation-and-calibration/calibration/c_butyricum_annotation/C_butyricum.gff3 \
+      --null-tsv $PROMOTER_REPO/evaluation-and-calibration/calibration/c_butyricum_annotation/convergent_intergenic_negatives.tsv \
+      --model-root $PROMOTER_RESULTS \
       --model-set both --out-dir results/T27
 """
 import argparse
@@ -154,8 +154,10 @@ def gff_seqids(path):
 
 def run(cmd, conda_base, env_prefix, hf_home, extra_exports=""):
     """Run `cmd` (a string) inside a conda env, the way the repo's sbatch scripts do."""
-    exports = (f"export HF_HOME={hf_home} HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER; "
-               f"{extra_exports}")
+    # HF_HOME only when given: an empty HF_HOME makes huggingface_hub cache into ./hub
+    exports = ((f"export HF_HOME={hf_home}; " if hf_home else "")
+               + "export HF_HUB_OFFLINE=${HF_HUB_OFFLINE:-0} HF_TOKEN_PATH=/tmp/hf_notoken_$USER; "
+               + extra_exports)
     full = (f"source {conda_base}/etc/profile.d/conda.sh && conda activate {env_prefix} && "
             f"{exports} {cmd}")
     print(f"[run] ({env_prefix})\n      {cmd}", file=sys.stderr, flush=True)
@@ -458,12 +460,12 @@ def main():
     ap.add_argument("--make-regions", default=str(repo / "evaluation-and-calibration" / "make_candidate_regions.py"))
     ap.add_argument("--annotate-motifs", default=str(repo / "mining-and-motif-annotation" / "motif-annotation" / "annotate_motifs.py"))
     ap.add_argument("--motif", default=str(repo / "mining-and-motif-annotation" / "motif-annotation" / "sigma_a_promoter.meme"))
-    ap.add_argument("--conda-base", default="/cm/shared/apps/Anaconda3/2023.09-0")
-    ap.add_argument("--main-env", default="/project/igem2026/envs/promoter-mining-hpc4")
-    ap.add_argument("--nt-env", default="/project/igem2026/envs/nt-tf4x")
-    ap.add_argument("--bio-env", default="/project/igem2026/envs/meme",
+    ap.add_argument("--conda-base", default=os.environ.get("CONDA_BASE") or "$(conda info --base)")
+    ap.add_argument("--main-env", default=os.environ.get("ENV_MAIN", "promoter-mining"))
+    ap.add_argument("--nt-env", default=os.environ.get("ENV_NT", "promoter-nt"))
+    ap.add_argument("--bio-env", default=os.environ.get("ENV_MEME", "promoter-meme"),
                     help="conda prefix with the MEME suite (fimo) for the motif step")
-    ap.add_argument("--hf-home", default="/project/igem2026/hf_shared")
+    ap.add_argument("--hf-home", default=os.environ.get("HF_HOME", ""))
     a = ap.parse_args()
     envs = {"main": a.main_env, "nt": a.nt_env, "bio": a.bio_env}
     out = Path(a.out_dir)

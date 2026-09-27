@@ -11,7 +11,15 @@ Run:  python evaluation-and-calibration/show_model_stats.py
 import json
 import os
 
-BASE = os.environ.get("REPO", "/project/igem2026/cb-promoter-mining")
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
+BASE = os.environ.get("REPO", PROMOTER_REPO)
 SCAF = f"{BASE}/infrastructure/T3/snakemake_scaffold/results"
 
 # name -> (standalone dir, retrain dir)

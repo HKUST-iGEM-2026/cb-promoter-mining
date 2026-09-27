@@ -11,6 +11,14 @@ from transformers import (
 )
 from sklearn.metrics import accuracy_score, roc_auc_score
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 def compute_metrics(eval_pred):
     predictions, labels = eval_pred
     # If model outputs tuple of logits, grab the first element
@@ -33,7 +41,7 @@ def compute_metrics(eval_pred):
 
 def main():
     print("=== Loading Parquet Datasets ===", flush=True)
-    data_dir = "/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_ctx"
+    data_dir = os.path.join(PROMOTER_RESULTS, "T15_ctx")
     
     train_df = pd.read_parquet(f"{data_dir}/train.parquet")
     val_df = pd.read_parquet(f"{data_dir}/val.parquet")

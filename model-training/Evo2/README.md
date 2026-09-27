@@ -1,8 +1,8 @@
 # Evo2 — the genome-scale leader we found late (2026-08)
 
 **Status: NOT dropped.** A frozen Evo2-7B embedding + logistic-regression probe has the *worst*
-balanced AUPRC of any model (0.70), but on the genome-scale false-positive benchmark (Regime C) it
-beats cnn_v2-xs — our best CNN and prior genome-scale leader — at every recall on **both** held-out
+balanced AUPRC of any model (0.70; cnn_v2 scores 0.726 on the same split), but on the genome-scale false-positive benchmark (Regime C) it
+beats cnn_v2-xs — our best CNN and prior genome-scale leader — at every recall on **both**
 validation genomes. Full write-up with method, audit and numbers: **`EVO2_GENOME_SCALE_REPORT.md`**.
 
 > This reverses the earlier "evaluated and NOT used, below all four" call, which was made on the
@@ -18,14 +18,15 @@ fine-tuned.** The same probe (`evo2_probe_xs.pkl`) is reused across both genomes
 
 ## The result
 
-Balanced (T15_xs test) — Evo2 is last:
+Balanced test — Evo2 is last. The four fine-tuned numbers are the plain 0.6-split retrains
+(`T21_final`); Evo2 was measured on `T15_xs`, where the deployed cnn_v2 scores 0.726:
 
 | | Test AUPRC |
 |---|---|
 | ProkBERT / NT / cnn_v2 / CNN (fine-tuned) | 0.884 / 0.854 / 0.848 / 0.804 |
 | **Evo2 frozen + logreg** | **0.703** |
 
-Genome scale (Regime C, held-out, **matched step 10**, restricted) — Evo2 wins every row:
+Genome scale (Regime C, validation genomes, **matched step 10**, restricted) — Evo2 wins every row:
 
 | | ljungdahlii r=0.1 | r=0.5 | autoethanogenum r=0.1 | r=0.5 |
 |---|---|---|---|---|
@@ -40,15 +41,20 @@ within-genome Evo2-vs-cnn_v2 delta is, and it favors Evo2 on both.)
 The comparison code was audited (see the report): minus-strand windows get identical forward
 coordinates + reading-strand sequence in the Evo2 and CNN scanners; the restricted scan covers exactly
 the benchmarked window set; embeddings are re-scattered to original order; the probe's layer/pool/window
-match the extractor; and both genomes are held out of T15_xs (no leakage). The step-10 comparison is
-fair because cnn_v2 is re-benchmarked at the same step 10, not its native step 1.
+match the extractor. Neither genome's published start sites are in T15_xs, though both strains are
+among the 166 genomes that supplied its silver positives and negatives (`docs/PIPELINE.md`). The
+step-10 comparison is fair because cnn_v2 is re-benchmarked at the same step 10, not its native step 1.
 
 ## Files (all reproducible, and now candidates for the mine — not just the archive)
 - `extract_embeddings_evo2.py` + `extract_embeddings.sbatch` — build embeddings (`evo2_embeddings/`).
-- `evo2_promoter_classifier.py` — the weighted logreg/RF probe (reports weighted AUPRC).
+- `evo2_promoter_classifier.py` — the weighted logreg/RF probe (reports weighted AUPRC). Run it with
+  `--out infrastructure/T3/snakemake_scaffold/results/regimeC/evo2/evo2_probe_xs.pkl` to build the deployed probe
+  (commands in `docs/PIPELINE.md`, Phase C).
+- `evo2_promoter_classifier.pkl` — the deployed probe, a copy of `evo2_probe_xs.pkl`: logistic regression
+  refit on the `T15_xs` train and validation rows (44,085 + 3,052 = 47,137), saved with scikit-learn 1.9.0.
 - `evo2_common.py` — batched embedding; `evo2_scan_restricted.py` — the deployable restricted scanner.
 - `C_evo2_ljung_scan.sbatch` / `C_evo2_cau_scan.sbatch` — the two genome-scale runs above.
-- `infrastructure/EVO2_ENV.md` — the `evo2` env (note: flash-attn must match the env's torch, cu12/torch2.7/cxx11abiTRUE).
+- `docs/SETUP.md` — building the Evo2 env (note: flash-attn must match the env's torch, cu12/torch2.7/cxx11abiTRUE).
 
 ## Recommendation
 Consider Evo2 for the C. butyricum target mine — as the lead genome-scale caller, or as a 5th member of

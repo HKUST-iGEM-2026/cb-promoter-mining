@@ -77,8 +77,8 @@ plausible but unconfirmed here.)
 
 - **Demote "canonical" to a soft annotation, not a quality gate.** Rank the wet-lab shortlist by
   ensemble `peak_score` + −10 strength; the 929 confident set and its ranking come from the
-  ProkBERT+cnn_v2+Evo2 ensemble and are unaffected by the −35 call. This matches the existing
-  `CLAUDE.md` note that "canonical is a motif-convenience subset."
+  ProkBERT+cnn_v2+Evo2 ensemble and are unaffected by the −35 call. This matches the project's
+  standing note that "canonical is a motif-convenience subset" (see the README's *Reading the results honestly*).
 - **Do not re-window / re-extract the −35 boxes to "fix" 86.8 %** (the report's follow-up #1) — the
   signal isn't there to recover, so a re-extraction would chase noise.
 - **If an architecture call is wanted for this organism,** learn a *Clostridium*-specific −35 (or an

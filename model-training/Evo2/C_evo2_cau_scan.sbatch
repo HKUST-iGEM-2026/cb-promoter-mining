@@ -1,7 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=evo2_cau_regimeC
-#SBATCH --account=igem2026
-#SBATCH --partition=preempt
 #SBATCH --gpus-per-node=1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
@@ -25,7 +23,7 @@
 # Submit:  sbatch model-training/Evo2/C_evo2_cau_scan.sbatch
 set -eo pipefail
 
-REPO=/project/igem2026/cb-promoter-mining
+REPO="${PROMOTER_REPO:?set it or source env.sh}"
 DIR=$REPO/infrastructure/T3/snakemake_scaffold/results
 EVAL=$REPO/evaluation-and-calibration
 EVO2=$REPO/model-training/Evo2
@@ -33,9 +31,9 @@ RC=$DIR/regimeC
 OUT=$RC/evo2_cau ; mkdir -p "$OUT"
 EMB=$REPO/evo2_embeddings                    # cached T15_xs embeddings (only used if the probe must be rebuilt)
 PROBE=$RC/evo2/evo2_probe_xs.pkl             # REUSE the ljung-trained T15_xs probe -> identical probe on both genomes
-EVO2_ENV=/project/igem2026/envs/evo2
-MAIN_ENV=/project/igem2026/envs/promoter-mining-hpc4
-CONDA_BASE=/cm/shared/apps/Anaconda3/2023.09-0
+EVO2_ENV="${ENV_EVO2:?set it or source env.sh}"
+MAIN_ENV="${ENV_MAIN:?set it or source env.sh}"
+CONDA_BASE=$(conda info --base)
 
 FASTA=$RC/cau.fna                            # staged by prep_cau_regimeC.sh (record NC_022592.1)
 REGIONS=$RC/cau_candidate_regions.bed
@@ -45,7 +43,8 @@ STEP=10
 RECALLS=0.1,0.5,0.7,0.9
 TRACK=$OUT/cau_evo2_track.csv
 
-export HF_HOME=/project/igem2026/hf_shared HF_HUB_OFFLINE=1 HF_TOKEN_PATH=/tmp/hf_notoken_$USER
+if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 source "$CONDA_BASE/etc/profile.d/conda.sh"
 
 echo "=== preflight ==="

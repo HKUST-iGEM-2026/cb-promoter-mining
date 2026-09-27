@@ -34,7 +34,8 @@ in this organism has to rediscover its basic parts from scratch. We chose it as 
 because closing this gap has real downstream value — and because doing so exposes a hard, general
 computational problem worth solving.
 
-We work with the type strain **DSM 10702** (assembly `GCF_000409755.1`).
+We work with the type strain **DSM 10702**, mining the complete, reference-grade assembly
+`GCF_014131795.1` — two chromosomes and two small plasmids, about 4.7 Mb in total.
 
 ## The core challenge: the "AT-trap"
 
@@ -46,6 +47,15 @@ that do not exist when slid across a real genome, because real promoters are onl
 
 Beating this trap — separating genuine promoters from AT-rich background — is what our whole design is
 built around. See [Design](design.md).
+
+
+![AT content of the genome, the null, and the promoter motifs](figures/F12_at_trap.png)
+
+***Figure 1. The AT-trap.** The *C. butyricum* genome is about 71% A+T, and the promoter motifs are more AT-rich still — 85% for the −35 box and 88% for the −10. Motif and background overlap almost completely, so a scanner that keys on composition rather than motif drowns in false positives. Beating this is what the rest of the design is for.*
+
+![Phylogeny of the 166 Clostridium training genomes](figures/F1_phylogeny.png)
+
+***Figure 2.** The 166 *Clostridium* genomes behind the in-genus training data.*
 
 ## Our goals
 

@@ -23,10 +23,10 @@ The two token streams are DIFFERENT lengths on purpose (78 vs ~18) — they are 
 which is why each model's pad width is fitted independently below. Both tokenizers require UPPERCASE
 input (lowercase silently becomes all-UNK) — handled here via .str.upper().
 
-HPC4: compute nodes are offline -> pre-stage the tokenizers on the login node first
-  export HF_HOME=/project/igem2026/hf_cache
-  huggingface-cli download neuralbioinfo/prokbert-mini
-  huggingface-cli download InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
+If the compute nodes are offline -> pre-stage the tokenizers on the login node first
+  export HF_HOME=/shared/hf_cache
+  hf download neuralbioinfo/prokbert-mini
+  hf download InstaDeepAI/nucleotide-transformer-v2-250m-multi-species
 then run with HF_HOME set + HF_HUB_OFFLINE=1. Tokenisation is CPU-only.
 """
 import os

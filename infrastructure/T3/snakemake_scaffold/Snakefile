@@ -1,5 +1,5 @@
 # =====================================================================
-# Promoter Mining — HPC4 pipeline (Task T3).  REAL commands.
+# Promoter Mining — the cluster pipeline (Task T3).  REAL commands.
 #
 # Every rule runs its REAL command (no echo/touch mocks). Phase A is produced by
 # local_prep.smk (+ tss_prep.smk for T10) and consumed here as pre-staged inputs/.
@@ -18,17 +18,17 @@
 #     snakemake -s local_prep.smk --cores 4                          # stage Phase A inputs/ first
 #     snakemake -n --config bakta_dir=/path/to/bakta(.zip|dir)       # DRY-RUN: validate the whole DAG (the wiring test)
 #     snakemake --cores 4 --config bakta_dir=/path/to/bakta          # run locally (executes real commands; stops at the first unwritten script)
-#     snakemake --workflow-profile profiles/slurm                    # on HPC4 (GPU rules submit as SLURM jobs)
+#     snakemake --workflow-profile profiles/slurm                    # on the cluster (GPU rules submit as SLURM jobs)
 # =====================================================================
 
 import os
 
 configfile: "config/config.yaml"
 
-# Repo root, resolved from the Snakefile location (portable local <-> HPC4).
+# Repo root, resolved from the Snakefile location (portable local <-> the cluster).
 REPO = os.path.abspath(os.path.join(workflow.basedir, "..", "..", ".."))
 
-# T6 Bakta outputs. config[bakta_dir] is either a .zip (HPC4) or an already-extracted dir.
+# T6 Bakta outputs. config[bakta_dir] is either a .zip or an already-extracted dir.
 # Normalise to BAKTA = the root dir that directly contains the <genome>_genomic_output/ subdirs.
 BAKTA_SRC = config["bakta_dir"]
 if not os.path.isabs(BAKTA_SRC):
@@ -44,9 +44,9 @@ GPU_EXTRA = "'--gpus-per-node=1 --requeue --signal=B:USR1@120'"
 # ---- Phase A starting state (produced by local_prep.smk / tss_prep.smk, pre-staged) ----
 REFDB         = "inputs/reference_promoters.parquet"      # T8  — RegulonDB (+DBTBS) normalised
 LIT_PROM      = "inputs/literature_promoters.tsv"         # T9  — curated synthetic promoters
-TSS_CALLS     = "inputs/tss_sites.gff3"                   # T10 — TSSpredator empirical TSS (HPC4)
+TSS_CALLS     = "inputs/tss_sites.gff3"                   # T10 — TSSpredator empirical TSS (the cluster)
 PUBLISHED_TSS = "inputs/published_tss_promoters.parquet"  # T7b — in-genus published TSS positives -> T15
-LIT_TRAIN     = "inputs/literature_promoters_train.parquet"  # T9-split (§7 b) — in-genus training positives -> T15
+LIT_TRAIN     = "inputs/literature_promoters_train.parquet"  # T9-split (option b) — in-genus training positives -> T15
 
 # The only true graph leaves (evaluation reports + final deliverable).
 LEAVES = ["T23", "T24", "T25", "T32"]
@@ -114,7 +114,7 @@ rule pt6_validate_lock_schema:
 # Phase B — Dataset construction  (LIVE: reads Bakta from BAKTA = config[bakta_dir])
 # ---------------------------------------------------------------------
 rule extract_bakta:
-    # HPC4 ships Bakta as a zip whose top folder is all_bakta_output/. Only runs when
+    # the cluster ships Bakta as a zip whose top folder is all_bakta_output/. Only runs when
     # config[bakta_dir] is a .zip; with an extracted dir, BAKTA points straight at it.
     input: BAKTA_SRC
     output: directory("results/bakta/all_bakta_output")
@@ -158,7 +158,7 @@ rule t13_upstream_extraction:
     input:
         leaders="results/T12/operon_leaders.tsv",
         bakta=BAKTA,
-    output: "results/T13/upstream_regions.tsv"           # POSITIVE windows (NB §7: inferred positives)
+    output: "results/T13/upstream_regions.tsv"           # POSITIVE windows (NB: inferred positives)
     shell:
         "python {REPO}/dataset-construction/upstream-extraction/upstream_extraction.py "
         "--leaders-tsv {input.leaders} --bakta-dir {input.bakta} --out-tsv {output} "
@@ -178,7 +178,7 @@ rule t15_cdhit_splits:
     input:
         refdb=REFDB,                                     # T8 cross-species positives
         published=PUBLISHED_TSS,                         # T7b in-genus published-TSS positives
-        t9_train=LIT_TRAIN,                              # T9-split (§7 b) in-genus C. acetobutylicum positives
+        t9_train=LIT_TRAIN,                              # T9-split (option b) in-genus C. acetobutylicum positives
         tss=TSS_CALLS,                                   # T10 empirical TSS
         positives="results/T13/upstream_regions.tsv",    # T13 inferred positives
         negatives="results/T14/negative_set.tsv",        # T14 negatives
@@ -191,7 +191,7 @@ rule t15_cdhit_splits:
     # SCRIPT NOT YET WRITTEN (cd-hit + StratifiedGroupKFold, 80/10/10).
     # ⚠️ SCHEMA HARMONIZATION FIRST: REFDB (T8) has confidence_level, NO in_genus/strand, variable-length;
     #    t9_train + published (T7b) have in_genus/strand, NO confidence_level, fixed windows. Unify before
-    #    concatenating (in_genus=False + strand='.' for T8, drop confidence_level, re-window). §7 decision.
+    #    concatenating (in_genus=False + strand='.' for T8, drop confidence_level, re-window). Locked decision.
 
 rule t16_tokenisation:
     input: "results/T15.done"

@@ -4,8 +4,8 @@ extract_embeddings_evo2.py — mean-pool Evo2 embeddings for the T15 splits, for
 sklearn probe (evo2_promoter_classifier.py). NOT fine-tuning: the 7B backbone is frozen.
 
 WHY THIS FILE CHANGED (2026-08): the committed version wrote to a PERSONAL dir
-(/project/igem2026/xzhangjj/embeddings) while the classifier read from the SHARED
-/project/igem2026/cb-promoter-mining/evo2_embeddings — so the two never lined up, and it dropped the
+($PROMOTER_RESULTS/evo2_embeddings) while the classifier read from the SHARED
+$PROMOTER_REPO/evo2_embeddings — so the two never lined up, and it dropped the
 T15 `weight` column that every other model (T18/T19/T20) trains on. Both are fixed here; paths are
 now flags with shared defaults, and `weight` is carried through so the probe trains on the SAME
 distribution as the ensemble.
@@ -27,15 +27,23 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from evo2_common import embed_sequences
 
+# Portable paths: override with PROMOTER_REPO / PROMOTER_RESULTS (or `source env.sh`).
+# The fallbacks resolve from this file, so a plain clone works with no configuration.
+PROMOTER_REPO = os.environ.get("PROMOTER_REPO") or os.path.normpath(
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+PROMOTER_RESULTS = os.environ.get("PROMOTER_RESULTS") or os.path.join(
+    PROMOTER_REPO, "infrastructure", "T3", "snakemake_scaffold", "results")
+
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir",
-                    default="/project/igem2026/cb-promoter-mining/infrastructure/T3/snakemake_scaffold/results/T15_xs",
+                    default=os.path.join(PROMOTER_RESULTS, "T15_xs"),
                     help="dir with {train,val,test}.parquet. Default T15_xs (44,085 rows) = the "
                          "cross-species-augmented split the DEPLOYED T21_xs models trained on, so the probe "
                          "is comparable to the deployed ensemble. (NOT T15_ctx=stale, T15=0.6 non-xs, T15_09=0.9.)")
-    ap.add_argument("--out-dir", default="/project/igem2026/cb-promoter-mining/evo2_embeddings",
+    ap.add_argument("--out-dir", default=os.path.join(PROMOTER_REPO, "evo2_embeddings"),
                     help="SHARED output dir the classifier reads (must match evo2_promoter_classifier.py --emb-dir).")
     ap.add_argument("--model", default="evo2_7b")
     ap.add_argument("--layer", default="blocks.28.mlp.l3",

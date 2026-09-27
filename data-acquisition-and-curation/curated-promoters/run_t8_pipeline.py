@@ -124,7 +124,7 @@ def build_pipeline():
     assert not df_ecoli.empty, "RegulonDB parse produced 0 rows (check PromoterS_Set.txt in T8/)."
     assert not df_bsubtilis.empty, (
         "DBTBS parse produced 0 rows — DBTBS_prom.fa must be present in "
-        f"{OUTPUT_DIR}/ (the genuine sigA B. subtilis set; see CLAUDE.md §9).")
+        f"{OUTPUT_DIR}/ (the genuine sigA B. subtilis set).")
 
     master_df = pd.concat([df_ecoli, df_bsubtilis], ignore_index=True)
     master_df['sequence'] = master_df['sequence'].str.upper().str.replace(r'[^ATCG]', '', regex=True)
