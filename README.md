@@ -93,3 +93,19 @@ cb-promoter-mining/
 ## Getting started
 .
 
+
+## RegulonDB data licensing
+
+RegulonDB's [official License and Terms of Use, Version 1.0, April 2025](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md)
+permits academic/noncommercial **sharing and adaptation under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)**,
+with attribution to RegulonDB and original publications, license links and disclosure of changes.
+Commercial data use requires a separate agreement. See [`REGULONDB_LICENSE.md`](REGULONDB_LICENSE.md)
+for the source citation, retained export provenance and processing changes. This permission is separate
+from the repository's source-code and fitted-model licenses and does not relicense other data sources.
+
+## Recovery and checking status
+
+- **Hugging Face artifact recovery: complete (user-reported).** The three deployment repositories under
+  [CloBiT](https://huggingface.co/CloBiT) remain private; authenticated access and inventories were verified.
+- **Remaining reproducibility checks: ongoing.** Recovery does not establish historical training/inference
+  reproduction or completion of the outstanding scientific checks.
