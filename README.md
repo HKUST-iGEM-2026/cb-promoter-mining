@@ -105,9 +105,10 @@ genome-scale precision are not the same metric, and this project is a sharp exam
 ## Use the models from Hugging Face
 
 All three ensemble members live under the [**CloBiT**](https://huggingface.co/CloBiT) organisation.
-Each repo carries a full model card with its training data, metrics and limitations. **The repos are
-private at the time of writing**, so the snippets below need an org member's token until they are
-made public.
+The repositories are **private**; authenticated access and artifact inventories have been verified.
+**Hugging Face artifact recovery is complete (user-reported); the remaining reproducibility
+checks are ongoing.** Use the existing authorised login or `HF_TOKEN`; recovery does not establish
+a completed historical training/inference rerun.
 
 | Model | What it is | License |
 |---|---|---|
@@ -607,3 +608,12 @@ in the Hugging Face table above.
 | The Evo2 genome-scale finding, in full | [`model-training/Evo2/README.md`](model-training/Evo2/README.md) |
 | Publishing to Hugging Face | [`huggingface_release/README.md`](huggingface_release/README.md) |
 | Project narrative for a general audience | [`wiki/`](wiki/) |
+
+## RegulonDB data licensing
+
+RegulonDB's [official License and Terms of Use, Version 1.0, April 2025](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md)
+permits academic/noncommercial **sharing and adaptation under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)**,
+with attribution to RegulonDB and original publications, license links and disclosure of changes.
+Commercial data use requires a separate agreement. See [`REGULONDB_LICENSE.md`](REGULONDB_LICENSE.md)
+for the source citation, retained export provenance and processing changes. This permission is separate
+from the repository's source-code and fitted-model licenses and does not relicense other data sources.

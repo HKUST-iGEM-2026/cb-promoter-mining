@@ -55,6 +55,8 @@ promoter map (see *Limitations*).
 | `train_cnn_v2.py` | model class, feature pipeline and `predict_proba` — needed to load and run |
 | `metrics.json` | the deployed run's validation and test scores |
 | `history.json` | per-epoch training history |
+| `SOURCE_CODE_LICENSE` | root MIT copyright/license notice for bundled project source, separate from model-weight licensing |
+| `REGULONDB_LICENSE.md` | training-source data license, attribution and processing changes; separate from model-weight licensing |
 
 Because the feature pipeline lives in `train_cnn_v2.py`, download the repo and import from it rather
 than loading the weights alone:
@@ -215,8 +217,11 @@ you build on this model:
   *Nat Commun.* 2018;9(1):4474. doi:[10.1038/s41467-018-06993-6](https://doi.org/10.1038/s41467-018-06993-6)
   — the *C. ljungdahlii* benchmark truth.
 - **RegulonDB** v13.5 (Salgado H, Gama-Castro S, et al., *RegulonDB v12.0*, *Nucleic Acids Research*
-  2023, doi:[10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072)) — free for academic /
-  non-commercial use; see its [terms](https://regulondb.ccg.unam.mx/manual/aboutUs/terms-conditions).
+  2023, doi:[10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072)) — the
+  [official April 2025 policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md)
+  permits academic/noncommercial sharing and adaptation under
+  [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), with attribution, license links
+  and disclosure of changes.
 - **DBTBS**, the *B. subtilis* transcriptional regulation database ([dbtbs.hgc.jp](https://dbtbs.hgc.jp)).
 - **Xu C, Huang R, Teng L, et al.** Cellulosome stoichiometry in *Clostridium cellulolyticum* is
   regulated by selective RNA processing and stabilization. *Nat Commun.* 2015;6:6900.
@@ -237,6 +242,14 @@ you build on this model:
 - Genome assemblies from **NCBI RefSeq**; annotation with **Bakta** (Schwengers et al.); clustering
   with **MMseqs2** (Steinegger & Söding).
 
-> **Note on RegulonDB.** Its terms are academic / non-commercial. The CC-BY-4.0 license here covers
-> the team's own weights and code; it does not relicense the upstream datasets, and 3,827 windows
-> derived from RegulonDB are part of what this model learned from.
+## RegulonDB data licensing
+
+See the [bundled data notice](https://huggingface.co/CloBiT/cnn-fusion-clostridium-promoter/blob/main/REGULONDB_LICENSE.md)
+and [official policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md).
+Noncommercial reuse, sharing and adaptation of RegulonDB content are permitted under **CC BY-NC 4.0**;
+commercial data use requires a separate agreement. Attribute RegulonDB and the original publications,
+link the license and identify changes. Training preparation normalised/filtered sequences, prepared
+81 bp windows, deduplicated/clustered them and combined sources and labels. This package contains fitted
+parameters/helpers, not database exports or training tables. The fitted-weight **CC-BY-4.0** and
+separate source-code MIT licenses remain unchanged; they do not relicense the upstream data or
+establish unrestricted commercial clearance.

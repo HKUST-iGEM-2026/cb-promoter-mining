@@ -41,17 +41,19 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(HERE, ".."))
 EVO2_DIR = os.path.join(REPO_ROOT, "model-training", "Evo2")          # probe + helper live here (in-repo)
 CNN_CODE = os.path.join(REPO_ROOT, "model-training", "cnn", "train_cnn_v2.py")
+DATA_LICENSE = os.path.join(REPO_ROOT, "REGULONDB_LICENSE.md")
 
 # name -> (hub repo == card dir, kind, source spec, extra single files to add)
 MODELS = {
     "prokbert": dict(repo="prokbert-mini-clostridium-promoter", kind="dir",
-                     src=lambda: PROKBERT_CKPT, extra=[]),
+                     src=lambda: PROKBERT_CKPT, extra=[DATA_LICENSE]),
     "cnn":      dict(repo="cnn-fusion-clostridium-promoter", kind="dir",
-                     src=lambda: CNN_CKPT, extra=[CNN_CODE]),          # + train_cnn_v2.py
+                     src=lambda: CNN_CKPT, extra=[CNN_CODE, DATA_LICENSE]),  # code + data notice
     "evo2":     dict(repo="evo2-logreg-clostridium-promoter-probe", kind="files",
                      files=[os.path.join(EVO2_DIR, "evo2_promoter_classifier.pkl"),
                             os.path.join(EVO2_DIR, "evo2_common.py"),
-                            os.path.join(HERE, "evo2-logreg-clostridium-promoter-probe", "apply_probe.py")]),
+                            os.path.join(HERE, "evo2-logreg-clostridium-promoter-probe", "apply_probe.py"),
+                            DATA_LICENSE]),
 }
 
 

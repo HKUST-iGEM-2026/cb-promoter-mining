@@ -54,3 +54,14 @@ for the team (mainly wet-lab, human practices, education, and personal details) 
 3. Add wet-lab content across `notebook.md`, `design.md`, `proof-of-concept.md`.
 4. Polish `home.md` / `description.md` for the public narrative, add figures.
 5. Complete `safety.md` and submit the Safety Form.
+
+## Licensing and recovery update
+
+- **RegulonDB reuse: permitted** for academic/noncommercial sharing and adaptation under the provider's
+  [official April 2025 CC BY-NC 4.0 policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md).
+  Retain attribution to the database and original publications, license links and indications of changes.
+  See the [data notice](../REGULONDB_LICENSE.md); commercial data use requires a separate agreement.
+- **Hugging Face artifact recovery: done (user-reported).** Authenticated repository access and artifact
+  inventories have been verified; the three CloBiT repositories remain private.
+- **Remaining checking work: ongoing.** Recovery does not establish historical training/inference
+  reproduction, repaired assembly labels, validated taxonomy or biological activity.

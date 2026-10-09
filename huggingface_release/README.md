@@ -4,6 +4,10 @@ Model cards + the upload script for the three deployment-ensemble models. They a
 **[CloBiT](https://huggingface.co/CloBiT)** organisation; each subfolder's `README.md` is the source of
 that repo's model card, so edit it here and re-upload rather than editing on the Hub.
 
+The repositories remain **private**. Authenticated access and artifact inventories have been verified.
+**Hugging Face artifact recovery is complete (user-reported); the remaining reproducibility checks
+are ongoing.** Recovery is not a completed training or inference rerun.
+
 ## The three models and their licenses
 
 | Model | What it is | License | Why |
@@ -15,6 +19,17 @@ that repo's model card, so edit it here and re-upload rather than editing on the
 **Bundling caveat:** the ProkBERT fine-tune is non-commercial. If you ever combine the three into one
 ensemble repo that includes the ProkBERT weights, the whole thing becomes non-commercial. Publishing
 three separate repos (as here) keeps the CNN and Evo2 probe permissive.
+
+## RegulonDB data licensing
+
+RegulonDB's [official April 2025 policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md)
+permits academic/noncommercial sharing and adaptation under **[CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/)**,
+with attribution, license links and disclosure of changes. Commercial data use requires a separate agreement.
+All three Hub packages include [`REGULONDB_LICENSE.md`](../REGULONDB_LICENSE.md), recording source and
+processing provenance; they contain fitted parameters/helpers, not raw database exports or training tables.
+The uploader retains this notice on future publication. CNN/Evo2 helpers also carry the repository's MIT
+notice as `SOURCE_CODE_LICENSE`. These data and source-code notices do not change model-weight licenses.
+
 
 ## Files
 

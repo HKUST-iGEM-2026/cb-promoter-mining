@@ -62,6 +62,8 @@ X = embed_sequences(model, seqs, layer="blocks.28.mlp.l3", pool="mean")  # (N, 4
 | `evo2_promoter_classifier.pkl` | the deployed probe (scikit-learn `Pipeline`, ~116 KB) |
 | `evo2_common.py` | batched Evo2 embedding helper (`embed_sequences`, `revcomp`) |
 | `apply_probe.py` | end-to-end: sequences → Evo2 embeddings → `P(promoter)` |
+| `SOURCE_CODE_LICENSE` | root MIT copyright/license notice for bundled project source, separate from probe artifact licensing |
+| `REGULONDB_LICENSE.md` | training-source data license, attribution and processing changes; separate from probe artifact licensing |
 
 > **Pin scikit-learn.** The probe was saved with scikit-learn **1.9.0**; load it with a matching
 > version to avoid `InconsistentVersionWarning` / silent breakage. Its `StandardScaler` reports
@@ -201,8 +203,11 @@ Training and evaluation data — please cite these if you build on this probe:
   *Nat Commun.* 2018;9(1):4474. doi:[10.1038/s41467-018-06993-6](https://doi.org/10.1038/s41467-018-06993-6)
   — the *C. ljungdahlii* benchmark truth.
 - **RegulonDB** v13.5 (Salgado H, Gama-Castro S, et al., *RegulonDB v12.0*, *Nucleic Acids Research*
-  2023, doi:[10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072)) — free for academic /
-  non-commercial use; see its [terms](https://regulondb.ccg.unam.mx/manual/aboutUs/terms-conditions).
+  2023, doi:[10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072)) — the
+  [official April 2025 policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md)
+  permits academic/noncommercial sharing and adaptation under
+  [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/), with attribution, license links
+  and disclosure of changes.
 - **DBTBS**, the *B. subtilis* transcriptional regulation database ([dbtbs.hgc.jp](https://dbtbs.hgc.jp)).
 - **Xu C, Huang R, Teng L, et al.** Cellulosome stoichiometry in *Clostridium cellulolyticum* is
   regulated by selective RNA processing and stabilization. *Nat Commun.* 2015;6:6900.
@@ -225,6 +230,14 @@ Training and evaluation data — please cite these if you build on this probe:
 
 HKUST iGEM 2026 dry-lab promoter-mining project.
 
-> **Note on RegulonDB.** Its terms are academic / non-commercial. The CC-BY-4.0 license here covers
-> the team's own probe and code; it does not relicense the upstream datasets, and 3,827 windows
-> derived from RegulonDB are part of what this probe was fit on.
+## RegulonDB data licensing
+
+See the [bundled data notice](https://huggingface.co/CloBiT/evo2-logreg-clostridium-promoter-probe/blob/main/REGULONDB_LICENSE.md)
+and [official policy](https://github.com/regulondbunam/regulondb-docs/blob/main/00_about_policies/license.md).
+Noncommercial reuse, sharing and adaptation of RegulonDB content are permitted under **CC BY-NC 4.0**;
+commercial data use requires a separate agreement. Attribute RegulonDB and the original publications,
+link the license and identify changes. Training preparation normalised/filtered sequences, prepared
+81 bp windows, deduplicated/clustered them and combined sources and labels. This package contains fitted
+parameters/helpers, not database exports or training tables. The probe's **CC-BY-4.0** and separate
+source-code MIT licenses remain unchanged; they do not relicense the upstream data or establish
+unrestricted commercial clearance.
