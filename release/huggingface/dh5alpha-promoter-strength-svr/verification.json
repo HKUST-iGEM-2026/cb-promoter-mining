@@ -1,0 +1,31 @@
+{
+  "verified_on_utc": "2026-10-13",
+  "model": "Wang2020 DH5alpha RBF SVR, reproduced fitted artifact",
+  "format": "dh5alpha-rbf-svr-1",
+  "model_sha256": "153f41e1d051d432a2172b21b6e94f07799fa2229a45d795ae974fc8140130a8",
+  "training_data_sha256": "e81b9316059886846c4e367dd6ae1a0bb196953fcd1a1bc6ac634ed4a1394976",
+  "source_commit": "c0e16c8218a983fbb07bf46d59c44109d4371b0e",
+  "fit_environment": {
+    "python": "3.13.5",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1"
+  },
+  "numerical_smoke": {
+    "candidates": 10,
+    "saved_activity_reference_ratios_and_scenario_bounds_match": true,
+    "fit_records": 88,
+    "best_parameters": {
+      "C": 10,
+      "gamma": 0.01
+    },
+    "selection_cv_r2": 0.2660902338588789,
+    "max_reload_absolute_error": 1.2505552149377763e-12,
+    "numpy_only_no_sklearn": true,
+    "primary_reference_au": 6.92728419438561,
+    "leader": "cand_00098"
+  },
+  "interpretation": "Numerical reproduction and reload checks only; not measured candidate activity, independent candidate accuracy or native-host validation.",
+  "source_results": "results/candidates/g131795_first10_canonical_dh5alpha_strength.json",
+  "reference_sha256": "8550c923680a174104cb5782161a4d6c565ca8d5182600e8d95357f0c5983a16"
+}

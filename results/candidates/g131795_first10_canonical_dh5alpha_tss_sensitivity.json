@@ -1,0 +1,107 @@
+{
+  "model": "Wang2020 DH5alpha-trained RBF SVR; CPU reproduction of published training procedure, not a pretrained checkpoint",
+  "input_sha256": "0c6a0e5764ceff7b6ab5ad1e2d45de85df62d1de82b26c3f60a55caa47c232f2",
+  "training_data_sha256": "e81b9316059886846c4e367dd6ae1a0bb196953fcd1a1bc6ac634ed4a1394976",
+  "source_commit": "c0e16c8218a983fbb07bf46d59c44109d4371b0e",
+  "best_parameters": {
+    "C": 10,
+    "gamma": 0.01
+  },
+  "primary_tss_offset_0based": 60,
+  "purpose": "Sensitivity check of the inferred anchor at offsets 58 through 62; not a mapped DH5alpha TSS, not a maximum-over-shifts primary prediction",
+  "activity_units": "Upstream training-table arbitrary units",
+  "source_sequences_81bp": {
+    "cand_00098": "AAAATACATTATTTATGAAAATATTGTAGAAAAAAGTGGTAAAATGTGATAAAATATAAGTAACTTTGGTAAAAATGAAAG",
+    "cand_00101": "ATATTGGTTGCTAATTTAAAAAATATGATATAATATTTCTTAAAGAAAAAGAAAGAGGTGACGTGGATGAATATTGAATTA",
+    "cand_00029": "AATGATTTACTCATACTATAAATATGCTATAATGGTATAAAATATTATTATATTTACAACCTTAAATTTTTAGGAGGATAA",
+    "cand_00089": "GCAGATGCTAATCTGTCTTTTTTATTTAATGATATAATAGATATGTATTATAATTGACATGTGAAAATGAAAAGTTAAAGT",
+    "cand_00072": "TGTTCATTAGTATATCACCACCATGTAATTTATGGTATTATTATAATATAATACGAACATATGTTCAAGGTGGTGTGAAAA",
+    "cand_00035": "ATAATAAAAGCTTGTATTAATCTATTTATTTACAAATTTTATGATATAATAAATTTATCTTTTTAGGAGGTATTTGAAATG",
+    "cand_00094": "AATATTATAATTAATATAGACACAGTGTTGACATAAAAAAATTATATAGTAAAATTAATATATTTAAATTATGGAGAGAGT",
+    "cand_00070": "GCTTTTATTTTTCGAGCCCATATGATATAATTTATGAAAATATAATATTTTATTGTTATATTATTAATCTAAAGGAGGTGA",
+    "cand_00032": "TTTATTCTCTTGCTTGCATATTAAACCTATACTATAATAATAATCATAAAATAATAATTATTGATTAAGGAGGTGAAAAAA",
+    "cand_00048": "TTAACTTTTAACGATTACTTTTTACATAATTTTATGATATAATTTAAATGTTGACAGAAAAGGAGGTAATTTATGAACAAA"
+  },
+  "results": [
+    {
+      "tss_offset_0based": 58,
+      "top_candidate": "cand_00048",
+      "activities_au": {
+        "cand_00098": 15.445026443449226,
+        "cand_00101": 18.401004429822738,
+        "cand_00029": 9.359857130877302,
+        "cand_00089": 13.29762990668365,
+        "cand_00072": 18.922483751589304,
+        "cand_00035": 7.999340560280162,
+        "cand_00094": 9.61976696370822,
+        "cand_00070": 8.726990672140321,
+        "cand_00032": 5.921977352566665,
+        "cand_00048": 19.2881663557828
+      }
+    },
+    {
+      "tss_offset_0based": 59,
+      "top_candidate": "cand_00098",
+      "activities_au": {
+        "cand_00098": 32.86303918728002,
+        "cand_00101": 27.787649284932005,
+        "cand_00029": 15.676191746946898,
+        "cand_00089": 9.591461227202904,
+        "cand_00072": 11.203057400767403,
+        "cand_00035": 14.307250483463926,
+        "cand_00094": 11.338624618916151,
+        "cand_00070": 19.17619276188011,
+        "cand_00032": 10.859852402086004,
+        "cand_00048": 7.239084422632822
+      }
+    },
+    {
+      "tss_offset_0based": 60,
+      "top_candidate": "cand_00098",
+      "activities_au": {
+        "cand_00098": 32.87510723596778,
+        "cand_00101": 17.902749275512747,
+        "cand_00029": 12.029647314006349,
+        "cand_00089": 11.316947076367304,
+        "cand_00072": 10.135245911394993,
+        "cand_00035": 9.926387523711007,
+        "cand_00094": 9.793090288882492,
+        "cand_00070": 7.162005925944964,
+        "cand_00032": 5.913768551568064,
+        "cand_00048": 3.9750070315213497
+      }
+    },
+    {
+      "tss_offset_0based": 61,
+      "top_candidate": "cand_00098",
+      "activities_au": {
+        "cand_00098": 32.4467522718028,
+        "cand_00101": 6.350266092988307,
+        "cand_00029": 19.312085381960628,
+        "cand_00089": 25.229010476246852,
+        "cand_00072": 10.986125842018083,
+        "cand_00035": 10.403783822283632,
+        "cand_00094": 24.49124793674627,
+        "cand_00070": 8.13353089635893,
+        "cand_00032": 20.996513258572463,
+        "cand_00048": 12.41550171487716
+      }
+    },
+    {
+      "tss_offset_0based": 62,
+      "top_candidate": "cand_00098",
+      "activities_au": {
+        "cand_00098": 37.34741184073576,
+        "cand_00101": 27.498132892762346,
+        "cand_00029": 12.250340675922782,
+        "cand_00089": 7.226831813790971,
+        "cand_00072": 9.419819872617301,
+        "cand_00035": 13.986542242586173,
+        "cand_00094": 25.989550372242608,
+        "cand_00070": 12.091790582644288,
+        "cand_00032": 10.477991474493987,
+        "cand_00048": 12.920111839191712
+      }
+    }
+  ]
+}
