@@ -101,6 +101,18 @@ The current audit exercised this local NumPy-only route without refitting or upl
 
 To export another reproduction of the unchanged procedure, add `--export-model` with a new output directory to the fitting command above. Do not overwrite the retained fitted artifact when only running inference.
 
+With authorised Hub access, the same retained fit can instead be downloaded at its recorded revision:
+
+```bash
+hf download CloBiT/dh5alpha-promoter-strength-svr \
+  --revision 0c5202892f4255eb8eb17493bed8d51e04f8cfc4 --local-dir dh5alpha_svr
+uv run --no-project --with numpy==2.5.3 python \
+  dh5alpha_svr/predict_dh5alpha_strength.py \
+  --model dh5alpha_svr --reference dh5alpha_svr/pptb_fU_reference.json \
+  --input dh5alpha_svr/canonical_candidates.tsv --top-n 10 --tss-offset 60 \
+  --out-prefix dh5alpha_first10
+```
+
 To rederive the conditional reference frame:
 
 ```bash

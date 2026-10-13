@@ -71,9 +71,9 @@ Project code/documentation is [MIT](LICENSE). ProkBERT, CNN/probe, external code
 
 The local wiki is maintained separately and is not included in the GitHub source repository. Do not move it into another tracked directory or link repository documentation to its local files. `.gitignore` excludes it; already-tracked wiki files must also be removed from Git's index without deleting the local copies.
 
-The current source-layout branch is `reorganise`; the GitHub default `main` branch does not yet contain the `docs/` and `pipeline/` layout. The remote `reorganise` branch contains the fitted DH5α package, but the broader local reorganisation and documentation corrections remain uncommitted. Local HEAD is two commits behind that remote branch. Historical names such as `T21_xs` identify retained run-output directories, not current source directories.
+The source-layout branch is `reorganise`; the GitHub default `main` branch retains the older layout. Historical names such as `T21_xs` identify retained run-output directories, not current source directories. Review the current working tree and index before publishing; do not use a blanket “take theirs” resolution to restore obsolete source directories or undo scientific corrections.
 
-Review and run these commands yourself; no staging, commit, merge, push or new model upload has been performed during this audit:
+For ordinary source updates when no merge is in progress:
 
 ```bash
 git switch reorganise
@@ -86,6 +86,17 @@ git commit -m "Correct scientific claims, update documentation, keep wiki local"
 git fetch origin
 git merge --no-edit origin/reorganise
 # If Git reports conflicts, resolve and commit them before the following command.
+git push origin HEAD:reorganise
+```
+
+If a merge has already stopped with conflicts, resolve each file first and stage only its intended resolution. Preserve remote additions in their current `pipeline/` or `release/huggingface/` locations; delete obsolete `huggingface_release/` paths rather than restoring duplicate implementations. Keep the wiki files locally, but remove any conflicted wiki entry from Git's index with `git rm -r --cached --ignore-unmatch -- wiki`.
+
+After the index has no unresolved entries, finish the existing merge rather than starting another one:
+
+```bash
+git diff --cached --stat
+git diff --cached --name-status
+git commit --no-edit
 git push origin HEAD:reorganise
 ```
 

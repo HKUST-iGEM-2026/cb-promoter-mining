@@ -123,4 +123,20 @@ FDR tracks pool candidate+null member ranks and use selected minimum window p-va
 
 ## Remaining evidence
 
-The 888 wrong-assembly B. licheniformis labels persist. Exact historical Evo2 extraction revision/layer, the imported six-base QC PWMs' scientific source, the sequence/spreadsheet packaging generator and NTv3 context-overlap remain unresolved; the original mining MEME/FIMO records are recovered. Cluster-disjoint CV/hard-negative mining code is not proof of completed experiments. Full rescanning needs identified assembly/annotation/grid and compatible Evo2 GPU inference. Native Cb activity, mapped TSS and transcript/operon confirmation remain unestablished; candidate-specific GFP measurements and assay details were not supplied.
+The 888 wrong-assembly B. licheniformis labels persist. The original MMseqs command/version requires source-host evidence; [recovery commands](PIPELINE.md#recover-the-original-clustering-command-and-version) collect it without rerunning clustering. Exact historical Evo2 extraction revision/layer, the imported six-base QC PWMs' scientific source, the sequence/spreadsheet packaging generator and NTv3 context-overlap remain unresolved; the original mining MEME/FIMO records are recovered. Cluster-disjoint CV/hard-negative mining code is not proof of completed experiments. Full rescanning needs identified assembly/annotation/grid and compatible Evo2 GPU inference. Native Cb activity, mapped TSS and transcript/operon confirmation remain unestablished; candidate-specific GFP measurements and assay details were not supplied.
+
+### Source-backed audit after merge reconciliation
+
+The current audit checks claims against source code, saved artifacts, pinned source methods, provider policies and the team's supplied account. It does not replace historical metrics with new training or GPU inference. The predictor add/add conflicts contained identical code on both sides and differed only in executable mode; the reconciled commands preserve the retained outputs.
+
+| Claim family | Evidence status | Interpretation boundary |
+|---|---|---|
+| Sources, splits and weights | Recovered split/encoding records and source metadata; [pipeline](PIPELINE.md) | Putative labels, cluster-disjoint partitions and supervised target exclusion do not prove biological independence or absence from backbone pretraining. |
+| Model architecture and classification | Saved configs/probe and original metric records; [models](MODELS.md) | Neural AP records and Evo2 saved-feature replay have different origins; all-one test weights make weighted/unweighted test metrics coincide. |
+| Genomic benchmarks and ensemble | Saved aligned tracks, published-TSS tables and benchmark code | Restricted covered-TSS/merged-unmatched-peak proxy, not biological precision; standalone and paired runs remain distinct. |
+| Catalogue, motifs and coordinates | Recovered MEME/FIMO records and reproduced builder fields | Positional labels and oriented reference matches do not establish sigma usage, promoter activity, constitutive behavior or mapped starts. |
+| Downstream units and novelty | Annotation/sequence-screen records | Proximity and reference-match rules do not establish cotranscription, operon identity or biological novelty; the packaging generator remains absent. |
+| DH5α and generic initiation estimates | Both reconciled CLI paths exercised on all ten retained candidates | Same-model SVR reference ratios and framing scenarios are not measured fold-changes or confidence intervals; the generic initiation model is a separate unvalidated host-transfer proxy. |
+| Calibration and exploratory q metadata | Historical sampled-cohort reports and saved-rank reconstruction | Neither is a deployed target-genome calibrator or proof of biological peak-FDR control. |
+| Experimental, safety and personal claims | Team-supplied account only | Reporter strain, candidate-linked measurements, approvals, contributor confirmations and native Cb validation are not inferred. |
+| Access and licences | Authenticated private-package records, pinned licences and current RegulonDB policy | Component existence is not public access or a packaged service; project MIT and artifact declarations do not waive third-party data/model terms. |

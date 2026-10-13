@@ -93,6 +93,39 @@ The deployed split used **MMseqs2**, despite the historical `cdhit_splits.py` fi
 
 The splitter deduplicates DNA and pins clusters containing silver or cross-species positives to training. Overall labels are balanced, but partitions are not: train/validation/test contain 44,085/3,052/3,053 windows and 24,001/547/547 positive labels. Silver positives carry confidence weight 0.3; training negatives are rescaled to 0.7127265484963153, giving equal total positive and negative loss weight. Every validation/test weight is 1. The test's positive fraction, 547/3,053 = 0.179168, is the **random-ranking/no-skill AP baseline**, not any model's measured AP.
 
+### Recover the original clustering command and version
+
+Backend and membership recovery is complete; exact invocation/version recovery is not. Eight local MMseqs cache entries are symbolic links to the original `/project/igem2026/cb-promoter-mining/.../_cluster_mmseqs/` paths, with unavailable local targets. They are not proof that the source-host files are empty or deleted. The two retained cache directories are `tmp/8435348419779229844` and `tmp/9316599144162474585`; their `clu_rep.source` links point to each directory's `input.source`. Original generated shell scripts, job logs, Snakemake metadata and contemporaneous environment records may still exist on the source host.
+
+The [read-only collector](../pipeline/datasets/clustering-and-splits/collect_mmseqs_provenance.py) prints candidate command/banner contexts, cache link targets, conda package/history records and executable hashes. It uses Python's standard library, does not run clustering or execute discovered binaries, and never infers a historical version from the current installation. Shell-history searches return matching commands only, without surrounding unrelated history.
+
+From a Mac terminal with working authorised HKUST campus/VPN SSH access, run from the repository root:
+
+```bash
+REPORT="$(mktemp "$HOME/Downloads/mmseqs-provenance.XXXXXX")"
+ssh -o StrictHostKeyChecking=yes osoo@superpod.ust.hk \
+  'python3 - --root /project/igem2026/cb-promoter-mining \
+    --environment-root /project/igem2026/envs \
+    --environment-root "$HOME/.conda/envs" \
+    --environment-root "$HOME/miniconda3/envs" \
+    --history-file "$HOME/.bash_history" \
+    --history-file "$HOME/.zsh_history"' \
+  < pipeline/datasets/clustering-and-splits/collect_mmseqs_provenance.py \
+  > "$REPORT" &&
+printf 'Evidence saved to %s\n' "$REPORT"
+```
+
+The source mapping identifies `osoo@superpod.ust.hk`; `ust-hpc4` is the configured alternative alias for `osoo@hpc4.ust.hk`. If the original files remain on HPC4 rather than SuperPod, substitute `ust-hpc4` for the SSH destination in the same command. Both hosts timed out from the audit machine; no source-host collector output is claimed.
+
+To inspect only the retained local material:
+
+```bash
+python3 pipeline/datasets/clustering-and-splits/collect_mmseqs_provenance.py \
+  --root "$HOME/cb-promoter-original-run"
+```
+
+A recovered command must be tied to the deployed `T15_xs` output and a contemporaneous version source, such as the same job's MMseqs banner, its environment transaction/package record or an identified container/executable. `mmseqs version` in an unrelated current environment and the current Python recipe are not evidence of the original run. Preserve the collected JSONL so that these associations can be audited before updating the historical claim.
+
 ### QC the split before trusting it
 
 ```python

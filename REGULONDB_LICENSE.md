@@ -8,7 +8,7 @@ Attribute RegulonDB and the original supporting publications, link the licence/p
 
 ## Project data
 
-[PromoterS_Set.txt](pipeline/acquisition/curated-promoters/PromoterS_Set.txt) retains its original header and records: release **13.5**, dated **28 January 2025**. The export cites Salgado, Gama-Castro et al., “RegulonDB v12.0: a comprehensive resource of transcriptional regulation in E. coli K-12,” *Nucleic Acids Research*, 2023, [doi:10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072). Paper version and export release are distinct.
+[PromoterS_Set.txt](pipeline/acquisition/curated-promoters/PromoterS_Set.txt) retains its original header and records: release **13.5**, dated **28 January 2025**. The export cites Salgado, Gama-Castro et al., “RegulonDB v12.0: a comprehensive resource of transcriptional regulation in E. coli K-12,” [doi:10.1093/nar/gkad1072](https://doi.org/10.1093/nar/gkad1072). The paper was published online in 2023 and appears in the 2024 *Nucleic Acids Research* issue; the raw export citation is unchanged. Paper version, journal year and export release are distinct.
 
 Processing sanitises sequences, filters unsuitable records and adds metadata. The curated table combines 3,963 RegulonDB and 373 DBTBS records; deployed splits retain 3,827 RegulonDB positive windows after preparation/deduplication. [Archived prototypes](archive/prototypes/prokbert-finetune/) also contain raw/adapted exports and gene-derived negatives. These transformations do not create experimentally verified labels.
 
