@@ -1,5 +1,5 @@
 *.zip filter=lfs diff=lfs merge=lfs -text
-prototypes/ecoli-sliding-window/*.csv filter=lfs diff=lfs merge=lfs -text
+archive/prototypes/ecoli-sliding-window/*.csv filter=lfs diff=lfs merge=lfs -text
 MasterTable.tsv filter=lfs diff=lfs merge=lfs -text
-data-acquisition-and-curation/tss-literature/published_tss/*.xls filter=lfs diff=lfs merge=lfs -text
-data-acquisition-and-curation/tss-literature/published_tss/*.xlsx filter=lfs diff=lfs merge=lfs -text
+pipeline/acquisition/tss-literature/published_tss/*.xls filter=lfs diff=lfs merge=lfs -text
+pipeline/acquisition/tss-literature/published_tss/*.xlsx filter=lfs diff=lfs merge=lfs -text

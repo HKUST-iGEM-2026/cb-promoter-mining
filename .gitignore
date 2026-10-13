@@ -5,4 +5,9 @@ results_ntv3_full/
 *.npy
 *.parquet
 .ipynb_checkpoints/
-wiki/
+# Local environments and operating-system metadata, not source documentation.
+/.venv/
+/venv/
+.DS_Store
+# Local wiki sources and exports are published separately, never to this repository.
+/wiki/

@@ -1,7 +1,7 @@
 [project]
 name = "cb-promoter-mining"
 version = "0.1.0"
-description = "Add your description here"
+description = "Research workflows for Clostridium promoter-candidate mining and DH5alpha promoter-core strength prediction"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

@@ -1,0 +1,71 @@
+{
+  "inputs": {
+    "meme": "mining-and-motif-annotation/motif-annotation/sigma_a_promoter.meme",
+    "table": "final-candidates/g131795_ranked_seq.tsv",
+    "declared_background_ACGT": [
+      0.35,
+      0.15,
+      0.15,
+      0.35
+    ]
+  },
+  "coverage": {
+    "total": 929,
+    "both": 45,
+    "minus10_only": 135,
+    "minus35_only": 288,
+    "neither": 461
+  },
+  "information_content_bits": {
+    "minus10": {
+      "uniform_bg": 4.02,
+      "at_rich_bg": 2.41
+    },
+    "minus35": {
+      "uniform_bg": 2.57,
+      "at_rich_bg": 2.59
+    }
+  },
+  "contamination": {
+    "uniform_0.25": {
+      "minus35_prefers_minus10_pct": 86.5,
+      "minus35_n": 333,
+      "minus10_prefers_minus35_pct": 5.0,
+      "minus10_n": 180
+    },
+    "at_rich_0.35_0.15": {
+      "minus35_prefers_minus10_pct": 86.2,
+      "minus35_n": 333,
+      "minus10_prefers_minus35_pct": 5.6,
+      "minus10_n": 180
+    }
+  },
+  "random_control": {
+    "uniform_0.25": 61.0,
+    "at_rich": 52.8,
+    "note": "synthetic AT-rich 14-mers; the flag measures motif preference, not promoter activity"
+  },
+  "signal_vs_null": {
+    "minus10_boxes": {
+      "median_percentile": 98,
+      "pct_above_null_95th": 79
+    },
+    "minus35_boxes": {
+      "median_percentile": 52,
+      "pct_above_null_95th": 11
+    },
+    "note": "selected context own-motif log-odds percentile vs synthetic AT-rich 14-mers; not independent promoter confirmation"
+  },
+  "spacer_bp": {
+    "n": 45,
+    "min": 5.0,
+    "median": 18.0,
+    "max": 34.0,
+    "note": "rounded motif-center separation, not edge gap; median 18 does not exclude coordinate/extraction errors"
+  },
+  "at_content_pct": {
+    "minus10_boxes": 88,
+    "minus35_boxes": 85,
+    "summit": 79
+  }
+}

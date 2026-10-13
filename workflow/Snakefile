@@ -1,0 +1,358 @@
+# =====================================================================
+# Promoter Mining — legacy cluster scaffold (Task T3).
+#
+# Rules mix real commands, obsolete paths/templates and a recipe sentinel (T17).
+# Phase-A inputs come from local_prep.smk (+ optional tss_prep.smk for T10).
+#
+# This is the legacy DAG, not the complete modern deployment workflow. Its default target still
+# reaches outdated template paths and optional TSSpredator dependencies. New standalone scripts
+# exist, but their existence does not repair the corresponding old rule wiring.
+# Use local_prep.smk for acquisition, explicit T11-T14 outputs for dataset staging, and the maintained
+# training/evaluation/mining recipes in docs/PIPELINE.md. A dry run checks wiring, not execution.
+# Many rules declare only a `results/<task>.done` sentinel, not their real artifacts;
+# a sentinel's existence does not establish that the intended outputs remain valid.
+# T11-T14 instead declare their real .tsv outputs.
+#
+# Run:
+#     snakemake -n results/T14/negative_set.tsv                      # needs configured Bakta inputs, not Phase A
+#     snakemake --cores 4 results/T14/negative_set.tsv                # execute T11-T14 on this host
+#     snakemake -s local_prep.smk --cores 4                          # required before T15 splitting
+# T11-T14 and annotation staging are localrules even with the Slurm profile.
+# Run substantial CPU work on a site-approved host/allocation. For T15_xs and
+# deployment training/mining, use docs/PIPELINE.md rather than the default target.
+# =====================================================================
+
+import os
+
+configfile: "config/config.yaml"
+
+# Repo root, resolved from the Snakefile location (portable local <-> the cluster).
+REPO = os.path.abspath(os.path.join(workflow.basedir, ".."))
+
+# T6 Bakta outputs. config[bakta_dir] is either a .zip or an already-extracted dir.
+# Normalise to BAKTA = the root dir that directly contains the <genome>_genomic_output/ subdirs.
+BAKTA_SRC = config["bakta_dir"]
+if not os.path.isabs(BAKTA_SRC):
+    BAKTA_SRC = os.path.join(REPO, BAKTA_SRC)  # repo-relative -> absolute (portable across clone locations)
+if str(BAKTA_SRC).endswith(".zip"):
+    BAKTA = "results/bakta/all_bakta_output"   # produced by rule extract_bakta
+else:
+    BAKTA = BAKTA_SRC                          # already-extracted dir (external input)
+
+# GPU jobs add per-GPU billing on top of the profile's preempt hygiene.
+GPU_EXTRA = "'--gpus-per-node=1 --requeue --signal=B:USR1@120'"
+
+# ---- Phase A starting state (produced by local_prep.smk / tss_prep.smk, pre-staged) ----
+REFDB         = "inputs/reference_promoters.parquet"      # T8  — RegulonDB (+DBTBS) normalised
+LIT_PROM      = "inputs/literature_promoters.tsv"         # T9  — curated synthetic promoters
+TSS_CALLS     = "inputs/tss_sites.gff3"                   # T10 — TSSpredator empirical TSS (the cluster)
+PUBLISHED_TSS = "inputs/published_tss_promoters.parquet"  # T7b — in-genus published TSS positives -> T15
+LIT_TRAIN     = "inputs/literature_promoters_train.parquet"  # T9-split (option b) — in-genus training positives -> T15
+
+# The only true graph leaves (evaluation reports + final deliverable).
+LEAVES = ["T23", "T24", "T25", "T32"]
+
+
+rule all:
+    input:
+        expand("results/{t}.done", t=LEAVES),
+
+
+# GPU-heavy tasks submit as SLURM jobs; everything listed here runs on the login/submit node.
+localrules: all, extract_bakta, collect_bakta_tsv, pt2_ship_to_huggingface, pt3_metrics_cv_stack, pt4_calibration_fdr_harness, pt6_validate_lock_schema, t11_housekeeping_set, t12_operon_detection, t13_upstream_extraction, t14_negative_set, t15_cdhit_splits, t16_tokenisation, t17_finetune_recipe, t22_metrics_suite, t25_sigma_stratified, t26_calibration, t27_empirical_fdr, t29_ensemble_aggregation, t30_peak_calling, t31_motif_annotation, t32_final_output
+
+# ---------------------------------------------------------------------
+# Pre-tasks (learning + reusable code)
+# ---------------------------------------------------------------------
+rule pt1_finetune_loop:
+    output: "results/PT1.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=240
+    shell:
+        "python {REPO}/archive/prototypes/prokbert-finetune/prokbert_finetune.py && touch {output}"
+    # GPU. Confirm torch.cuda.is_available(); PT1 reportedly ran on CPU (~6h) before — verify.
+
+rule pt2_ship_to_huggingface:
+    input: "results/PT1.done"
+    output: "results/PT2.done"
+    shell:
+        "python {REPO}/archive/prototypes/PT2/push_to_hub.py && touch {output}"
+    # Obsolete missing PT2 path. Standalone release packaging is in release/huggingface/upload_to_hf.py;
+    # that uploader is not wired into this rule and requires checkpoint paths and authorised Hub access.
+
+rule pt3_metrics_cv_stack:
+    output: "results/PT3.done"
+    shell:
+        "python {REPO}/archive/prototypes/metrics-and-cv/metrics_cv.py && touch {output}"
+    # LIVE (no args; writes results/pt3_metrics/pt3_cv_results.csv). Needs scikit-learn.
+
+rule pt4_calibration_fdr_harness:
+    input: "results/PT3.done"
+    output: "results/PT4.done"
+    shell:
+        "python {REPO}/archive/prototypes/calibration-fdr/calibration_fdr.py && touch {output}"
+    # Prototype demonstration on dummy data, not the deployed calibration/FDR pipeline.
+
+rule pt5_sliding_window_ecoli:
+    output: "results/PT5.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=240
+    shell:
+        # MG1655.fna path is cwd-relative -> run from the PT5 dir; capture the sentinel path first.
+        "OUT=$(pwd)/{output} && cd {REPO}/archive/prototypes/ecoli-sliding-window && "
+        "python sliding_window_inference.py && touch $OUT"
+    # GPU. Writes mg1655_promoter_scores.csv (reused by T28/PT6).
+
+rule pt6_validate_lock_schema:
+    input: "results/PT5.done"
+    output: "results/PT6.done"
+    shell:
+        "python {REPO}/archive/prototypes/pipeline-validation/validate_promoters.py "
+        "--pred {REPO}/archive/prototypes/ecoli-sliding-window/mg1655_promoter_scores.csv "
+        "--regulondb {REPO}/archive/prototypes/pipeline-validation/regulondb_tss.tsv "
+        "--genome {REPO}/archive/prototypes/ecoli-sliding-window/MG1655.fna --outdir results/PT6 && touch {output}"
+    # LIVE once a RegulonDB E. coli TSS table is staged at PT6/regulondb_tss.tsv. Locks the T32 schema.
+
+
+# ---------------------------------------------------------------------
+# Phase B — Dataset construction  (LIVE: reads Bakta from BAKTA = config[bakta_dir])
+# ---------------------------------------------------------------------
+rule extract_bakta:
+    # the cluster ships Bakta as a zip whose top folder is all_bakta_output/. Only runs when
+    # config[bakta_dir] is a .zip; with an extracted dir, BAKTA points straight at it.
+    input: BAKTA_SRC
+    output: directory("results/bakta/all_bakta_output")
+    shell:
+        "rm -rf results/bakta && mkdir -p results/bakta && "
+        "unzip -q -o {input} -x '__MACOSX/*' -d results/bakta && "
+        "test -d {output}"
+
+rule collect_bakta_tsv:
+    # T11 wants a FLAT dir of Bakta *.tsv; symlink them flat with ABSOLUTE targets.
+    input: BAKTA
+    output: directory("results/bakta_tsv")
+    shell:
+        r"""
+        mkdir -p {output}
+        root=$(cd "{input}" && pwd)
+        for d in "$root"/*_genomic_output; do
+          s=$(basename "$d" _output)
+          ln -sf "$d/$s.tsv" "{output}/$s.tsv"
+        done
+        """
+
+rule t11_housekeeping_set:
+    input: "results/bakta_tsv"
+    output: "results/T11/housekeeping_genes.tsv"
+    shell:
+        "python {REPO}/pipeline/datasets/housekeeping-genes/define_housekeeping.py "
+        "--tsv-dir {input} --out-dir results/T11"
+
+rule t12_operon_detection:
+    input:
+        hk="results/T11/housekeeping_genes.tsv",
+        bakta=BAKTA,
+    output: "results/T12/operon_leaders.tsv"
+    shell:
+        "python {REPO}/pipeline/datasets/operon-detection/operon_detection.py "
+        "--hk-tsv {input.hk} --bakta-dir {input.bakta} --out-tsv {output} "
+        "--max-dist {config[operon_max_dist_bp]} --window {config[upstream_window_bp]}"
+
+rule t13_upstream_extraction:
+    input:
+        leaders="results/T12/operon_leaders.tsv",
+        bakta=BAKTA,
+    output: "results/T13/upstream_regions.tsv"           # POSITIVE windows (NB: inferred positives)
+    shell:
+        "python {REPO}/pipeline/datasets/upstream-extraction/upstream_extraction.py "
+        "--leaders-tsv {input.leaders} --bakta-dir {input.bakta} --out-tsv {output} "
+        "--window {config[upstream_window_bp]}"
+
+rule t14_negative_set:
+    input:
+        upstream="results/T13/upstream_regions.tsv",
+        bakta=BAKTA,
+    output: "results/T14/negative_set.tsv"               # four-class negatives incl. SRS (seeded)
+    shell:
+        "python {REPO}/pipeline/datasets/negative-sets/negative_set_generation.py "
+        "--upstream-tsv {input.upstream} --bakta-dir {input.bakta} --out-tsv {output} "
+        "--window {config[upstream_window_bp]} --seed {config[random_seed]}"
+
+rule t15_cdhit_splits:
+    input:
+        refdb=REFDB,                                     # T8 cross-species positives
+        published=PUBLISHED_TSS,                         # T7b in-genus published-TSS positives
+        t9_train=LIT_TRAIN,                              # T9-split (option b) in-genus C. acetobutylicum positives
+        tss=TSS_CALLS,                                   # legacy dependency only: not passed to --positives
+        positives="results/T13/upstream_regions.tsv",    # T13 inferred positives
+        negatives="results/T14/negative_set.tsv",        # T14 negatives
+    output: "results/T15.done"
+    shell:
+        "python {REPO}/pipeline/datasets/clustering-and-splits/cdhit_splits.py "
+        "--positives {input.refdb} {input.published} {input.t9_train} {input.positives} "
+        "--negatives {input.negatives} --identity {config[cdhit_identity]} "
+        "--seed {config[random_seed]} --out results/T15/ && touch {output}"
+    # cdhit_splits.py exists: schema harmonisation, re-windowing, seeded negative sampling,
+    # source/cluster train pinning and MMseqs2/CD-HIT dispatch are implemented there.
+    # This legacy rule builds plain T15, not deployed T15_xs, and unnecessarily requires T10.
+    # Use the explicit xs-source command in docs/PIPELINE.md; T10 is not a deployed positive source.
+
+rule t16_tokenisation:
+    input: "results/T15.done"
+    output: "results/T16.done"
+    shell:
+        "python {REPO}/pipeline/datasets/tokenisation/tokenise.py results/T15/ results/T16/ && touch {output}"
+    # tokenise.py exists and writes model-specific encodings/metadata. This rule targets plain T16,
+    # not the deployed T16_xs paths used by the standalone training recipes.
+
+
+# ---------------------------------------------------------------------
+# Phase C — Model training  (GPU)
+# ---------------------------------------------------------------------
+rule t17_finetune_recipe:
+    input: "results/PT2.done"
+    output: "results/T17.done"
+    shell:
+        "mkdir -p results/T17 && touch {output}"
+    # DECISION GATE, not a command: finalise the fine-tuning recipe (a config) from PT2 -> T18/T19/T20.
+
+rule t18_prokbert_finetune:
+    input: "results/T16.done", "results/T17.done"
+    output: "results/T18.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=480
+    shell:
+        "python {REPO}/pipeline/training/prokbert/train_prokbert.py && touch {output}"
+    # train_prokbert.py exists; this no-argument rule uses plain T16/default settings and inherits
+    # obsolete PT2/T17 dependencies. Deployment T21_xs training is specified in docs/PIPELINE.md.
+
+rule t19_nt_lora_finetune:
+    input: "results/T16.done", "results/T17.done"
+    output: "results/T19.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=480
+    shell:
+        "python {REPO}/pipeline/training/nucleotide-transformer/train_nt_lora.py && touch {output}"
+    # train_nt_lora.py exists; use the separate ENV_NT runtime. This historical model is not deployed;
+    # the rule does not activate that environment and still inherits obsolete PT2/T17 dependencies.
+
+rule t20_cnn_train:
+    input: "results/T16.done", "results/T17.done"
+    output: "results/T20.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=480
+    shell:
+        "python {REPO}/pipeline/training/cnn/train_cnn_template.py && touch {output}"
+    # Legacy 300bp template with cwd-relative data/* inputs and an unseeded final random_split.
+    # Current standalone trainers are train_cnn.py and deployed train_cnn_v2.py; neither is wired here.
+
+rule t21_hparam_sweep:
+    input: "results/T18.done", "results/T19.done", "results/T20.done"
+    output: "results/T21.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=720
+    shell:
+        "python {REPO}/pipeline/training/hyperparameter-sweep/hyperparameter_sweep.py && touch {output}"
+    # Standalone Optuna orchestrator exists and selects on validation AP. This rule retains
+    # historical defaults/dependencies; it does not create deployed T21_xs checkpoints.
+
+
+# ---------------------------------------------------------------------
+# Phase D — Evaluation & calibration
+# ---------------------------------------------------------------------
+rule t22_metrics_suite:
+    input: "results/PT3.done", "results/T21.done"
+    output: "results/T22.done"
+    shell:
+        "python {REPO}/pipeline/evaluation/metrics/metrics_suite.py "
+        "--preds results/T21/ --out results/T22/ && touch {output}"
+    # Missing legacy metrics_suite.py path. Available inference/metrics entry point:
+    # pipeline/evaluation/metrics/predict_and_score.py (explicit per-model CLI in docs/PIPELINE.md).
+
+rule t23_cluster_cv:
+    input: "results/T15.done", "results/T21.done"
+    output: "results/T23.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=720
+    shell:
+        "python {REPO}/pipeline/evaluation/cross-validation/cluster_cv_template.py && touch {output}"
+    # Legacy template imports nonexistent task18/task19/task20 paths and old predictor classes.
+    # Standalone cluster_cv_runner.py exists; its availability is not evidence of completed deployed CV.
+
+rule t24_cross_species_holdout:
+    input: LIT_PROM, "results/T21.done"
+    output: "results/T24.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=240
+    shell:
+        "python {REPO}/pipeline/evaluation/external-holdout/evaluate_external_template.py && touch {output}"
+    # Legacy template has broken old imports and two executable __main__ blocks.
+    # Use evaluate_external_holdout.py with explicit model paths; this rule is not migrated.
+    # If T9 training is enabled, evaluate only its held-out rows rather than the complete T9 library.
+
+rule t25_sigma_stratified:
+    input: TSS_CALLS, "results/T22.done"
+    output: "results/T25.done"
+    shell:
+        "python {REPO}/pipeline/evaluation/sigma-factor-stratified/sigma_stratified.py {input} results/T25/ && touch {output}"
+    # sigma_stratified.py exists, but expects --t15-dir/--t22-dir/--out rather than these positional
+    # arguments. Its historical split/prediction analysis is not T10-derived deployed-ensemble evidence.
+
+rule t26_calibration:
+    input: "results/PT4.done", LIT_PROM, "results/T22.done"
+    output: "results/T26.done"
+    shell:
+        "python {REPO}/pipeline/evaluation/calibration/calibrate.py {input} results/T26/ && touch {output}"
+    # Missing legacy calibrate.py path. Available checkpoint-specific Platt/AT helpers and
+    # run_calibration_xs.sh are standalone; the ordinary deployed mine does not use calibrators.
+
+rule t27_empirical_fdr:
+    input: "results/PT4.done", "results/T14/negative_set.tsv", "results/T26.done"
+    output: "results/T27.done"
+    shell:
+        "python {REPO}/pipeline/evaluation/empirical-fdr/empirical_fdr.py {input} results/T27/ && touch {output}"
+    # Missing legacy empirical_fdr.py path. Standalone run_fdr_mine.sbatch/fdr_stats.py use
+    # convergent-intergenic putative nulls and pooled candidate+null ranks, not T14 SRS.
+    # Selected-peak p/q are conditional screening statistics, not established biological FDR.
+
+
+# ---------------------------------------------------------------------
+# Phase E — Mining & motif annotation
+# ---------------------------------------------------------------------
+rule t28_mining_inference:
+    input: "results/PT6.done", "results/T13/upstream_regions.tsv", "results/T21.done"
+    output: "results/T28.done"
+    resources: slurm_extra=GPU_EXTRA, runtime=480
+    shell:
+        "python {REPO}/pipeline/mining/genome-scan/sliding_window_engine_template.py && touch {output}"
+    # Missing legacy scanner-template path. Deployment uses mine_3model.sbatch plus
+    # genome_inference.py/evo2_scan_restricted.py with explicit assembly/checkpoint/grid inputs.
+
+rule t29_ensemble_aggregation:
+    input: "results/T28.done"
+    output: "results/T29.done"
+    shell:
+        "python {REPO}/pipeline/mining/ensemble-aggregation/ensemble.py results/T28/ results/T29/ && touch {output}"
+    # Missing legacy ensemble.py path. Standalone align_tracks.py + ensemble_rank_percentile.py
+    # intersect member grids and average rank percentiles; this rule is not migrated.
+
+rule t30_peak_calling:
+    input: "results/T29.done"
+    output: "results/T30.done"
+    shell:
+        "python {REPO}/pipeline/mining/peak-calling/peak_calling.py results/T29/ results/T30/ && touch {output}"
+    # Missing legacy peak_calling.py path. Standalone call_peaks.py merges score-gated windows;
+    # extract_call_sequences.py subsequently writes oriented summit FASTA/candidate ids.
+
+rule t31_motif_annotation:
+    input: "results/T30.done"
+    output: "results/T31.done"
+    shell:
+        # Legacy MEME/FIMO commands; no environment activation or transcription-strand-only FIMO flag.
+        # The deployed standalone annotate_motifs.sh uses oriented summit sequences and --norc.
+        "meme results/T30/candidates.fasta -oc results/T31/meme -dna -mod zoops -nmotifs 5 -minw 6 -maxw 35 && "
+        "fimo --oc results/T31/fimo results/T31/meme/meme.txt results/T30/candidates.fasta && touch {output}"
+    # Motif discovery/position labels do not establish sigma usage, activity or constitutive regulation.
+    # This legacy input/output contract differs from the maintained standalone T31/T32 workflow.
+
+rule t32_final_output:
+    input: "results/T26.done", "results/T27.done", "results/T30.done", "results/T31.done"
+    output: "results/T32.done"
+    shell:
+        "python {REPO}/pipeline/mining/candidate-table/assemble_final.py "
+        "results/T26/ results/T27/ results/T30/ results/T31/ results/T32/ && touch {output}"
+    # Missing legacy assemble_final.py path. Standalone build_candidate_table.py, q joining and
+    # prioritize_candidates.py are documented in docs/PIPELINE.md; sequence/spreadsheet exports
+    # remain a separately supplied enrichment step, not implemented by this rule.

@@ -1,0 +1,76 @@
+{
+  "scope": "Compact verification and provenance record for the three deployed promoter classifiers. This is not a full dataset/embedding/scan archive or biological validation.",
+  "model_artifacts": {
+    "CloBiT/prokbert-mini-clostridium-promoter": {
+      "weights": "model.safetensors",
+      "weights_sha256": "bf60978b5828da7ed49e5cbf243301c3b5c5dd1bfa9b776dcee16239e6f9b930",
+      "historical_metrics_file": "metrics.json",
+      "historical_validation_auprc": 0.8080683612857302,
+      "historical_test_auprc": 0.8249372466065321,
+      "metric_weighting": "unweighted average precision; weighted=true in the original JSON denotes training-loss weighting",
+      "held_out_metrics_remeasured": false
+    },
+    "CloBiT/cnn-fusion-clostridium-promoter": {
+      "weights": "best_model.pt",
+      "weights_sha256": "ae67ff0ec438c1bc2e3f7c70544915672dcd33a32ce29bcded7346dd2d79f8a7",
+      "historical_metrics_file": "metrics.json",
+      "historical_validation_auprc": 0.7380835045313733,
+      "historical_test_auprc": 0.7255828423854476,
+      "metric_weighting": "unweighted average precision; weighted=true in the original JSON denotes training-loss weighting",
+      "held_out_metrics_remeasured": false
+    },
+    "CloBiT/evo2-logreg-clostridium-promoter-probe": {
+      "probe": "evo2_promoter_classifier.pkl",
+      "probe_sha256": "cdab97b9b14785238a9a37c78fb3d476bee50b7d1df285495a29fc1cf43208d7",
+      "pipeline": ["StandardScaler", "LogisticRegression"],
+      "features": 4096,
+      "refit_cohort": "train plus validation, 47137 rows; validation is not held out from this artifact",
+      "test_rows": 3053,
+      "test_positive_labels": 547,
+      "remeasured_weighted_test_auprc_displayed": "0.70258010",
+      "remeasured_weighted_test_auroc_displayed": "0.89534660",
+      "evaluation_evidence": "Successful user-executed local terminal evaluation on recovered test_X/test_y/test_w; no retraining or fresh backbone inference",
+      "runtime_pins": {"python_selector": "3.12", "numpy": "2.5.4", "scikit-learn": "1.9.0", "joblib": "1.5.3"},
+      "test_weighting_note": "All recovered test weights are 1; weighted and unweighted test AP/AUROC coincide. Evaluation origins differ."
+    }
+  },
+  "original_data_alignment": {
+    "total_rows": 50190,
+    "window_bp": 81,
+    "splits": {"train": {"rows": 44085, "positives": 24001}, "val": {"rows": 3052, "positives": 547}, "test": {"rows": 3053, "positives": 547}},
+    "all_source_rows_order_and_metadata_match_encodings": true,
+    "all_prokbert_and_nt_token_ids_and_masks_regenerate_exactly": true,
+    "token_widths": {"prokbert": 78, "nt": 82},
+    "cnn_onehot_source_DNA_labels_weights_cluster_ids_match_exactly": true,
+    "cnn_base_order": "A,C,G,T",
+    "cluster_id_intersection_counts": {"train_val": 0, "train_test": 0, "val_test": 0},
+    "runtime": {"python": "3.12.12", "transformers": "5.3.0", "numpy": "2.5.4", "pandas": "3.0.6", "pyarrow": "26.0.0"},
+    "tokenizers": {
+      "prokbert": {"repository": "neuralbioinfo/prokbert-mini", "revision": "feb2520a43cd9cdb5b3d8477e47209dbcb55d1dc", "code_revision": "366d9336b6b89d7c1feddf56d9b01be8065ccc43"},
+      "nt": {"repository": "InstaDeepAI/nucleotide-transformer-v2-250m-multi-species", "revision": "c0f0359229f36ff6bc3a021247eefe0a9c344bd1"}
+    },
+    "source_parquet_sha256": {"train": "2c1afbe6ff21f54f08e619834a2a3ae5343d73901e8e55349afc1c11f65686d5", "val": "8d28862c9813651cfe5dcbca493d033d6bfd0e8d430a7690e5959383ce5c5d43", "test": "6d3c32ad7fed6bd479bab07e303934e4656186c5b6d721c47bd64ec2fa6ec556"},
+    "limit": "Correspondence and cluster-disjointness do not prove biological label accuracy, absence of all related sequences or foundation-model pretraining overlap."
+  },
+  "historical_input_recovery": {
+    "source": "SuperPod, /project/igem2026/cb-promoter-mining",
+    "regular_files": 159,
+    "sha256_manifest_sha256": "da967bd0d64feb9b887dfeec43e3b64f0b66707e8aa81ebb7f0008c8e30eabef",
+    "sha256_manifest_file": "recovery_SHA256SUMS",
+    "manifest_paths": "Relative to the original SuperPod project; local integration relocates some track/report directories without changing their bytes.",
+    "all_manifest_entries_passed": true,
+    "verification_evidence": "User-executed shasum manifest check; successful local integration without overwriting existing files",
+    "recovered_inputs": ["target and paired-benchmark aligned member scores", "matching Evo2 train/validation/test X, y and w", "extraction log and source snapshots"],
+    "large_inputs_in_model_packages": false,
+    "saved_features": {"dtype": "float32", "features": 4096, "split_rows": {"train": 44085, "val": 3052, "test": 3053}, "all_X_values_finite": true, "y_and_w_exactly_match_source_parquet_row_order_and_values": true},
+    "extraction_provenance": {"slurm_job": 516257, "state": "COMPLETED", "exit_code": "0:0", "logged_model": "arcinstitute/evo2_7b", "logged_pool": "mean", "recorded_current_default_layer": "blocks.28.mlp.l3", "limit": "Current defaults do not prove the exact historical code revision/layer; saved-feature metric agreement is not a new GPU DNA-to-embedding audit."}
+  },
+  "remaining_limits": [
+    "Original optional calib_xs maps/cohort and T22_xs predictions are unavailable; these are not dependencies of the deployed raw-score/rank path.",
+    "The known 888 wrong-assembly B. licheniformis positive labels remain in deployed training; recovery/card updates do not repair the models.",
+    "Exact historical Evo2 extraction code/layer, imported six-base QC PWM scientific source and the uncommitted _seq enrichment generator remain separate evidence boundaries. Original mining MEME/FIMO scan records are recovered.",
+    "No fresh GPU extraction, model training or target/paired-benchmark rescanning is claimed.",
+    "Promoter activity, sigma-factor usage, constitutive/inducible regulation, strength and downstream cotranscription require independent experimental evidence.",
+    "Model repositories remain private; this compact record does not archive the large recovered inputs or the complete project wiki/docs."
+  ]
+}

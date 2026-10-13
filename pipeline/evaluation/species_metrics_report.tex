@@ -1,0 +1,96 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Model Performance Across Species\\ \large Four models, three evaluation regimes, from in-distribution discrimination to genome-scale deployment}
+\date{August 2026 (0.6-clustering retrain)}
+\author{}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+Historical August 2026 comparison of ProkBERT, NT-LoRA, CNN-v1 and CNN-v2 after 0.6-identity clustering. These are earlier checkpoints, not the later deployed Evo2 trio. Tables preserve reported measurements; original metric/split/track inputs are not committed with this report.
+
+\section{Regime A: species discrimination}
+Species-labelled positives are compared with the same heterogeneous negative pool. The plain-0.6 test has 967/3,318 positives, not the deployed 547/3,053. AP baselines are about 0.29 and 0.18. Source labels are not uniformly assay-confirmed.
+
+\begin{table}[h]
+\centering
+\caption{AUROC on the T15 test set, by species, against the shared heterogeneous negative pool. ($n$ = source-labelled positives in the test split, not uniformly assay-confirmed; \textbf{bold} = highest point estimate per species.)}
+\begin{tabular}{lcccc}
+\toprule
+Species ($n_{\text{pos}}$) & ProkBERT & NT-LoRA & CNN & CNN-v2 \\
+\midrule
+\emph{E.\ coli} (404)              & \textbf{0.933} & 0.929 & 0.878 & 0.920 \\
+\emph{C.\ beijerinckii} (360)      & \textbf{0.947} & 0.924 & 0.914 & 0.936 \\
+\emph{C.\ acetobutylicum} (166)    & \textbf{0.946} & 0.921 & 0.908 & 0.912 \\
+\emph{B.\ subtilis} (37)           & 0.897 & \textbf{0.936} & 0.885 & 0.884 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ProkBERT leads point estimates on E. coli and both Clostridium sources; NT leads B. subtilis. CNN-v2 exceeds CNN-v1 on three species. Fixed-0.5 recall differs from discrimination because raw score scales are uncalibrated; no architecture effect or significant source difference is isolated.
+
+\section{Regime B: composition controls}
+The 967 positives and 611 SRS windows test sequence structure beyond the supplied composition control, not a unique causal motif mechanism. Custom shuffles need per-sequence QC for exact preservation.
+
+\begin{table}[h]
+\centering
+\caption{Test positives (967) against SRS dinucleotide-shuffle negatives (611 windows). Composition is controlled within the shuffled source sequences, not guaranteed exactly matched across the filtered pools. AUROC with 90\% bootstrap CI; chance = 0.5. \textbf{Bold} = best.}
+\begin{tabular}{lc}
+\toprule
+Model & AUROC (positives vs SRS shuffle) [90\% CI] \\
+\midrule
+ProkBERT & 0.906 [0.90--0.91] \\
+NT-LoRA  & 0.896 [0.89--0.91] \\
+CNN      & 0.896 [0.89--0.91] \\
+CNN-v2   & \textbf{0.924 [0.92--0.93]} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CNN-v2 leads at 0.924. Other negative classes are different contrasts; CDS AUROC is 0.925--0.980. T9 uses 68 in-genus and 25 out-of-genus positives against shuffles. In-genus AUROC is ProkBERT 0.736 [0.65--0.80], CNN-v2 0.659 [0.57--0.74], CNN-v1 0.629 [0.54--0.71] and NT 0.440 [0.36--0.53], versus earlier NT 0.71. Out-of-genus none clears chance and ProkBERT records 0.17. These small library-specific samples do not establish a general genus boundary.
+
+\section{Regime C: published-TSS ranking}
+C. ljungdahlii supplies 1,245 primary TSS. Historical full/restricted tracks contain 9.26M/1.77M windows; restriction covers 19.2\% of windows and excludes 11 reachable starts, limiting recall to 99.1\%. TSS/window density is not promoter prevalence.
+
+Silver positives are heuristically labelled, putative promoter-positive upstream DNA. Labels come from the annotation and genomic position of predicted housekeeping loci, not measured promoter activity or mapped TSS. Putative-negative windows are not experimentally established promoter-free DNA.
+
+Coverage uses same-strand 81-bp windows expanded by 40 bp. Unmatched starts merge at gaps at most 81 bp; the historical mask includes exact endpoint touches. Precision proxy is covered TSS/(covered TSS+unmatched peaks). This is not biological purity, and the strain supplied silver positives and putative-negative training windows.
+
+\begin{table}[h]
+\centering
+\small
+\caption{Historical \emph{C.\ ljungdahlii} spatial benchmark (both strands; known-TSS/window density 0.013\% full, 0.070\% restricted). Precision proxy at four published-TSS recall targets and benchmark-unmatched peaks (FP) at 50\% recall. \textbf{Bold} = best within each scan. Neither FP nor the precision proxy establishes biological error or purity.}
+\begin{tabular}{llccccc}
+\toprule
+ & & \multicolumn{4}{c}{Precision @ recall target} & FP peaks \\
+\cmidrule(lr){3-6}
+Model & Scan & 0.1 & 0.5 & 0.7 & 0.9 & @0.5 \\
+\midrule
+ProkBERT & full              & 23.6\% & 18.5\% & 15.8\% & 11.5\% & 2{,}753 \\
+NT-LoRA  & full              & 18.4\% & 13.1\% & 10.8\% & 7.9\%  & 4{,}139 \\
+CNN      & full              & \textbf{58.3\%} & \textbf{32.7\%} & \textbf{23.9\%} & \textbf{12.7\%} & \textbf{1{,}284} \\
+CNN-v2   & full              & 50.8\% & 31.9\% & 22.6\% & 11.5\% & 1{,}332 \\
+\midrule
+ProkBERT & restrict          & 38.6\% & 33.1\% & 29.6\% & 24.3\% & 1{,}257 \\
+NT-LoRA  & restrict          & 51.7\% & 32.5\% & 27.9\% & 22.5\% & 1{,}294 \\
+CNN      & restrict          & \textbf{63.0\%} & 39.2\% & 33.7\% & 24.9\% & 967 \\
+CNN-v2   & \textbf{restrict} & 59.8\% & \textbf{44.3\%} & \textbf{36.8\%} & \textbf{26.5\%} & \textbf{782} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+CNN-v2 leads restricted recall 0.5--0.9; CNN-v1 leads at 0.1. Restriction changes unmatched-peak counts, not verified coding-sequence false positives. Earlier ProkBERT re-scan records about 45\%/760 unmatched peaks at recall 0.5, versus 33.1\%/1,257 after retraining, while validation AP changes 0.876 to 0.878. Clustering and hyperparameters both changed, so neither cause is isolated. Historical CNN-v2 0.9/0.6 comparisons (40\%/44\%) likewise do not prove a motif or leakage mechanism.
+
+\section{What we learned}
+Curated AP does not determine spatial ranking. The proposed four-model ensemble was not measured in this report; the later trio is separate. CNN-v2's raw negative rejection 0.766 at threshold 0.5 illustrates why reliability and ranking need separate evaluation. Only strictly increasing score-only transforms preserve ranks/ties; AT maps can reorder them.
+
+Cluster grouping, SRS controls and incomplete TSS truth retain their limits. Deployed training still contains the wrong-assembly B. licheniformis positives. No target activity, sigma use, constitutive expression or cotranscription is established. Current interpretation is in docs/RESULTS.md.
+\end{document}

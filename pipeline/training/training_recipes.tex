@@ -1,0 +1,71 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{hyperref}
+
+\title{Historical Model Training Recipes (T18--T20)\\ \large Standalone defaults, not the deployed ensemble}
+\date{Original record: July 18, 2026; interpretation updated}
+\author{}
+
+\begin{document}
+\maketitle
+
+\section{Overview}
+This July 2026 record describes standalone ProkBERT, NT-v2 LoRA and one-hot CNN defaults, not the deployed trio. Original standalone metric files are not committed; results below are historical. All classifiers read 81-bp DNA and output raw class scores, not activity or strength.
+
+\begin{table}[h]
+\centering
+\caption{Standalone-run defaults and historical validation measurements (not deployed checkpoints).}
+\begin{tabular}{lccc}
+\toprule
+Setting & ProkBERT (T18) & NT-LoRA (T19) & CNN (T20) \\
+\midrule
+Base / type        & \texttt{prokbert-mini} (full FT) & NT v2 250M (LoRA) & from scratch \\
+Learning rate      & $2\times10^{-5}$ & $1\times10^{-4}$ & $1\times10^{-3}$ \\
+Batch size         & 16 & 8 & 64 \\
+Max epochs         & 10 & 10 & 30 \\
+Warmup             & ratio 0.1 & 200 steps & none \\
+Weight decay       & 0.01 & 0.01 & $1\times10^{-5}$ \\
+Dropout            & 0.1 & 0.1 (LoRA) & 0.3 \\
+Optimizer          & AdamW & AdamW & AdamW \\
+LR schedule        & linear & linear & cosine warm restarts \\
+Early-stop patience& 3 & 3 & 8 \\
+Precision          & bf16 & bf16 & fp32 \\
+\midrule
+Val AUPRC (result) & 0.876 & 0.853 & 0.811 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Shared training contract}
+Training uses weighted cross-entropy:
+\begin{equation}
+\mathcal{L}=\frac{\sum_i w_i\,\mathrm{CE}(\hat y_i,y_i)}{\sum_i w_i}.
+\end{equation}
+Silver positives are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. In deployed T15\_xs, these housekeeping upstreams are training-only and receive sample-confidence weight 0.3 for training loss, not a biological probability; training negatives are rescaled to equal positive weight mass. The trainers select checkpoints on \emph{unweighted} validation average precision, not trapezoidal PR area. Early stopping retains the best checkpoint; it is not optimizer-state resumption or a demonstrated preemption-save trap. Seed 42 does not guarantee cross-runtime bit identity.
+
+Warmup ramps the learning rate; linear schedules decay it after warmup. AdamW applies decoupled weight decay. Dropout is disabled during inference. These settings and mixed precision are recipe choices, not guarantees against overfitting.
+
+\section{Standalone models}
+\textbf{ProkBERT:} fine-tune the backbone and two-class head. Historical validation/test AP is 0.876/0.872.
+
+\textbf{NT-v2 250M:} freeze the backbone, train query/value LoRA updates and the classifier. Rank 8, alpha 16 (scale 2), dropout 0.1; the run records 0.507\% trainable parameters and no gradient checkpointing. Historical validation/test AP is 0.853/0.841. This path needs its separate Transformers-4.x environment and is not deployed.
+
+\textbf{One-hot CNN:} 81-by-4 input, convolution widths 64/128/256, kernels 7/5/3, BatchNorm and max pooling, then adaptive global max pooling, FC 128 and two logits. Gradient clipping is norm 1.0; cosine warm restarts use T0=5 and Tmult=2. Historical validation/test AP is 0.811/0.818. This is not fusion CNN-v2.
+
+\section{Deployed variants}
+Optuna subprocess sweeps maximize each trainer's saved validation AP; short trials require winner retraining. The deployed \texttt{T21\_xs} ProkBERT uses LR 4.675283456079137e-05, batch 16, 10 epochs, warmup 0.11090738634337446, weight decay 0.07894770663194649, dropout 0.1025172750748932 and attention pooling. Recovered original-run validation/test AP is 0.8080683612857302/0.8249372466065321, not a remeasurement. Earlier plain-split test AP 0.884 is separate.
+
+Fusion CNN-v2 adds ENAC width 5 and di-/trinucleotide branches to one-hot features, with filters 64/128/256 and fusion dimension 256. Recorded LR is 0.0003748224111698842, batch 32, dropout 0.10382857322260322, weight decay 0.00024777455052193346, 30 epochs, patience 8 and seed 42. Historical validation/test AP is 0.738/0.726.
+
+The third member is a logistic probe on frozen Evo2-7B embeddings, not NT or CNN-v1. Current extraction mean-pools \texttt{blocks.28.mlp.l3} in float32 to 4096 features; exact historical extraction revision/layer remains unresolved. StandardScaler and LogisticRegression(max\_iter=5000) select against RF on weighted validation AP, then refit 44,085 train plus 3,052 validation rows. Historical validation/test AP is 0.7007/0.7026.
+
+\section{Provenance and use}
+The deployed validation/test sets have 547 positives among 3,052/3,053 rows, about 18\%, not balanced. All members retain 888 training-only \emph{B. licheniformis} windows extracted from GCF\_000011645.1/\allowbreak{}NC\_006270.3 instead of source-compatible GCF\_000008425.1/\allowbreak{}NC\_006322.1.
+
+Whole-cluster splits reduce one leakage route, not all sequence dependence. Benchmark strains supplied silver (annotation/position-derived putative positive) and putative-negative training windows while published TSS labels were withheld; neither label establishes measured promoter activity or absence. The deployed mine averages raw-score ranks on shared coordinates without calibration; a high mean is not unanimity or probability. Restricted benchmark proxies do not establish biological purity.
+
+Current commands are in \texttt{docs/\allowbreak{}PIPELINE.md}, loading in \texttt{docs/\allowbreak{}MODELS.md}, and cards under \texttt{release/\allowbreak{}huggingface/}. DNA and motif labels require experimental testing.
+\end{document}

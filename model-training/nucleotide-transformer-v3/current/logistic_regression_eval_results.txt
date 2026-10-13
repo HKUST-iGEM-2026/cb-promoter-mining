@@ -1,5 +1,0 @@
-=== Logistic Regression Classifier Evaluation Results ===
-Validation ROC-AUC: 0.8734
-Test ROC-AUC: 0.8722
-Test Accuracy: 83.02%
-Test Macro-average F1-score: 0.77

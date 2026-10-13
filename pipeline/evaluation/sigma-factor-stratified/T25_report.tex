@@ -1,0 +1,110 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\title{Model Evaluation Report for T25}
+\date{July 18, 2026}
+\author{}
+
+\begin{document}
+\maketitle
+
+\section{Question and cohort}
+T25 asks where earlier held-out performance varies by source, GC content and sigma label. It reuses T22 predictions; no new model or independent data is scored. The historical split has 3,323 81-bp windows: 969 source-labelled positives and 2,354 shared negatives, not deployed T15\_xs. Original aligned predictions/stratified CSVs are not committed with this source.
+
+\section{Metrics}
+Stratum AUROC compares its positives with the shared negatives, with 90\% bootstrap intervals resampling positives. Negative-pool/species composition can change AUROC; AP baselines depend on prevalence. Fixed thresholds on raw scores are not matched operating points.
+\begin{align}
+\mathrm{TPR}=\mathrm{Recall}&=TP/(TP+FN),\\
+\mathrm{FPR}&=FP/(FP+TN),\\
+\mathrm{Precision}&=TP/(TP+FP).
+\end{align}
+\begin{equation}
+\mathrm{AUROC}=\int_0^1\mathrm{TPR}(\mathrm{FPR})\,d\mathrm{FPR}.
+\end{equation}
+The reported rank uses the whole curated test set, with average 1-based ties:
+\begin{equation}
+\mathrm{pctl}(i)=\frac{|\{j:s_j<s_i\}|+(|\{j:s_j=s_i\}|+1)/2}{N}.
+\end{equation}
+This matches Series.rank(pct=True), not an upper empirical CDF or genome-wide probability.
+
+\section{Overall and source results}
+\begin{table}[h]
+\centering
+\caption{T25 overall: held-out performance (969 source-labelled positives vs.\ 2{,}354 shared negatives).}
+\begin{tabular}{lcc}
+\toprule
+Model & Median rank-percentile & AUROC [90\% CI] \\
+\midrule
+ProkBERT & 0.848 & 0.944 [0.94--0.95] \\
+NT\_LoRA  & 0.841 & 0.935 [0.93--0.94] \\
+CNN      & 0.834 & 0.909 [0.90--0.92] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{T25 by data source / species (AUROC vs.\ the shared negative pool).}
+\begin{tabular}{lccc}
+\toprule
+Stratum ($n_{\text{pos}}$) & ProkBERT & NT\_LoRA & CNN \\
+\midrule
+Hocq 2022 in-genus TSS (573)   & 0.946 & 0.923 & 0.898 \\
+RegulonDB \emph{E.\ coli} (358) & 0.942 & 0.956 & 0.932 \\
+DBTBS \emph{B.\ subtilis} (38) & 0.922 & 0.918 & 0.855 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ProkBERT leads overall and on the in-genus Hocq source. NT leads RegulonDB. These differences describe this labelled mixture, not penalty-free target transfer or a causal dependence on cross-species data.
+
+\section{GC strata}
+\begin{table}[h]
+\centering
+\caption{T25 by GC-content quartile (AUROC vs.\ the shared negative pool). \emph{Clostridium} promoters are AT-rich (GC $\approx 28$--$32\%$).}
+\begin{tabular}{lccc}
+\toprule
+GC quartile ($n_{\text{pos}}$) & ProkBERT & NT\_LoRA & CNN \\
+\midrule
+7--21\% (273)  & 0.954 & 0.940 & 0.920 \\
+21--26\% (215) & 0.954 & 0.933 & 0.905 \\
+26--37\% (240) & 0.916 & 0.894 & 0.859 \\
+37--65\% (241) & 0.951 & 0.973 & 0.948 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+All three dip at 26--37\% GC (0.916/0.894/0.859); ProkBERT median percentile also drops to about 0.80 versus 0.87 elsewhere. Source/species differences prevent attributing the pattern solely to composition. NT leads the highest-GC stratum.
+
+\section{Sigma strata}
+Only 339 positives have sigma labels, all cross-species: RegulonDB assignments and blanket DBTBS SigmaA. There are no in-genus sigma labels; sigma54 has only six positives. The axis is sparse/species-confounded, with within-RegulonDB comparisons the interpretable subset.
+
+\begin{table}[h]
+\centering
+\caption{T25 by sigma factor (AUROC vs.\ the shared negative pool; cross-species labels only --- see Setup).}
+\begin{tabular}{lccc}
+\toprule
+Sigma factor ($n_{\text{pos}}$) & ProkBERT & NT\_LoRA & CNN \\
+\midrule
+$\sigma^{70}$ (174) & 0.942 & 0.956 & 0.932 \\
+$\sigma^{24}$ (49)  & 0.922 & 0.939 & 0.910 \\
+\emph{B.\ subtilis} / SigmaA (38) & 0.922 & 0.918 & 0.855 \\
+$\sigma^{32}$ (29)  & 0.947 & 0.976 & 0.956 \\
+$\sigma^{38}$ (28)  & 0.924 & 0.965 & 0.939 \\
+$\sigma^{28}$ (15)  & 0.939 & 0.948 & 0.958 \\
+$\sigma^{54}$ (6)$^{\dagger}$ & 0.986 & 0.946 & 0.942 \\
+unlabeled, mostly in-genus T7b (630) & 0.947 & 0.926 & 0.900 \\
+\bottomrule
+\end{tabular}
+
+{\footnotesize $^{\dagger}$ $n<10$ positives; shown for completeness, not a reliable per-stratum estimate.}
+\end{table}
+
+CNN leads the 15-positive sigma28 group. Aggregate ordering does not hold in every stratum, and these labels cannot assign target-candidate sigma use.
+
+\section{Interpretation}
+The common GC-band dip motivates composition-controlled testing. SRS separation tests structure beyond supplied composition controls, not specific motif recognition. Calibration needs its own evaluation and does not automatically resolve the confound. These historical results neither measure target activity/strength/regulation nor replace the later trio's benchmark.
+\end{document}

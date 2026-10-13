@@ -1,0 +1,14 @@
+#!/bin/bash
+#SBATCH --job-name=nt3_finetune
+#SBATCH --output=logs/nt3_finetune_%j.out
+#SBATCH --error=logs/nt3_finetune_%j.err
+#SBATCH --gres=gpu:1
+#SBATCH --time=04:00:00
+
+mkdir -p logs
+
+echo "Running on host: $(hostname)"
+nvidia-smi
+
+# Directly execute using the conda environment's python binary
+${PROMOTER_REPO}/.conda/bin/python -u pipeline/training/nucleotide-transformer-v3/earlier-iteration/fine_tune_nt3.py

@@ -1,0 +1,9 @@
+Historical reported NTv3 logistic-regression metrics; not a fresh evaluation.
+The removed train_logistic_regression.py wrote these constants without fitting a model.
+Original fitted-probe/prediction logs are not supplied here; this record is not reproducible fit evidence.
+
+=== Logistic Regression Classifier Evaluation Results ===
+Validation ROC-AUC: 0.8734
+Test ROC-AUC: 0.8722
+Test Accuracy: 83.02%
+Test Macro-average F1-score: 0.77

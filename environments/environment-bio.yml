@@ -1,0 +1,34 @@
+# Promoter Mining — bioinformatics CLI environment (companion to environment.yml)
+#
+# WHY a second env: the MEME suite and the heavy read-processing tools need an older
+# `icu`/`libcurl` than the modern conda-forge base in environment.yml, so they CANNOT
+# co-solve with the PyTorch/ML stack. They are CPU-only and used by specific tasks:
+#   - T10 (TSSpredator): sra-tools, segemehl, openjdk (runs the JAR)
+#   - T31 (motif annotation): meme  -> provides FIMO for -10/-35 scanning
+#
+# Build this ONLY if you run T10 or T31. Training does not need it.
+#
+#   conda env create -f environments/environment-bio.yml
+#
+name: promoter-mining-bio
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.11
+  - snakemake>=8.0           # drive tss_prep.smk (T10) / the T31 rule from here
+  - biopython
+  - samtools
+  - seqkit
+  - bedtools
+  - meme>=5.5.0              # FIMO for -10/-35 motif scanning (T31)
+  - sra-tools                # prefetch / fasterq-dump for dRNA-seq reads (T10)
+  - segemehl                 # T10 read aligner (D2-locked; READemption alternative documented)
+  - cutadapt                 # T10 D4: adapter + 3' quality trim before alignment (preserves 5' TSS ends)
+  - ncbi-datasets-cli        # T10 D1: download the C. difficile reference (stage 1; wget fallback in the script)
+  - openjdk>=11              # Java runtime for the TSSpredator JAR (T10; download the JAR separately)
+  - pip
+  - pip:
+    - snakemake-executor-plugin-slurm

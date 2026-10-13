@@ -1,0 +1,100 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage[a4paper,margin=1in]{geometry}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\title{Choosing the Promoter-Mining Ensemble\\ \large How six DNA models were compared, and why three were deployed}
+\date{September 2026}
+\author{HKUST iGEM 2026 Dry Lab}
+
+\begin{document}
+\maketitle
+
+\section{Question and protocol}
+We compared curated-window classification with restricted genomic ranking to choose the promoter-mining ensemble. Tables are historical records, not new evaluations. Curated AP depends on split, prevalence and weighting; the displayed six-model comparison mixes checkpoints and NTv3's 384-bp context.
+
+Silver positives are heuristically labelled, putative promoter-positive upstream DNA. Labels come from the annotation and genomic position of predicted housekeeping loci, not measured promoter activity or mapped TSS. Putative-negative windows are not experimentally established promoter-free DNA.
+
+The step-10 benchmark covers published TSS with same-contig/strand 81-bp windows expanded by 40 bp at each end. Unmatched starts merge at gaps of at most 81 bp. Recall counts covered catalogue TSS; precision proxy is covered TSS/(covered TSS+unmatched peaks), not ordinary matched-peak precision. Incomplete truth leaves unmatched calls unvalidated. Both benchmark strains supplied silver positives and putative-negative training windows; their published TSS labels were withheld.
+
+\section{Curated classification}
+Earlier T21\_final/plain-0.6 tests have 967/3,318 positives (no-skill AP about 0.29). Evo2 uses T15\_xs, with 547/3,053 positives (about 0.18), where deployed CNN-v2 AP is 0.726 rather than 0.848. NTv3's high historical score has unresolved overlap/provenance limits.
+
+\begin{table}[h]
+\centering
+\caption{Historical curated-test average precision (higher is better within a fixed evaluation
+distribution). Splits, checkpoints, input widths and weighting are not identical across rows;
+this is checkpoint context, not a controlled six-model ranking.}
+\label{tab:balanced}
+\begin{tabular}{lc}
+\toprule
+Model & Historical test average precision \\
+\midrule
+Nucleotide Transformer v3 & 0.960 \\
+ProkBERT                  & 0.884 \\
+Nucleotide Transformer    & 0.854 \\
+Fusion CNN                & 0.848 \\
+Simple CNN                & 0.804 \\
+Evo2 probe                & 0.703 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Standalone restricted benchmark}
+Evo2 leads this report-grid comparison. Equal stride does not guarantee the same reverse-strand grid; its standalone and paired deployment values are separate runs.
+
+\begin{table}[h]
+\centering
+\caption{Restricted candidate-region, step-10 benchmark precision proxy on two \emph{Clostridium}
+strains, at 10\% and 50\% published-TSS recall. Higher means fewer benchmark-unmatched peaks,
+not fewer proven biological false positives. \checkmark\ marks deployed ensemble members.}
+\label{tab:genome}
+\begin{tabular}{lccccc}
+\toprule
+& & \multicolumn{2}{c}{\emph{C.\ ljungdahlii}} & \multicolumn{2}{c}{\emph{C.\ autoethanogenum}} \\
+\cmidrule(lr){3-4}\cmidrule(lr){5-6}
+Model & Deployed & @10\% & @50\% & @10\% & @50\% \\
+\midrule
+Evo2 probe                & \checkmark & \textbf{71.0\%} & \textbf{58.0\%} & \textbf{85.8\%} & \textbf{71.4\%} \\
+ProkBERT                  & \checkmark & 64.4\% & 47.7\% & 76.7\% & 64.6\% \\
+Fusion CNN                & \checkmark & 64.4\% & 47.2\% & 81.0\% & 66.0\% \\
+Simple CNN                & ---        & 49.0\% & 40.3\% & 72.6\% & 63.0\% \\
+Nucleotide Transformer    & ---        & 43.9\% & 36.1\% & 64.9\% & 58.7\% \\
+Nucleotide Transformer v3 & ---        & 35.7\% & 28.0\% & 58.5\% & 48.3\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Paired ensemble comparison}
+Deployment intersects coordinates before computing member ranks, then averages average-tie percentiles. These are not probabilities or unanimous votes; the mine uses no calibrator.
+
+\begin{table}[h]
+\centering
+\caption{Three-model ensemble versus its members: restricted step-10 benchmark precision proxy
+at 10\% and 50\% published-TSS recall, on the deployed shared window grid.}
+\label{tab:ensemble}
+\begin{tabular}{lcccc}
+\toprule
+& \multicolumn{2}{c}{\emph{C.\ ljungdahlii}} & \multicolumn{2}{c}{\emph{C.\ autoethanogenum}} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+& @10\% & @50\% & @10\% & @50\% \\
+\midrule
+\textbf{Three-model ensemble} & \textbf{74.4\%} & \textbf{61.6\%} & \textbf{87.0\%} & \textbf{76.6\%} \\
+Evo2 probe                    & 69.4\% & 58.4\% & 87.6\% & 72.5\% \\
+ProkBERT                      & 64.4\% & 47.7\% & 76.7\% & 64.6\% \\
+Fusion CNN                    & 64.4\% & 47.2\% & 81.0\% & 66.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The trio leads at 50\% recall on both strains. Paired Evo2 leads at 10\% recall in C. autoethanogenum, 87.6\% versus 87.0\%. Adding CNN-v1 reduced the reported proxy, including 61.6\% to 58.3\% on C. ljungdahlii at 50\% recall. This supports the tested combination, not a universal optimum of three members.
+
+\section{Deployment and limits}
+We retain fine-tuned ProkBERT, from-scratch fusion CNN-v2 and the frozen-Evo2 probe. Shared training data does not establish independent errors. Deployed weights retain 888 wrong-assembly B. licheniformis positives. Cluster-disjoint splitting does not remove every dependence.
+
+Original inputs are not committed with this report; authenticated checkpoint recovery and separate local run recovery are documented in docs/MODELS.md. New DNA scans need matching reference/grid and Evo2 runtime. The former constant-only NTv3 metric writer is not executable evaluation evidence. Ranks and motif placements prioritize experiments, not activity, strength or regulation.
+\end{document}

@@ -1,0 +1,5 @@
+promotercalculator @ https://github.com/barricklab/promoter-calculator/archive/0fe5f6f0fb2befc087556afa575f7241afd98fbf.zip
+numpy==2.5.3
+scipy==1.18.1
+scikit-learn==1.9.1
+biopython==1.88

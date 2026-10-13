@@ -1,248 +1,126 @@
-# Results and findings
+# Results
 
-What we measured, what it means, and where the evidence lives.
+The numerical results below are computational evaluations, rankings and predictions, not measured promoter activity. Keep checkpoint, split, weighting and benchmark protocol attached to each number. Separately, the team reports ordering plasmids after mining, performing transformation and testing GFP in *E. coli*. Time limits prevented proceeding to Cb. Tested candidate identities, reporter strain and quantitative assay results were not supplied; the reported work does not characterise the entire 929/180/45 catalogue or validate genotype-specific DH5α SVR predictions.
 
----
+## Evaluation regimes
 
-## 1. The headline finding: balanced accuracy does not predict deployment
-
-This is the project's sharpest result and the one that generalises. A model's rank on a balanced test
-set tells you almost nothing about how it behaves scanning a real genome, because the two tasks
-differ in base rate and in what the negatives look like.
-
-We evaluate in **three regimes**, and a model can look very different in each.
-
-| Regime | What it asks | Verdict it supports |
+| Regime | Measurement | Scope |
 |---|---|---|
-| **A · In-distribution** | separate promoters from curated negatives on the held-out split | sanity only, misleading for deployment |
-| **B · Composition-matched** | separate promoters from AT-matched non-promoters, including unseen species | does it read the motif or the composition? |
-| **C · Genome-scale** | slide across a validation genome, count real false positives at fixed recall | **the one that predicts deployment** |
+| **A · In-distribution** | held-out window classification | split prevalence, source selection and checkpoint matter |
+| **B · Composition-matched** | discrimination against shuffled or sampled genomic negatives | a control for composition shortcuts, not proof of a particular motif mechanism |
+| **C · Genome-scale benchmark** | published-TSS recovery versus benchmark-unmatched peaks at fixed recall | restricted candidate regions, incomplete truth and partially training-exposed strains |
 
-### Regime A — balanced test
 
-Weighted test AUPRC. The table mixes two splits, so read the ordering rather than small gaps:
+### Regime A — historical held-out scores
 
-- The four fine-tuned 81 bp models are the plain 0.6-split retrains (`T21_final`, 3,318-row test,
-  967 positives, so a no-skill AUPRC of ≈0.29).
-- Evo2 and NTv3 were measured on the deployed `xs` split, NTv3 on its 384 bp context build. That
-  test set is 547 positives in 3,053 rows, a no-skill AUPRC of ≈**0.18**.
-
-The two groups therefore sit against **different baselines**, which is most of why the `xs` numbers
-look lower. Neither test set is 50/50: the whole split is, but validation and test hold only verified
-in-genus positives, because silver and cross-species positives are pinned to train.
-
-On the `xs` split the deployed CNN-v2 scores 0.726, per its `metrics.json`.
-
-| Model | Balanced AUPRC |
+| Model | Reported test AUPRC |
 |---|---|
-| NTv3 with 384 bp context | 0.960 |
-| ProkBERT-mini, fine-tuned | 0.884 |
+| NTv3, 384 bp context | 0.960 |
+| ProkBERT-mini | 0.884 |
 | NT v2 250M LoRA | 0.854 |
-| CNN-v2, fusion | 0.848 |
+| CNN-v2 fusion | 0.848 |
 | CNN-v1 | 0.804 |
-| **Evo2-7B frozen probe** | **0.703** |
+| Evo2-7B frozen probe | 0.703 |
 
-Read alone, this ranks Evo2 last and NTv3 first. Both conclusions are wrong for deployment.
 
-### Regime C — genome scale, the metric that matters
+These historical comparisons mix checkpoints/splits and NTv3's 384-bp context. Earlier plain-0.6 test prevalence is 967/3,318, versus deployed xs 547/3,053 = 0.179168. The latter is the no-skill AP reference, not a model score; 0.5 is the no-skill AUROC reference.
 
-Precision at recall 0.1 / 0.5 on two validation genomes, restricted scan, matched step 10. Higher
-precision means fewer false-positive peaks for the same number of real promoters recovered. Their
-published start sites were never used in training, but both strains are among the 166 genomes that
-supplied silver positives and negatives, so the benchmark is not fully independent of training
-([PIPELINE.md](PIPELINE.md)). Every model shares this, so comparisons between them hold.
+Deployed ProkBERT validation/test AP is 0.8080683612857302/0.8249372466065321, and CNN-v2 is 0.7380835045313733/0.7255828423854476. Their trainers weight loss, not AP. The recovered Evo2 probe reproduced test AP 0.70258010/AUROC 0.89534660 on saved features, supplying sample weights. Every recovered test weight is 1, so weighted and unweighted test AP/AUROC coincide; the evaluation records have different origins. It refits on train+validation, so validation is not a final held-out cohort. [Model evidence](MODELS.md#verified-original-data-and-encodings) identifies the recovery checks.
 
-The ensemble rows come from the ensemble's own run, where Evo2 scored 69.4% / 58.4% on
-*C. ljungdahlii* and 87.6% / 72.5% on *C. autoethanogenum*. The other rows come from separate
-per-model scans. Within its own run, the ensemble is best at recall 0.5 on both genomes and 0.6
-points behind Evo2 at recall 0.1 on *C. autoethanogenum*.
+### Regime C — restricted published-TSS benchmark
 
-**Validation genome: *C. ljungdahlii***
+**Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. Putative-negative windows are not experimentally established promoter-free DNA.
 
-| Model | @ recall 0.1 | @ recall 0.5 |
+Same-contig/strand 81-bp windows are expanded ±40 bp. Recall counts covered catalogue TSS; precision proxy is covered TSS/(covered TSS+merged unmatched peaks), not the fraction of calls matching. Above-threshold unmatched starts at gaps ≤81 bp merge. The genomes supplied silver positives and putative-negative training windows; only published benchmark TSS were withheld. Incomplete truth does not make unmatched peaks confirmed false promoters.
+
+| Model | *C. ljungdahlii* @0.1 / @0.5 | *C. autoethanogenum* @0.1 / @0.5 |
 |---|---|---|
-| **3-model ensemble** | **74.4%** | **61.6%** |
-| Evo2 probe | 71.0% | 58.0% |
-| ProkBERT | 64.4% | 47.7% |
-| CNN-v2 | 64.4% | 47.2% |
-| CNN-v1 | 49.0% | 40.3% |
-| NT-LoRA | 43.9% | 36.1% |
-| NTv3 context | 35.7% | 28.0% |
+| **3-model ensemble** | **74.4% / 61.6%** | **87.0% / 76.6%** |
+| Evo2, standalone run | 71.0% / 58.0% | 85.8% / 71.4% |
+| ProkBERT | 64.4% / 47.7% | 76.7% / 64.6% |
+| CNN-v2 | 64.4% / 47.2% | 81.0% / 66.0% |
+| CNN-v1 | 49.0% / 40.3% | 72.6% / 63.0% |
+| NT-LoRA | 43.9% / 36.1% | 64.9% / 58.7% |
+| NTv3 context | 35.7% / 28.0% | 58.5% / 48.3% |
 
-**Validation genome: *C. autoethanogenum***
 
-| Model | @ recall 0.1 | @ recall 0.5 |
+The Evo2 row is the standalone run. In the paired trio run, Evo2 is **69.4/58.4%** on C. ljungdahlii and **87.6/72.5%** on C. autoethanogenum. The ensemble's 74.4/61.6% and 87.0/76.6% lead at recall 0.5, not everywhere. Adding CNN-v1 gave 71.4/58.3% and 86.5/74.5%. A separate step-1 CNN-v2 scan gave 71.6/51.9% on C. ljungdahlii; differing grids/runs are not controlled comparisons.
+
+CPU recomputation from retained aligned tracks and published-TSS tables reproduced the paired trio: C. ljungdahlii 125/(125+43) = 74.4048% at recall 0.1 and 623/(623+388) = 61.6222% at recall 0.5; C. autoethanogenum 289/(289+43) = 87.0482% and 1443/(1443+442) = 76.5517%. This verifies the saved-score benchmark, not a new DNA scan.
+
+### Regime B — composition controls
+
+Historical plain-0.6 CNN-v2 real-versus-SRS AUROC is 0.924. Shuffled controls test sequence-order information under the supplied sampling, not a unique −10/−35 mechanism. Evo2 was not measured in this regime. Species/sigma panels use earlier checkpoints, sparse/confounded labels and are not candidate sigma assignments.
+
+## Delivered candidates
+
+Current frame is complete DSM 10702 assembly **GCF_014131795.1**. Ordinary mining uses common-window average rank percentiles, a ≥0.9 gate and ≥5 supporting windows.
+
+| Nested set | Count | Operational meaning |
 |---|---|---|
-| **3-model ensemble** | **87.0%** | **76.6%** |
-| Evo2 probe | 85.8% | 71.4% |
-| CNN-v2 | 81.0% | 66.0% |
-| ProkBERT | 76.7% | 64.6% |
-| CNN-v1 | 72.6% | 63.0% |
-| NT-LoRA | 64.9% | 58.7% |
-| NTv3 context | 58.5% | 48.3% |
+| **Confident candidates** | **929** | retained score-thresholded peaks with at least 5 supporting windows |
+| With a placed −10 hit | 180 | positional motif annotation, not confirmed promoter activity |
+| **Promoters with both −10 and −35 motifs** | **45** | both positional hits; primary motif-based shortlist, not characterised promoters |
 
-The ranking is **stable across both genomes**: Evo2 > ProkBERT ≈ CNN-v2 > CNN-v1 > NT-LoRA > NTv3.
-That is close to an exact inversion of the balanced ordering at both ends.
 
-Absolute precision is **not comparable across the two genomes** — *C. autoethanogenum* has a denser
-truth catalogue (2,885 TSS against 1,245), so every model reads higher there. Only the within-genome
-difference between models is meaningful, and it favours Evo2 on both.
+Exclusive labels are 749 `confident`, 135 `has_minus10` and 45 promoters with both −10 and −35 motifs, stored under the historical machine tier `canonical`. Motif combinations are both 45, −10-only 135, −35-only 288 and neither 461. Priority is motif tier, descending score, support and best motif p-value. The actual prioritizer preserved all 929 IDs/order in the recorded check. Internal filenames/tier codes remain unchanged to preserve artifact provenance.
 
-One nuance worth stating: CNN-v2 can afford a step-1 scan, where it reaches 71.6% at recall 0.1 on
-*C. ljungdahlii*, effectively tying Evo2's step-10 71.0% at that single operating point. Evo2's
-advantage is clearest at higher recall and per unit of compute. The ensemble (74.4%) beats both.
-
-### Regime B — composition-matched
-
-Measured on the earlier checkpoints trained on the plain 0.6 split, like the fine-tuned rows of
-Regime A. In-genus composition-matched AUROC: ProkBERT 0.736 > CNN-v2 0.659 > CNN-v1 0.629 >
-**NT 0.440**, which is at chance (90% CI 0.36–0.53). Out-of-genus, all members fail. CNN-v2 has the best SRS discrimination of the four at AUROC
-0.924 (the Evo2 probe was never measured in this regime), meaning it carries the cleanest motif signal rather than a composition shortcut.
-
-### What this cost us, and what it bought
-
-NT looked like a reasonable second member on the balanced test and was near-worst everywhere that
-mattered. NTv3 was the most extreme case: best balanced score of anything we trained, worst genome
-scale. Adding CNN-v1 as a fourth ensemble member **diluted** the result on both validation genomes
-(74.4%/61.6% → 71.4%/58.3% and 87.0%/76.6% → 86.5%/74.5%; see [MODELS.md](MODELS.md)). The deployment
-ensemble is therefore exactly three members, chosen on Regime C.
-
----
-
-## 2. The delivered candidates
-
-Mined from the complete reference assembly `GCF_014131795.1` of *C. butyricum* DSM 10702.
-
-| Tier | Count | What it is |
+| File in [results/candidates/](../results/candidates) | Rows | Scope |
 |---|---|---|
-| **High-confidence** | **929** | ensemble ≥ 0.9, ≥ 5 supporting windows, significant against the null |
-| …with a placed −10 box | 180 | promoter architecture confirmed by motif search |
-| …**canonical**, −10 and −35 | **45** | the primary wet-lab shortlist |
+| `g131795_ranked_seq.tsv` | 929 | ranked catalogue with motif tiers and summit/box sequences |
+| `g131795_tier1_canonical_seq.tsv` | 45 | both-box subset |
+| `g131795_wetlab_shortlist.xlsx` | 45 | spreadsheet hand-off of promoters with both −10 and −35 motifs |
+| `g131795_final_wetlab.tsv`, `g131795_dropped.tsv` | 899, 30 | 20-mer redundancy/known-reference filtering outputs |
+| `g131795_wetlab_final_ranked.tsv`, `g131795_wetlab_final_novelty.xlsx` | 45 | later two-motif hand-off; sequence-screen annotations do not confirm biological novelty |
+| `g409755_*` | 912 confident / 306 −10 / 100 with both motifs | **historical**, superseded `GCF_000409755.1` draft-assembly mine; `top_candidates.tsv` has 82 rows |
 
-All 929 overlap an FDR-significant peak at q ≤ 0.05 (largest q 0.032).
 
-| File in [`final-candidates/`](../final-candidates/) | Rows | What it is |
+Sequence/spreadsheet enrichment is supplied, but its packaging generator is not bundled. Earlier GCF_000409755.1 counts 912/306/100 are superseded; no sequence crosswalk establishes locus/rank stability across assemblies.
+
+### Coordinates and motif labels
+
+All 929 summit sequences match oriented 81-bp slices of the checksum-verified complete reference; inferred starts lie inside stored regions. Scan coordinates are 0-based half-open, candidate regions 1-based inclusive. Inferred TSS is summit+61 forward/summit+21 reverse, where summit is the forward-genome window start. It is not RNA mapping.
+
+Recovered `t31_g131795/meme/meme.txt` and `fimo/fimo.xml` identify MEME/FIMO 5.3.0 and five de-novo motifs learned from the top 500 summit sequences, with widths 14/7/8/18/10 bp. FIMO scanned 929 oriented windows with `--norc`, emitted p≤0.0001 and used NRDB background A/C/G/T = 0.282/0.222/0.229/0.267. Builder p≤0.001 filters emitted hits, then labels centres 3–18 bp upstream as −10 and 22–42 as −35 without checking motif ID. The labels are positional, not verified σA grammar. The supplied width-six `sigma_a_promoter.meme` is a separate QC reference, not this original scan's input.
+
+All 180 −10 and 333 −35 contexts equal their selected original FIMO matched sequences, and the recovered hits reproduce the builder fields. Of the −35 selections, 288 use the same 14-bp MEME-1 motif also used for 170 of the −10 selections; a positional label is therefore not a motif-specific assignment. `spacer_bp` is centre-to-centre distance, not an edge spacer. Separate width-six QC cores give TATAAT/TTGATA and matched-null median percentiles 98/52; this is selected-context QC, not independent activity validation. Recovered target tracks reproduce the funnel 179,172→11,302→3,267→929.
+
+## Interpreting candidates and downstream units
+
+A promoter is regulatory DNA, not a protein-coding gene. High mean rank does not require unanimity and is not probability or strength. Housekeeping selection, motif support and a nearby oxidative-stress gene do not prove constitutive/inducible behavior.
+
+A separate map assigns the nearest downstream same-strand CDS and groups adjacent CDSs at next_start−previous_end≤100 bp. With inclusive coordinates this is one bp greater than the intervening gap. single_gene_unit and putative_multigene_operon are proximity-defined hypotheses, not measured transcripts. T12 groups only input housekeeping loci, not all CDSs.
+
+The first-ten map uses PGAP annotation GCF_014131795.1-RS_2026_04_15. Nine units are single CDSs; cand_00089 has two members with a reported 44-bp CDS gap. The full map/transcript evidence is not committed.
+
+| Candidate | Inferred downstream members, in transcription order | Annotated product(s) |
 |---|---|---|
-| `g131795_ranked_seq.tsv` | 929 | every confident candidate, ranked, with tier, q-value, and the summit, −10 and −35 sequences |
-| `g131795_tier1_canonical_seq.tsv` | 45 | the canonical tier of the same table |
-| `g131795_wetlab_shortlist.xlsx` | 45 | the canonical tier for the wet lab, with a Notes tab |
-| `g131795_final_wetlab.tsv`, `g131795_dropped.tsv` | 899, 30 | `filter_and_rank_wetlab.py`: 30 internal duplicates removed |
-| `g131795_wetlab_final_ranked.tsv`, `g131795_wetlab_final_novelty.xlsx` | 45 | the canonical tier after a novelty check against RegulonDB, DBTBS and the 93 literature promoters
-(0 matched). That check could **not** include the ~5,759 in-genus Hocq sequences, the set most likely
-to share a conserved promoter, so "novel" means novel against those three references only |
-| `g409755_*` | 912, 306, 100, … | the superseded mine on the 96-contig draft assembly |
+| `cand_00029` | `FF104_RS03955` | Transglycosylase domain-containing protein |
+| `cand_00032` | `FF104_RS17285` | Glutaredoxin domain-containing protein |
+| `cand_00035` | `FF104_RS16265` | Hypothetical protein |
+| `cand_00048` | `FF104_RS19570` | Methyl-accepting chemotaxis protein |
+| `cand_00072` | `FF104_RS12975` | Hypothetical protein |
+| `cand_00070` | `FF104_RS05165` | Hypothetical protein |
+| `cand_00089` | `FF104_RS17655` (*nrdG*) → `FF104_RS17650` | Anaerobic ribonucleoside-triphosphate reductase activating protein → aldose 1-epimerase family protein |
+| `cand_00094` | `FF104_RS03625` | ComEC/Rec2 family competence protein |
+| `cand_00098` | `FF104_RS20510` | Hypothetical protein |
+| `cand_00101` | `FF104_RS15625` (*prfB*) | Peptide chain release factor 2 |
 
-`prioritize_candidates.py` writes `g131795_ranked.tsv` and the tier files without the three
-sequence columns. The `_seq` versions add them in a step that is not in the repo; the sequences are
-in the mine's `g131795_call_seqs.fasta` and FIMO's `fimo.tsv`.
 
-### Reading these honestly
+Use stable locus tags, optional gene symbols and predicted products—not invented operon names. A hypothetical protein lacks a reliable specific functional assignment; it is not necessarily inactive or useless. Cotranscription requires junction-spanning transcript evidence.
 
-- **This is an enriched candidate list, not a precise map.** At genome scale the base rate of real
-  promoters is tiny, which caps achievable precision no matter how good the model is.
-- **The FDR step validates, it does not rank.** Every candidate clears q ≤ 0.05 and the top tier sits
-  at the null's resolution floor: a smallest achievable p of 5.79×10⁻⁴ from 1,726 null samples, and a
-  0.9 score cutoff already at the null's 95th percentile. Those two figures are quoted from the
-  committed `empirical-fdr/results/cbut_xs/analysis.md`, an earlier run on a different 4-contig
-  assembly; the delivered q-values come from the `g131795` run, whose report is not committed. The
-  shape of the argument holds, so this is a wholesale validation
-  rather than a filter. **Rank by score, never by q-value.**
-- **"Canonical" is a motif convenience, not a biological verdict.** De-novo motif discovery runs per
-  mine and is not perfectly stable between runs.
-- **A missing −10 is not a missing promoter.** On an AT-rich genome the −10 box is the conserved,
-  information-rich signal and the −35 often is not, so "−10 only" dominating is expected.
+## DH5α strength predictions for the first ten promoters with both −10 and −35 motifs
 
-### The assembly change, and what it showed
+The independent DH5α RBF SVR uses 50-bp cores at summit_seq[10:60], not ensemble ranks or whole-insert expression. cand_00098 gives 32.8751 AU (4.7457× primary predicted pptb_fU), cand_00101 17.9027 AU (2.5844×). Five reference-start scenarios give 6.927284–35.097146 AU and a leading ratio of 0.9367–4.7457×, not a confidence interval. At candidate offset 58 cand_00048 leads; at 59–62 cand_00098 leads.
 
-An earlier mine used a 96-contig draft of the same strain and reported 912 / 306 / 100. Re-mining on
-the complete assembly gave 929 / 180 / 45. The confident set barely moved, **+1.9%**, while the motif
-tiers fell by 41% and 55%.
+The 88-record fit has selection-CV R² 0.266090; the source paper reports held-out Pearson 0.57. [Strength method](ECOLI_STRENGTH_PREDICTIONS.md) provides full tables, reference DNA, reproduction and the separate generic initiation comparison. The two models' AU are not interchangeable.
 
-That difference is the useful part. The **ensemble score ranking is robust**; the motif labels depend
-on a motif rediscovered from scratch on each run. It is why we rank on score and treat "canonical" as
-a soft annotation.
+## Calibration and FDR
 
-The two assemblies share **no contig identifiers**, so their tables cannot be joined by position. Map
-by sequence if you need a crosswalk.
+Optional historical Platt+AT calibration uses 279 short sequences, including 93 synthetic positives/186 putative negatives, not Evo2 or the trio. Sampled prevalence/context limits genomic transfer; AT-dependent maps can reorder ranks. Original calib_xs maps/cohort are unavailable, and older maps are not substitutes. The deployed mine needs no calibrator.
 
-### The −35 audit
+FDR tracks pool candidate+null member ranks and use selected minimum window p-values for peaks. They are different from ordinary target ranks and do not establish calibrated biological peak FDR≤5%. [T27 report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) gives screening counts.
 
-A follow-up asked whether a −35 windowing bug explained the drop. It did not. Re-running the check on
-the real files reproduced the original numbers exactly, but the cause is biological rather than a
-coordinate error: the −35 boxes carry **almost no canonical `TTGACA` signal above random AT-rich
-DNA**, while the −10 boxes are strong and clean. Coverage across the 929: both boxes 45, −10 only
-135, −35 only 288, neither 461.
+## Remaining evidence
 
-So do **not** re-extract the −35 boxes to "fix" this; the signal is not there to recover and a
-re-extraction would chase noise. If an architecture call is genuinely wanted for this organism, learn
-a *Clostridium*-specific −35 model rather than using the *E. coli* consensus, and report −35 strength
-as a p-value against the null. Evidence: [`../mining-and-motif-annotation/motif_qc/REANALYSIS.md`](../mining-and-motif-annotation/motif_qc/REANALYSIS.md).
-
----
-
-## 3. Calibration
-
-Raw scores are uncalibrated, and CNN-v2 in particular runs optimistic. Calibration fits a Platt
-regressor with an **AT-content covariate** so a score becomes a probability that accounts for the
-AT-rich trap. Unregularised versus L2 is chosen by 5×5 stratified cross-validation on out-of-fold
-log-loss and Brier score; the simpler model wins unless L2 beats it by a margin.
-
-The evaluation set is 279 sequences: 93 positives plus 186 curated genomic negatives, being 130
-convergent-intergenic and 56 coding-interior windows.
-
-**Calibration is not needed for the mine.** Rank percentile is scale-invariant, so the ensemble
-combines raw scores correctly. It matters only for a fixed threshold.
-
-Two things the calibration analysis of the earlier checkpoints (`T21_final`, `T21_final_06`)
-confirmed. The deployed checkpoints were calibrated too, by `run_calibration_xs.sh`; their reports
-are in `calib_xs/`, and the calibrator files themselves are not committed.
-
-- **The two model families fail in opposite directions.** The CNNs show the AT-trap failure mode,
-  scoring AT-rich non-promoters as promoters. The transformers are the opposite, so wary of the trap
-  that they reject genuine AT-rich promoters. A liberal CNN vote and a conservative transformer vote
-  average toward the truth, which is direct per-class evidence that the ensemble is well-motivated
-  rather than redundant.
-- **NT's instability reproduces here.** With the older hyperparameters its calibrated AUROC is
-  sub-chance on this genomic set, matching its Regime-B collapse. Independent confirmation from a
-  different measurement.
-
-Reports live in [`../evaluation-and-calibration/calibration/`](../evaluation-and-calibration/calibration/).
-
-### A caveat on the negatives
-
-The whole 279-sequence calibration set is ~52 bp: the genomic negatives were extracted at **52 bp**
-and the 93 T9 positives are 49–52 bp while the models were trained and evaluated at
-**81 bp**. Scoring shorter windows feeds the models less context than they saw in training, which can
-shift the very distribution you are calibrating. Regenerate at 81 bp before trusting calibrated
-q-values; the extractor takes a `--window` flag, so it is a one-flag change.
-
-Two further honest limits. The convergent-intergenic set is *putatively*, not confirmed,
-promoter-free: convergent orientation makes a promoter unlikely, but antisense and internal start
-sites exist. And one source genome is out-of-genus with a different AT bias, so it belongs in a
-separate stratum rather than pooled.
-
----
-
-## 4. Known gaps
-
-- **The deployed models trained on 888 misplaced *B. licheniformis* positives.** The `xs` split took
-  them from the wrong assembly (`NC_006270.3` rather than `NC_006322.1`), so they are effectively random
-  windows. Only 5% carry a −10 box and 52% start on a purine, against 63% and 95% from the right
-  genome. They are 3.5% of the positives and all in train; no validation, test or genome-scale
-  evaluation contains them. [PIPELINE.md](PIPELINE.md), under *Genome assemblies*, has the check and
-  the assembly the table does fit. Scanned identically, the deployed ProkBERT still made a third fewer
-  false-positive peaks than its predecessor at recall 0.5 (604 against 905). The `xs` split changed
-  several things at once, so which change produced that was not isolated.
-- **Iterative hard-negative mining** is the strongest remaining lever on false positives and was
-  scoped but never run. The design matters: mine confident false positives only where labels exist,
-  keep the mining and validation genomes disjoint, and **down-weight** mined negatives the way silver
-  positives are down-weighted. Do not relabel the target's own top scores as negatives — with no
-  target TSS a high score is ambiguous, and training on that teaches the model to reject real
-  promoters.
-- **The stratified evaluation** (by source, species, GC band and sigma factor) was run on an earlier
-  round of ProkBERT, NT-LoRA and CNN-v1 (`evaluation-and-calibration/sigma-factor-stratified/
-  T25_report.tex`), not on the deployed models.
-- **Cluster-disjoint cross-validation** scripts exist (`evaluation-and-calibration/cross-validation/`)
-  but were not run.
-- **Verified in-genus evaluation data is thin**, a few hundred promoters, so in-genus performance
-  carries wide error bars.
+The 888 wrong-assembly B. licheniformis labels persist. Exact historical Evo2 extraction revision/layer, the imported six-base QC PWMs' scientific source, the sequence/spreadsheet packaging generator and NTv3 context-overlap remain unresolved; the original mining MEME/FIMO records are recovered. Cluster-disjoint CV/hard-negative mining code is not proof of completed experiments. Full rescanning needs identified assembly/annotation/grid and compatible Evo2 GPU inference. Native Cb activity, mapped TSS and transcript/operon confirmation remain unestablished; candidate-specific GFP measurements and assay details were not supplied.

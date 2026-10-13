@@ -1,0 +1,269 @@
+\documentclass[10pt]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{fvextra}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines=true,breakanywhere=true}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.5em}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\begin{document}
+\section{Calibration: calib\_xs}\label{calibration-calib_xs}
+
+Historical four-model calibration, not the deployed ProkBERT/CNN-v2/Evo2 ensemble. The 279-row mixture has 93 T9 positives and 186 putative negatives (130 convergent/56 CDS). Original prediction CSVs/maps are absent; the T9 positives are 49--52 bp and the extractor defaults to 52 bp. Padding does not supply 81-bp biological context.
+
+\subsection{Method}\label{method}
+
+StandardScaler scales the selected features. LogisticRegression compares score-only and score+AT maps, each unregularized or L2, with 5-times-5 stratified OOF log-loss selection (tol 0.005, L2 C=1). This round chose unregularized score+AT. Lower ECE, Brier and log-loss is better; higher AUROC and AP is better. Plus/minus values are repeated-CV standard deviations, not confidence intervals.
+
+\subsection{Checkpoint provenance}\label{checkpoint-provenance}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Model & chosen calibrator & features & checkpoint / adapter & n\_conv / n\_cds \\
+\hline
+cnn & score+AT / unregularized & logit, at\_fraction & \texttt{workflow/results/T21\_xs/cnn/best\_model.pt} & 130 / 56 \\
+cnn\_v2 & score+AT / unregularized & logit, at\_fraction & \texttt{workflow/results/T21\_xs/cnn\_v2/best\_model.pt} & 130 / 56 \\
+nt\_lora & score+AT / unregularized & logit, at\_fraction & \texttt{workflow/results/T21\_xs/nt\_lora/best\_adapter} & 130 / 56 \\
+prokbert & score+AT / unregularized & logit, at\_fraction & \texttt{workflow/results/T21\_xs/prokbert/best\_model} & 130 / 56 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{Metrics}\label{metrics}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccccccc}
+\hline
+Metric & cnn raw & cnn\_v2 raw & nt\_lora raw & prokbert raw & cnn calib & cnn\_v2 calib & nt\_lora calib & prokbert calib \\
+\hline
+ECE & 0.242 & 0.165 & 0.347 & 0.175 & \textbf{0.051} $\uparrow$ & \textbf{0.064} $\uparrow$ & \textbf{0.037} $\uparrow$ & \textbf{0.040} $\uparrow$ \\
+Brier & 0.257 & 0.206 & 0.348 & 0.205 & \textbf{0.152} $\uparrow$ & \textbf{0.152} $\uparrow$ & \textbf{0.194} $\uparrow$ & \textbf{0.148} $\uparrow$ \\
+Log-loss & 0.762 & 0.633 & 1.308 & 0.703 & \textbf{0.467} $\uparrow$ & \textbf{0.467} $\uparrow$ & \textbf{0.579} $\uparrow$ & \textbf{0.455} $\uparrow$ \\
+AUROC & 0.769 & 0.771 & 0.568 & 0.795 & \textbf{0.839} $\uparrow$ & \textbf{0.846} $\uparrow$ & \textbf{0.718} $\uparrow$ & \textbf{0.843} $\uparrow$ \\
+AUPRC & 0.605 & 0.675 & 0.378 & 0.687 & \textbf{0.682} $\uparrow$ & \textbf{0.713} $\uparrow$ & \textbf{0.566} $\uparrow$ & \textbf{0.744} $\uparrow$ \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{Score-only versus AT}\label{score-only-versus-at}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lccccc}
+\hline
+Model & OOF log-loss score-only & OOF log-loss +AT & AT helps? & AT coef & mean P(positives) score-only $\to$ +AT \\
+\hline
+cnn & 0.5351 & 0.4689 & \textbf{yes} & +0.962 & 0.461 $\to$ 0.547 \\
+cnn\_v2 & 0.5273 & 0.4684 & \textbf{yes} & +0.950 & 0.477 $\to$ 0.548 \\
+nt\_lora & 0.6401 & 0.5791 & \textbf{yes} & +0.869 & 0.332 $\to$ 0.419 \\
+prokbert & 0.5198 & 0.4552 & \textbf{yes} & +1.028 & 0.487 $\to$ 0.563 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{Row-error summary}\label{row-error-summary}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Model & mean \textbar{}calib-label\textbar{} & mean \textbar{}raw-label\textbar{} & rows made worse & right$\to$wrong flips \\
+\hline
+cnn & 0.300 & 0.396 & 102/279 & 22 \\
+cnn\_v2 & 0.299 & 0.311 & 166/279 \textbf{[!]} & 12 \\
+nt\_lora & 0.387 & 0.391 & 165/279 \textbf{[!]} & 25 \\
+prokbert & 0.290 & 0.267 & 190/279 \textbf{[!]} & 13 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{CNN-v1 --- source errors}\label{cnn-v1-source-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Source & n & raw err & calib err & $\Delta$ \\
+\hline
+CDS\_interior & 56 & 0.412 & 0.126 & -0.286 \\
+T9\_positive & 93 & 0.230 & 0.451 & +0.221 \\
+convergent\_intergenic & 130 & 0.507 & 0.267 & -0.240 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{CNN-v1 --- largest calibrated errors}\label{cnn-v1-largest-calibrated-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccccc}
+\hline
+label & source & AT & raw & calib & err & $\Delta$ vs raw \\
+\hline
+NEG & convergent\_intergenic & 0.77 & 0.993 & 0.956 & \textbf{0.956} & -0.037 \\
+POS & T9\_positive & 0.67 & 0.161 & 0.045 & \textbf{0.955} & +0.116 \\
+POS & T9\_positive & 0.73 & 0.150 & 0.077 & \textbf{0.923} & +0.073 \\
+NEG & convergent\_intergenic & 0.87 & 0.907 & 0.911 & \textbf{0.911} & +0.004 \\
+POS & T9\_positive & 0.58 & 0.767 & 0.098 & \textbf{0.902} & +0.669 \\
+POS & T9\_positive & 0.61 & 0.687 & 0.108 & \textbf{0.892} & +0.580 \\
+NEG & convergent\_intergenic & 0.83 & 0.945 & 0.882 & \textbf{0.882} & -0.063 \\
+POS & T9\_positive & 0.84 & 0.052 & 0.121 & \textbf{0.879} & -0.069 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{CNN-v2 --- source errors}\label{cnn-v2-source-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Source & n & raw err & calib err & $\Delta$ \\
+\hline
+CDS\_interior & 56 & 0.174 & 0.126 & -0.048 \\
+T9\_positive & 93 & 0.405 & 0.450 & +0.045 \\
+convergent\_intergenic & 130 & 0.304 & 0.266 & -0.038 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{CNN-v2 --- largest calibrated errors}\label{cnn-v2-largest-calibrated-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccccc}
+\hline
+label & source & AT & raw & calib & err & $\Delta$ vs raw \\
+\hline
+POS & T9\_positive & 0.53 & 0.299 & 0.039 & \textbf{0.961} & +0.260 \\
+NEG & convergent\_intergenic & 0.77 & 0.989 & 0.941 & \textbf{0.941} & -0.049 \\
+POS & T9\_positive & 0.67 & 0.038 & 0.062 & \textbf{0.938} & -0.024 \\
+POS & T9\_positive & 0.58 & 0.354 & 0.072 & \textbf{0.928} & +0.282 \\
+NEG & convergent\_intergenic & 0.87 & 0.883 & 0.924 & \textbf{0.924} & +0.041 \\
+NEG & convergent\_intergenic & 0.83 & 0.934 & 0.922 & \textbf{0.922} & -0.012 \\
+NEG & convergent\_intergenic & 0.83 & 0.880 & 0.865 & \textbf{0.865} & -0.016 \\
+POS & T9\_positive & 0.73 & 0.045 & 0.143 & \textbf{0.857} & -0.098 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{NT-LoRA --- source errors}\label{nt-lora-source-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Source & n & raw err & calib err & $\Delta$ \\
+\hline
+CDS\_interior & 56 & 0.201 & 0.229 & +0.027 \\
+T9\_positive & 93 & 0.833 & 0.581 & -0.252 \\
+convergent\_intergenic & 130 & 0.156 & 0.316 & +0.160 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{NT-LoRA --- largest calibrated errors}\label{nt-lora-largest-calibrated-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccccc}
+\hline
+label & source & AT & raw & calib & err & $\Delta$ vs raw \\
+\hline
+POS & T9\_positive & 0.47 & 0.958 & 0.038 & \textbf{0.962} & +0.920 \\
+POS & T9\_positive & 0.51 & 0.974 & 0.071 & \textbf{0.929} & +0.903 \\
+POS & T9\_positive & 0.53 & 0.835 & 0.075 & \textbf{0.925} & +0.760 \\
+POS & T9\_positive & 0.58 & 0.041 & 0.079 & \textbf{0.921} & -0.038 \\
+POS & T9\_positive & 0.60 & 0.010 & 0.103 & \textbf{0.897} & -0.093 \\
+POS & T9\_positive & 0.59 & 0.037 & 0.106 & \textbf{0.894} & -0.069 \\
+POS & T9\_positive & 0.61 & 0.047 & 0.116 & \textbf{0.884} & -0.068 \\
+NEG & convergent\_intergenic & 0.88 & 0.870 & 0.859 & \textbf{0.859} & -0.011 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{ProkBERT --- source errors}\label{prokbert-source-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccc}
+\hline
+Source & n & raw err & calib err & $\Delta$ \\
+\hline
+CDS\_interior & 56 & 0.092 & 0.130 & +0.038 \\
+T9\_positive & 93 & 0.548 & 0.436 & -0.112 \\
+convergent\_intergenic & 130 & 0.142 & 0.255 & +0.113 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{ProkBERT --- largest calibrated errors}\label{prokbert-largest-calibrated-errors}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lcccccc}
+\hline
+label & source & AT & raw & calib & err & $\Delta$ vs raw \\
+\hline
+POS & T9\_positive & 0.61 & 0.024 & 0.042 & \textbf{0.958} & -0.017 \\
+POS & T9\_positive & 0.60 & 0.048 & 0.055 & \textbf{0.945} & -0.008 \\
+NEG & convergent\_intergenic & 0.77 & 0.974 & 0.942 & \textbf{0.942} & -0.032 \\
+POS & T9\_positive & 0.67 & 0.019 & 0.084 & \textbf{0.916} & -0.064 \\
+POS & T9\_positive & 0.53 & 0.512 & 0.089 & \textbf{0.911} & +0.423 \\
+POS & T9\_positive & 0.73 & 0.010 & 0.112 & \textbf{0.888} & -0.102 \\
+NEG & convergent\_intergenic & 0.75 & 0.928 & 0.886 & \textbf{0.886} & -0.042 \\
+POS & T9\_positive & 0.69 & 0.031 & 0.125 & \textbf{0.875} & -0.094 \\
+\hline
+\end{tabular}%
+}
+\end{center}
+}
+
+\subsection{Interpretation}\label{interpretation}
+
+The AT ablation lowers recorded OOF log-loss on this mixture. Aggregate improvements coexist with more rows worsening for some members. Intercept, score coefficient and AT coefficient change jointly; row errors do not isolate a causal AT effect. err is \textbar score\ensuremath{-}label\textbar; \ensuremath{\Delta} is calibrated error minus raw error, and a flip crosses the wrong side of 0.5.
+
+The sampled prevalence and short context limit transfer. AT-dependent maps can change rank ensembles; the deployed mine uses raw ranks, not these maps. Reused OOF cohorts are sensitivity evidence, not independent final tests. \href{../CALIBRATION_NOTES.md}{Calibration notes} identify scripts and output prefixes.
+
+\end{document}

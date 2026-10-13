@@ -27,7 +27,7 @@ export ENV_MEME="${ENV_MEME:-promoter-meme}"      # MEME suite / FIMO
 # --- Where outputs go ------------------------------------------------------
 # Pipeline artifacts (checkpoints, score tracks, candidate tables). Point this
 # at scratch or a shared volume if the clone is on a small disk.
-export PROMOTER_RESULTS="${PROMOTER_RESULTS:-$PROMOTER_REPO/infrastructure/T3/snakemake_scaffold/results}"
+export PROMOTER_RESULTS="${PROMOTER_RESULTS:-$PROMOTER_REPO/workflow/results}"
 
 # --- Model cache -----------------------------------------------------------
 # Left to the Hugging Face default (~/.cache/huggingface) unless you set it.

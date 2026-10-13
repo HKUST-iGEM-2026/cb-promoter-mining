@@ -1,0 +1,1587 @@
+{
+  "model": "Wang2020 DH5alpha-trained RBF SVR; CPU reproduction of published training procedure, not a pretrained checkpoint",
+  "target_host": "Escherichia coli DH5alpha",
+  "model_info": {
+    "source_url": "https://github.com/HaochenW/Deep_promoter/blob/c0e16c8218a983fbb07bf46d59c44109d4371b0e/predictor.py",
+    "source_commit": "c0e16c8218a983fbb07bf46d59c44109d4371b0e",
+    "source_predictor_sha256": "37912a418ec1e98b8f935c38731f5365712f6c1e8fe26159c4a366d28d834e68",
+    "training_data_url": "https://github.com/HaochenW/Deep_promoter/blob/c0e16c8218a983fbb07bf46d59c44109d4371b0e/seq/seq_exp_94.txt",
+    "training_data_sha256": "e81b9316059886846c4e367dd6ae1a0bb196953fcd1a1bc6ac634ed4a1394976",
+    "training_host": "Escherichia coli DH5alpha",
+    "training_records": 88,
+    "excluded_records": 6,
+    "training_composition": "83 first-round generated promoters and 5 random sequences",
+    "training_target": "log2 of the numerical activity labels in seq_exp_94.txt",
+    "activity_units": "Upstream training-table arbitrary units; no unit header; not RPU or physical transcription rates",
+    "training_activity_range_au": [
+      4.590844374,
+      358.6428992
+    ],
+    "encoding": "50 positions, T/C/G/A channels, float32, flattened to 200 features",
+    "shuffle_seed": 2,
+    "parameter_grid": {
+      "C": [
+        1.0,
+        10.0,
+        100.0,
+        1000.0
+      ],
+      "gamma": [
+        0.01,
+        0.1,
+        1.0,
+        10.0,
+        100.0
+      ]
+    },
+    "cross_validation": "5-fold unshuffled KFold after seeded permutation; R2 on log2 labels; refit all 88 records",
+    "best_parameters": {
+      "C": 10.0,
+      "gamma": 0.01
+    },
+    "best_selection_cv_mean_r2": 0.2660902338588789,
+    "cv_score_warning": "Hyperparameter-selection CV, not an independent test of these candidates",
+    "paper": "Wang et al., Nucleic Acids Research 48:6403-6412 (2020), doi:10.1093/nar/gkaa325",
+    "paper_reported_test_pcc": 0.57,
+    "paper_reported_test_split": "66 training/validation records, 22 test records; not the full-data refit used here",
+    "published_assay_context": "DH5alpha, modified pFAB217/p15A, sfGFP, fixed B0030 5-prime UTR, LB plus kanamycin; final published methods"
+  },
+  "reference_info": {
+    "promoter": "pptb_fU",
+    "notebook_label": "DL10",
+    "sequence_5to3": "GCGGCTGTGGATGGAGTTAAGTCAGCAGAAAGTATAATGAGAAAATATAAAATATAAATAATTTTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGTATAAAGTTGTGTAATTTTTAAGGAGGTGTGTTACAT",
+    "sequence_length_bp": 149,
+    "sequence_sha256": "9ca7264c374e5a3acf4da78d3f054d65ec0cd2565fe3f4178da2030dad04f576",
+    "sequence_provenance": "Exact 5-prime to 3-prime sequence supplied by the user; DL10 in the supplied notebooks is pptb_fU",
+    "notebook_sources": [
+      "https://colab.research.google.com/drive/1X-MgHlX_ILdj7MvJjCFwKWWpRuQEcFUa?authuser=1",
+      "https://colab.research.google.com/drive/1kF7Dz9JwUX8ldv7L37ev3_5mFjCpbj5f?authuser=1"
+    ],
+    "assumed_tss_offset_0based": 113,
+    "core_start_offset_0based": 63,
+    "core_end_offset_0based_exclusive": 113,
+    "core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+    "tss_warning": "Model-inferred framing, not an experimentally mapped DH5alpha TSS. Several alternative TSS configurations have similar framing energies. Only fully contained configurations are considered; no upstream or downstream flanks are invented.",
+    "framing_method": "Lowest total free energy among fully contained forward-strand Promoter Calculator configurations; tie broken by earlier TSS; used only to infer framing, not an SVR activity denominator",
+    "framing_model_source": "https://github.com/barricklab/promoter-calculator/tree/0fe5f6f0fb2befc087556afa575f7241afd98fbf",
+    "framing_organism": "Escherichia coli str. K-12 substr. MG1655",
+    "framing_parameters": {
+      "K": 42,
+      "beta": 1.636217004872062
+    },
+    "framing_distribution": {
+      "url": "https://github.com/barricklab/promoter-calculator/archive/0fe5f6f0fb2befc087556afa575f7241afd98fbf.zip",
+      "archive_info": {}
+    },
+    "framing_model_files_sha256": {
+      "promoter_calculator.py": "48b0e795f1141e826afe86be20b2b604f7d0cdaf1bf3afdf4b6041c5669ba204",
+      "util.py": "a904eced8aec09fd1bbd5a37b1b2e522deff73343db44fc3306858a2bcdd86a9",
+      "free_energy_coeffs.npy": "fddf16b38bf29799481e8a45890b669111e16cf2e3448e99d1934d19a8f0b8e9",
+      "model_intercept.npy": "f7c66a8d838da71a6b2ab17936cd6ff2564e446af8c0676fba95de2116e99a7b"
+    },
+    "framing_host_warning": "Promoter Calculator MG1655-labelled in-vivo parameters have no DH5alpha-specific fit. This model selects a reference-core framing only; its initiation-rate units are not used for SVR normalization.",
+    "forward_tss_profile": [
+      {
+        "tss_offset_0based": 113,
+        "dG_total": -3.4439275934806064,
+        "hex35": "TTAACT",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          97,
+          103
+        ],
+        "spacer": "TCATGTGAAAAGTTTGT",
+        "discriminator": "ATAAATGCGT"
+      },
+      {
+        "tss_offset_0based": 109,
+        "dG_total": -3.4341257180217735,
+        "hex35": "TTAACT",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          97,
+          103
+        ],
+        "spacer": "TCATGTGAAAAGTTTGT",
+        "discriminator": "ATAAAT"
+      },
+      {
+        "tss_offset_0based": 111,
+        "dG_total": -3.4341257180217735,
+        "hex35": "TTAACT",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          97,
+          103
+        ],
+        "spacer": "TCATGTGAAAAGTTTGT",
+        "discriminator": "ATAAATGC"
+      },
+      {
+        "tss_offset_0based": 112,
+        "dG_total": -3.3059473466370335,
+        "hex35": "TTAACT",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          97,
+          103
+        ],
+        "spacer": "TCATGTGAAAAGTTTGT",
+        "discriminator": "ATAAATGCG"
+      },
+      {
+        "tss_offset_0based": 110,
+        "dG_total": -3.2980304472279762,
+        "hex35": "TTAACT",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          97,
+          103
+        ],
+        "spacer": "TCATGTGAAAAGTTTGT",
+        "discriminator": "ATAAATG"
+      },
+      {
+        "tss_offset_0based": 128,
+        "dG_total": -2.643626912983609,
+        "hex35": "TTGTTA",
+        "hex10": "TAAAGT",
+        "hex35_position_0based_halfopen": [
+          93,
+          99
+        ],
+        "hex10_position_0based_halfopen": [
+          114,
+          120
+        ],
+        "spacer": "AAATATAAATGCGTA",
+        "discriminator": "TGTGTAAT"
+      },
+      {
+        "tss_offset_0based": 126,
+        "dG_total": -2.6338250375247756,
+        "hex35": "TTGTTA",
+        "hex10": "TAAAGT",
+        "hex35_position_0based_halfopen": [
+          93,
+          99
+        ],
+        "hex10_position_0based_halfopen": [
+          114,
+          120
+        ],
+        "spacer": "AAATATAAATGCGTA",
+        "discriminator": "TGTGTA"
+      },
+      {
+        "tss_offset_0based": 59,
+        "dG_total": -2.6160954309159634,
+        "hex35": "CAGAAA",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "spacer": "GTATAATGAGAAAATA",
+        "discriminator": "ATAAAT"
+      },
+      {
+        "tss_offset_0based": 61,
+        "dG_total": -2.585181823699644,
+        "hex35": "CAGAAA",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "spacer": "GTATAATGAGAAAATA",
+        "discriminator": "ATAAATAA"
+      },
+      {
+        "tss_offset_0based": 63,
+        "dG_total": -2.5731179769810804,
+        "hex35": "CAGAAA",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "spacer": "GTATAATGAGAAAATA",
+        "discriminator": "ATAAATAATT"
+      },
+      {
+        "tss_offset_0based": 127,
+        "dG_total": -2.5512630865446053,
+        "hex35": "TTGTTA",
+        "hex10": "TAAAGT",
+        "hex35_position_0based_halfopen": [
+          93,
+          99
+        ],
+        "hex10_position_0based_halfopen": [
+          114,
+          120
+        ],
+        "spacer": "AAATATAAATGCGTA",
+        "discriminator": "TGTGTAA"
+      },
+      {
+        "tss_offset_0based": 60,
+        "dG_total": -2.530140523046197,
+        "hex35": "CAGAAA",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "spacer": "GTATAATGAGAAAATA",
+        "discriminator": "ATAAATA"
+      },
+      {
+        "tss_offset_0based": 129,
+        "dG_total": -2.526758397897523,
+        "hex35": "TTGTTA",
+        "hex10": "TAAAGT",
+        "hex35_position_0based_halfopen": [
+          93,
+          99
+        ],
+        "hex10_position_0based_halfopen": [
+          114,
+          120
+        ],
+        "spacer": "AAATATAAATGCGTA",
+        "discriminator": "TGTGTAATT"
+      },
+      {
+        "tss_offset_0based": 62,
+        "dG_total": -2.519584657167454,
+        "hex35": "CAGAAA",
+        "hex10": "TAAAAT",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "spacer": "GTATAATGAGAAAATA",
+        "discriminator": "ATAAATAAT"
+      },
+      {
+        "tss_offset_0based": 66,
+        "dG_total": -2.3773043771365163,
+        "hex35": "GTATAA",
+        "hex10": "TAAATA",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          54,
+          60
+        ],
+        "spacer": "TGAGAAAATATAAAATA",
+        "discriminator": "ATTTTC"
+      },
+      {
+        "tss_offset_0based": 67,
+        "dG_total": -2.3773043771365163,
+        "hex35": "GTATAA",
+        "hex10": "TAAATA",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          54,
+          60
+        ],
+        "spacer": "TGAGAAAATATAAAATA",
+        "discriminator": "ATTTTCT"
+      },
+      {
+        "tss_offset_0based": 68,
+        "dG_total": -2.3705184633573237,
+        "hex35": "GTATAA",
+        "hex10": "TAAATA",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          54,
+          60
+        ],
+        "spacer": "TGAGAAAATATAAAATA",
+        "discriminator": "ATTTTCTA"
+      },
+      {
+        "tss_offset_0based": 69,
+        "dG_total": -2.360339592688536,
+        "hex35": "GTATAA",
+        "hex10": "TAAATA",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          54,
+          60
+        ],
+        "spacer": "TGAGAAAATATAAAATA",
+        "discriminator": "ATTTTCTAA"
+      },
+      {
+        "tss_offset_0based": 70,
+        "dG_total": -2.350914712439658,
+        "hex35": "GTATAA",
+        "hex10": "TAAATA",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          54,
+          60
+        ],
+        "spacer": "TGAGAAAATATAAAATA",
+        "discriminator": "ATTTTCTAAA"
+      },
+      {
+        "tss_offset_0based": 74,
+        "dG_total": -2.3172921283191137,
+        "hex35": "ATGAGA",
+        "hex10": "TAATTT",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          58,
+          64
+        ],
+        "spacer": "AAATATAAAATATAAA",
+        "discriminator": "TCTAAAAAAC"
+      },
+      {
+        "tss_offset_0based": 72,
+        "dG_total": -2.2961803965616268,
+        "hex35": "ATGAGA",
+        "hex10": "TAATTT",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          58,
+          64
+        ],
+        "spacer": "AAATATAAAATATAAA",
+        "discriminator": "TCTAAAAA"
+      },
+      {
+        "tss_offset_0based": 115,
+        "dG_total": -2.2608935902099576,
+        "hex35": "TTCATG",
+        "hex10": "TATAAA",
+        "hex35_position_0based_halfopen": [
+          79,
+          85
+        ],
+        "hex10_position_0based_halfopen": [
+          102,
+          108
+        ],
+        "spacer": "TGAAAAGTTTGTTAAAA",
+        "discriminator": "TGCGTAT"
+      },
+      {
+        "tss_offset_0based": 71,
+        "dG_total": -2.2607428468258464,
+        "hex35": "ATGAGA",
+        "hex10": "TAATTT",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          58,
+          64
+        ],
+        "spacer": "AAATATAAAATATAAA",
+        "discriminator": "TCTAAAA"
+      },
+      {
+        "tss_offset_0based": 117,
+        "dG_total": -2.2307339734135483,
+        "hex35": "TTCATG",
+        "hex10": "TATAAA",
+        "hex35_position_0based_halfopen": [
+          79,
+          85
+        ],
+        "hex10_position_0based_halfopen": [
+          102,
+          108
+        ],
+        "spacer": "TGAAAAGTTTGTTAAAA",
+        "discriminator": "TGCGTATAA"
+      },
+      {
+        "tss_offset_0based": 73,
+        "dG_total": -2.206078541382354,
+        "hex35": "ATGAGA",
+        "hex10": "TAATTT",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          58,
+          64
+        ],
+        "spacer": "AAATATAAAATATAAA",
+        "discriminator": "TCTAAAAAA"
+      },
+      {
+        "tss_offset_0based": 87,
+        "dG_total": -2.1717193116530877,
+        "hex35": "TATAAA",
+        "hex10": "TTAACT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "spacer": "TAATTTTCTAAAAAAC",
+        "discriminator": "TCATGTG"
+      },
+      {
+        "tss_offset_0based": 116,
+        "dG_total": -2.168152768560999,
+        "hex35": "TTCATG",
+        "hex10": "TATAAA",
+        "hex35_position_0based_halfopen": [
+          79,
+          85
+        ],
+        "hex10_position_0based_halfopen": [
+          102,
+          108
+        ],
+        "spacer": "TGAAAAGTTTGTTAAAA",
+        "discriminator": "TGCGTATA"
+      },
+      {
+        "tss_offset_0based": 114,
+        "dG_total": -2.1560889218424357,
+        "hex35": "TTCATG",
+        "hex10": "TATAAA",
+        "hex35_position_0based_halfopen": [
+          79,
+          85
+        ],
+        "hex10_position_0based_halfopen": [
+          102,
+          108
+        ],
+        "spacer": "TGAAAAGTTTGTTAAAA",
+        "discriminator": "TGCGTA"
+      },
+      {
+        "tss_offset_0based": 89,
+        "dG_total": -2.1521155607354214,
+        "hex35": "TATAAA",
+        "hex10": "TTAACT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "spacer": "TAATTTTCTAAAAAAC",
+        "discriminator": "TCATGTGAA"
+      },
+      {
+        "tss_offset_0based": 118,
+        "dG_total": -2.13799315176459,
+        "hex35": "TTCATG",
+        "hex10": "TATAAA",
+        "hex35_position_0based_halfopen": [
+          79,
+          85
+        ],
+        "hex10_position_0based_halfopen": [
+          102,
+          108
+        ],
+        "spacer": "TGAAAAGTTTGTTAAAA",
+        "discriminator": "TGCGTATAAA"
+      },
+      {
+        "tss_offset_0based": 88,
+        "dG_total": -2.1102690924304035,
+        "hex35": "TATAAA",
+        "hex10": "TTAACT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "spacer": "TAATTTTCTAAAAAAC",
+        "discriminator": "TCATGTGA"
+      },
+      {
+        "tss_offset_0based": 99,
+        "dG_total": -2.109925694327293,
+        "hex35": "TCTAAA",
+        "hex10": "AAAAGT",
+        "hex35_position_0based_halfopen": [
+          64,
+          70
+        ],
+        "hex10_position_0based_halfopen": [
+          87,
+          93
+        ],
+        "spacer": "AAACTTAACTTCATGTG",
+        "discriminator": "TTGTTA"
+      },
+      {
+        "tss_offset_0based": 103,
+        "dG_total": -2.109925694327293,
+        "hex35": "TCTAAA",
+        "hex10": "AAAAGT",
+        "hex35_position_0based_halfopen": [
+          64,
+          70
+        ],
+        "hex10_position_0based_halfopen": [
+          87,
+          93
+        ],
+        "spacer": "AAACTTAACTTCATGTG",
+        "discriminator": "TTGTTAAAAT"
+      },
+      {
+        "tss_offset_0based": 91,
+        "dG_total": -2.0985562094016688,
+        "hex35": "TATAAA",
+        "hex10": "TAACTT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          75,
+          81
+        ],
+        "spacer": "TAATTTTCTAAAAAACT",
+        "discriminator": "CATGTGAAAA"
+      },
+      {
+        "tss_offset_0based": 86,
+        "dG_total": -2.095189284032199,
+        "hex35": "TATAAA",
+        "hex10": "TTAACT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "spacer": "TAATTTTCTAAAAAAC",
+        "discriminator": "TCATGT"
+      },
+      {
+        "tss_offset_0based": 101,
+        "dG_total": -2.090321943409627,
+        "hex35": "TCTAAA",
+        "hex10": "AAAAGT",
+        "hex35_position_0based_halfopen": [
+          64,
+          70
+        ],
+        "hex10_position_0based_halfopen": [
+          87,
+          93
+        ],
+        "spacer": "AAACTTAACTTCATGTG",
+        "discriminator": "TTGTTAAA"
+      },
+      {
+        "tss_offset_0based": 90,
+        "dG_total": -2.0680456289154305,
+        "hex35": "TATAAA",
+        "hex10": "TTAACT",
+        "hex35_position_0based_halfopen": [
+          52,
+          58
+        ],
+        "hex10_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "spacer": "TAATTTTCTAAAAAAC",
+        "discriminator": "TCATGTGAAA"
+      },
+      {
+        "tss_offset_0based": 119,
+        "dG_total": -1.9916627254556178,
+        "hex35": "ATGTGA",
+        "hex10": "TAAATG",
+        "hex35_position_0based_halfopen": [
+          82,
+          88
+        ],
+        "hex10_position_0based_halfopen": [
+          104,
+          110
+        ],
+        "spacer": "AAAGTTTGTTAAAATA",
+        "discriminator": "CGTATAAAG"
+      },
+      {
+        "tss_offset_0based": 100,
+        "dG_total": -1.9568656390855161,
+        "hex35": "TCTAAA",
+        "hex10": "AAAAGT",
+        "hex35_position_0based_halfopen": [
+          64,
+          70
+        ],
+        "hex10_position_0based_halfopen": [
+          87,
+          93
+        ],
+        "spacer": "AAACTTAACTTCATGTG",
+        "discriminator": "TTGTTAA"
+      },
+      {
+        "tss_offset_0based": 80,
+        "dG_total": -1.9299853476134996,
+        "hex35": "AATATA",
+        "hex10": "TAAAAA",
+        "hex35_position_0based_halfopen": [
+          43,
+          49
+        ],
+        "hex10_position_0based_halfopen": [
+          66,
+          72
+        ],
+        "spacer": "AAATATAAATAATTTTC",
+        "discriminator": "ACTTAACT"
+      },
+      {
+        "tss_offset_0based": 108,
+        "dG_total": -1.9292318799009387,
+        "hex35": "TTAACT",
+        "hex10": "TTAAAA",
+        "hex35_position_0based_halfopen": [
+          74,
+          80
+        ],
+        "hex10_position_0based_halfopen": [
+          96,
+          102
+        ],
+        "spacer": "TCATGTGAAAAGTTTG",
+        "discriminator": "TATAAA"
+      },
+      {
+        "tss_offset_0based": 78,
+        "dG_total": -1.9292313571935895,
+        "hex35": "AATATA",
+        "hex10": "TAAAAA",
+        "hex35_position_0based_halfopen": [
+          43,
+          49
+        ],
+        "hex10_position_0based_halfopen": [
+          66,
+          72
+        ],
+        "spacer": "AAATATAAATAATTTTC",
+        "discriminator": "ACTTAA"
+      },
+      {
+        "tss_offset_0based": 97,
+        "dG_total": -1.927720367426896,
+        "hex35": "TTTCTA",
+        "hex10": "GTGAAA",
+        "hex35_position_0based_halfopen": [
+          62,
+          68
+        ],
+        "hex10_position_0based_halfopen": [
+          84,
+          90
+        ],
+        "spacer": "AAAAACTTAACTTCAT",
+        "discriminator": "AGTTTGT"
+      },
+      {
+        "tss_offset_0based": 79,
+        "dG_total": -1.9258384003039932,
+        "hex35": "AATATA",
+        "hex10": "TAAAAA",
+        "hex35_position_0based_halfopen": [
+          43,
+          49
+        ],
+        "hex10_position_0based_halfopen": [
+          66,
+          72
+        ],
+        "spacer": "AAATATAAATAATTTTC",
+        "discriminator": "ACTTAAC"
+      },
+      {
+        "tss_offset_0based": 81,
+        "dG_total": -1.9258384003039932,
+        "hex35": "AATATA",
+        "hex10": "TAAAAA",
+        "hex35_position_0based_halfopen": [
+          43,
+          49
+        ],
+        "hex10_position_0based_halfopen": [
+          66,
+          72
+        ],
+        "spacer": "AAATATAAATAATTTTC",
+        "discriminator": "ACTTAACTT"
+      },
+      {
+        "tss_offset_0based": 82,
+        "dG_total": -1.924330419464173,
+        "hex35": "AATATA",
+        "hex10": "TAAAAA",
+        "hex35_position_0based_halfopen": [
+          43,
+          49
+        ],
+        "hex10_position_0based_halfopen": [
+          66,
+          72
+        ],
+        "spacer": "AAATATAAATAATTTTC",
+        "discriminator": "ACTTAACTTC"
+      },
+      {
+        "tss_offset_0based": 65,
+        "dG_total": -1.9204092919761477,
+        "hex35": "GTATAA",
+        "hex10": "ATAAAT",
+        "hex35_position_0based_halfopen": [
+          31,
+          37
+        ],
+        "hex10_position_0based_halfopen": [
+          53,
+          59
+        ],
+        "spacer": "TGAGAAAATATAAAAT",
+        "discriminator": "AATTTT"
+      },
+      {
+        "tss_offset_0based": 102,
+        "dG_total": -1.9146421755705432,
+        "hex35": "TCTAAA",
+        "hex10": "AAAAGT",
+        "hex35_position_0based_halfopen": [
+          64,
+          70
+        ],
+        "hex10_position_0based_halfopen": [
+          87,
+          93
+        ],
+        "spacer": "AAACTTAACTTCATGTG",
+        "discriminator": "TTGTTAAAA"
+      },
+      {
+        "tss_offset_0based": 120,
+        "dG_total": -1.9124937313650432,
+        "hex35": "ATGTGA",
+        "hex10": "TAAATG",
+        "hex35_position_0based_halfopen": [
+          82,
+          88
+        ],
+        "hex10_position_0based_halfopen": [
+          104,
+          110
+        ],
+        "spacer": "AAAGTTTGTTAAAATA",
+        "discriminator": "CGTATAAAGT"
+      },
+      {
+        "tss_offset_0based": 85,
+        "dG_total": -1.8880829370856789,
+        "hex35": "TAAAAT",
+        "hex10": "AAAACT",
+        "hex35_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "hex10_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "spacer": "ATAAATAATTTTCTAA",
+        "discriminator": "TAACTTCATG"
+      },
+      {
+        "tss_offset_0based": 83,
+        "dG_total": -1.87564209515716,
+        "hex35": "TAAAAT",
+        "hex10": "AAAACT",
+        "hex35_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "hex10_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "spacer": "ATAAATAATTTTCTAA",
+        "discriminator": "TAACTTCA"
+      },
+      {
+        "tss_offset_0based": 96,
+        "dG_total": -1.8692861098838531,
+        "hex35": "TTTCTA",
+        "hex10": "GTGAAA",
+        "hex35_position_0based_halfopen": [
+          62,
+          68
+        ],
+        "hex10_position_0based_halfopen": [
+          84,
+          90
+        ],
+        "spacer": "AAAAACTTAACTTCAT",
+        "discriminator": "AGTTTG"
+      },
+      {
+        "tss_offset_0based": 75,
+        "dG_total": -1.8630702419195746,
+        "hex35": "ATGAGA",
+        "hex10": "AATTTT",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          59,
+          65
+        ],
+        "spacer": "AAATATAAAATATAAAT",
+        "discriminator": "CTAAAAAACT"
+      },
+      {
+        "tss_offset_0based": 84,
+        "dG_total": -1.8564153394494491,
+        "hex35": "TAAAAT",
+        "hex10": "AAAACT",
+        "hex35_position_0based_halfopen": [
+          47,
+          53
+        ],
+        "hex10_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "spacer": "ATAAATAATTTTCTAA",
+        "discriminator": "TAACTTCAT"
+      },
+      {
+        "tss_offset_0based": 98,
+        "dG_total": -1.8493053637562318,
+        "hex35": "TTTCTA",
+        "hex10": "GTGAAA",
+        "hex35_position_0based_halfopen": [
+          62,
+          68
+        ],
+        "hex10_position_0based_halfopen": [
+          84,
+          90
+        ],
+        "spacer": "AAAAACTTAACTTCAT",
+        "discriminator": "AGTTTGTT"
+      },
+      {
+        "tss_offset_0based": 121,
+        "dG_total": -1.845239247374593,
+        "hex35": "TGAAAA",
+        "hex10": "GCGTAT",
+        "hex35_position_0based_halfopen": [
+          85,
+          91
+        ],
+        "hex10_position_0based_halfopen": [
+          109,
+          115
+        ],
+        "spacer": "GTTTGTTAAAATATAAAT",
+        "discriminator": "AAAGTT"
+      },
+      {
+        "tss_offset_0based": 123,
+        "dG_total": -1.8399613144352214,
+        "hex35": "TGAAAA",
+        "hex10": "GCGTAT",
+        "hex35_position_0based_halfopen": [
+          85,
+          91
+        ],
+        "hex10_position_0based_halfopen": [
+          109,
+          115
+        ],
+        "spacer": "GTTTGTTAAAATATAAAT",
+        "discriminator": "AAAGTTGT"
+      },
+      {
+        "tss_offset_0based": 125,
+        "dG_total": -1.7939678988206973,
+        "hex35": "TGAAAA",
+        "hex10": "GCGTAT",
+        "hex35_position_0based_halfopen": [
+          85,
+          91
+        ],
+        "hex10_position_0based_halfopen": [
+          109,
+          115
+        ],
+        "spacer": "GTTTGTTAAAATATAAAT",
+        "discriminator": "AAAGTTGTGT"
+      },
+      {
+        "tss_offset_0based": 124,
+        "dG_total": -1.7894439563012359,
+        "hex35": "TGAAAA",
+        "hex10": "GCGTAT",
+        "hex35_position_0based_halfopen": [
+          85,
+          91
+        ],
+        "hex10_position_0based_halfopen": [
+          109,
+          115
+        ],
+        "spacer": "GTTTGTTAAAATATAAAT",
+        "discriminator": "AAAGTTGTG"
+      },
+      {
+        "tss_offset_0based": 122,
+        "dG_total": -1.773233162273166,
+        "hex35": "TGAAAA",
+        "hex10": "GCGTAT",
+        "hex35_position_0based_halfopen": [
+          85,
+          91
+        ],
+        "hex10_position_0based_halfopen": [
+          109,
+          115
+        ],
+        "spacer": "GTTTGTTAAAATATAAAT",
+        "discriminator": "AAAGTTG"
+      },
+      {
+        "tss_offset_0based": 64,
+        "dG_total": -1.6444490177214162,
+        "hex35": "AGAAAG",
+        "hex10": "AAATAT",
+        "hex35_position_0based_halfopen": [
+          26,
+          32
+        ],
+        "hex10_position_0based_halfopen": [
+          49,
+          55
+        ],
+        "spacer": "TATAATGAGAAAATATA",
+        "discriminator": "AAATAATTT"
+      },
+      {
+        "tss_offset_0based": 104,
+        "dG_total": -1.5978165789849612,
+        "hex35": "CTAAAA",
+        "hex10": "AAAGTT",
+        "hex35_position_0based_halfopen": [
+          65,
+          71
+        ],
+        "hex10_position_0based_halfopen": [
+          88,
+          94
+        ],
+        "spacer": "AACTTAACTTCATGTGA",
+        "discriminator": "TGTTAAAATA"
+      },
+      {
+        "tss_offset_0based": 93,
+        "dG_total": -1.5571863811312379,
+        "hex35": "AATAAT",
+        "hex10": "CTTCAT",
+        "hex35_position_0based_halfopen": [
+          56,
+          62
+        ],
+        "hex10_position_0based_halfopen": [
+          78,
+          84
+        ],
+        "spacer": "TTTCTAAAAAACTTAA",
+        "discriminator": "GTGAAAAGT"
+      },
+      {
+        "tss_offset_0based": 94,
+        "dG_total": -1.509307989466938,
+        "hex35": "AATAAT",
+        "hex10": "CTTCAT",
+        "hex35_position_0based_halfopen": [
+          56,
+          62
+        ],
+        "hex10_position_0based_halfopen": [
+          78,
+          84
+        ],
+        "spacer": "TTTCTAAAAAACTTAA",
+        "discriminator": "GTGAAAAGTT"
+      },
+      {
+        "tss_offset_0based": 92,
+        "dG_total": -1.4791483726705288,
+        "hex35": "AATAAT",
+        "hex10": "CTTCAT",
+        "hex35_position_0based_halfopen": [
+          56,
+          62
+        ],
+        "hex10_position_0based_halfopen": [
+          78,
+          84
+        ],
+        "spacer": "TTTCTAAAAAACTTAA",
+        "discriminator": "GTGAAAAG"
+      },
+      {
+        "tss_offset_0based": 76,
+        "dG_total": -1.3190024575259203,
+        "hex35": "ATGAGA",
+        "hex10": "ATTTTC",
+        "hex35_position_0based_halfopen": [
+          36,
+          42
+        ],
+        "hex10_position_0based_halfopen": [
+          60,
+          66
+        ],
+        "spacer": "AAATATAAAATATAAATA",
+        "discriminator": "TAAAAAACTT"
+      },
+      {
+        "tss_offset_0based": 105,
+        "dG_total": -1.3118219992285027,
+        "hex35": "AAAACT",
+        "hex10": "TTTGTT",
+        "hex35_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "hex10_position_0based_halfopen": [
+          92,
+          98
+        ],
+        "spacer": "TAACTTCATGTGAAAAG",
+        "discriminator": "AAAATAT"
+      },
+      {
+        "tss_offset_0based": 107,
+        "dG_total": -1.2816623824320934,
+        "hex35": "AAAACT",
+        "hex10": "TTTGTT",
+        "hex35_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "hex10_position_0based_halfopen": [
+          92,
+          98
+        ],
+        "spacer": "TAACTTCATGTGAAAAG",
+        "discriminator": "AAAATATAA"
+      },
+      {
+        "tss_offset_0based": 77,
+        "dG_total": -1.2237692584851334,
+        "hex35": "AGAAAA",
+        "hex10": "TTTTCT",
+        "hex35_position_0based_halfopen": [
+          39,
+          45
+        ],
+        "hex10_position_0based_halfopen": [
+          61,
+          67
+        ],
+        "spacer": "TATAAAATATAAATAA",
+        "discriminator": "AAAAAACTTA"
+      },
+      {
+        "tss_offset_0based": 106,
+        "dG_total": -1.2100332925406212,
+        "hex35": "AAAACT",
+        "hex10": "TTTGTT",
+        "hex35_position_0based_halfopen": [
+          69,
+          75
+        ],
+        "hex10_position_0based_halfopen": [
+          92,
+          98
+        ],
+        "spacer": "TAACTTCATGTGAAAAG",
+        "discriminator": "AAAATATA"
+      },
+      {
+        "tss_offset_0based": 95,
+        "dG_total": -1.1241296516132084,
+        "hex35": "AATTTT",
+        "hex10": "ATGTGA",
+        "hex35_position_0based_halfopen": [
+          59,
+          65
+        ],
+        "hex10_position_0based_halfopen": [
+          82,
+          88
+        ],
+        "spacer": "CTAAAAAACTTAACTTC",
+        "discriminator": "AAAGTTT"
+      },
+      {
+        "tss_offset_0based": 58,
+        "dG_total": -0.563141814616105,
+        "hex35": "CAGAAA",
+        "hex10": "ATAAAA",
+        "hex35_position_0based_halfopen": [
+          25,
+          31
+        ],
+        "hex10_position_0based_halfopen": [
+          46,
+          52
+        ],
+        "spacer": "GTATAATGAGAAAAT",
+        "discriminator": "TATAAA"
+      }
+    ],
+    "reference_file": "/Users/oak23/Documents/GitHub/cb-promoter-mining/final-candidates/pptb_fU_reference.json",
+    "reference_file_sha256": "8550c923680a174104cb5782161a4d6c565ca8d5182600e8d95357f0c5983a16",
+    "value_type": "Prediction from the same DH5alpha SVR and fitted model as the candidates; not a notebook fluorescence measurement",
+    "predicted_log2_activity": 2.792289862142743,
+    "predicted_activity_training_table_au": 6.927284194385597,
+    "normalization": "Predicted linear candidate activity divided by predicted pptb_fU core activity; reference = 1.0 or 100 percent",
+    "top5_framing_tss_sensitivity": [
+      {
+        "assumed_tss_offset_0based": 113,
+        "framing_model_dG_total": -3.4439275934806064,
+        "core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+        "predicted_log2_activity": 2.792289862142743,
+        "predicted_activity_training_table_au": 6.927284194385597
+      },
+      {
+        "assumed_tss_offset_0based": 109,
+        "framing_model_dG_total": -3.4341257180217735,
+        "core_sequence_50bp": "AATTTTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAAT",
+        "predicted_log2_activity": 4.907322300292691,
+        "predicted_activity_training_table_au": 30.00897838979678
+      },
+      {
+        "assumed_tss_offset_0based": 111,
+        "framing_model_dG_total": -3.4341257180217735,
+        "core_sequence_50bp": "TTTTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGC",
+        "predicted_log2_activity": 3.6541027054466344,
+        "predicted_activity_training_table_au": 12.589095311335877
+      },
+      {
+        "assumed_tss_offset_0based": 112,
+        "framing_model_dG_total": -3.3059473466370335,
+        "core_sequence_50bp": "TTTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCG",
+        "predicted_log2_activity": 4.39964732795332,
+        "predicted_activity_training_table_au": 21.10696626704034
+      },
+      {
+        "assumed_tss_offset_0based": 110,
+        "framing_model_dG_total": -3.2980304472279762,
+        "core_sequence_50bp": "ATTTTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATG",
+        "predicted_log2_activity": 5.1332818298893965,
+        "predicted_activity_training_table_au": 35.097146378445636
+      }
+    ],
+    "sensitivity_warning": "Scenario range over the five lowest-energy reference TSS configurations, selected before SVR scoring; not a confidence interval or a maximum-SVR primary prediction"
+  },
+  "input_file": "final-candidates/g131795_tier1_canonical_seq.tsv",
+  "input_sha256": "0c6a0e5764ceff7b6ab5ad1e2d45de85df62d1de82b26c3f60a55caa47c232f2",
+  "input_selection": "First 10 canonical records in file order; no reverse-complementing or padding",
+  "assumed_tss_offset_0based": 60,
+  "tss_warning": "Native inferred anchor, not an experimentally mapped DH5alpha TSS",
+  "output_transformation": "activity = 2 ** predicted_log2_activity; fraction = activity / predicted_pptb_fU_core_activity; percent = 100 * fraction",
+  "interpretation": "Conditional 50-bp-core reporter-activity estimates relative to the same-model predicted pptb_fU core; not measured fold-changes, whole-insert expression, validated RPU or probabilities; reference TSS uncertainty is material",
+  "environment": {
+    "python": "3.13.5",
+    "numpy": "2.5.3",
+    "scipy": "1.18.1",
+    "scikit-learn": "1.9.1"
+  },
+  "results": [
+    {
+      "dh5alpha_strength_rank": 1,
+      "candidate_id": "cand_00098",
+      "input_order": 9,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 5.038923695255697,
+      "predicted_activity_training_table_au": 32.87510723596778,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 4.745742532493801,
+      "predicted_percent_of_reference": 474.5742532493801,
+      "predicted_percent_of_reference_top5_tss_min": 93.66888943471915,
+      "predicted_percent_of_reference_top5_tss_max": 474.5742532493801,
+      "predicted_fraction_of_reference_top5_tss_min": 0.9366888943471915,
+      "predicted_fraction_of_reference_top5_tss_max": 4.745742532493801,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "ATTTATGAAAATATTGTAGAAAAAAGTGGTAAAATGTGATAAAATATAAG",
+      "source_sequence_81bp": "AAAATACATTATTTATGAAAATATTGTAGAAAAAAGTGGTAAAATGTGATAAAATATAAGTAACTTTGGTAAAAATGAAAG",
+      "source_sequence_sha256": "666123fed1daf08fbcfbdfc8ccac8983858ebe48a0e2ff48339608608e65660b",
+      "source_chromosome": "NZ_CP040627.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "539309"
+    },
+    {
+      "dh5alpha_strength_rank": 2,
+      "candidate_id": "cand_00101",
+      "input_order": 10,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 4.16210925006297,
+      "predicted_activity_training_table_au": 17.902749275512747,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 2.584382100278564,
+      "predicted_percent_of_reference": 258.43821002785637,
+      "predicted_percent_of_reference_top5_tss_min": 51.00913072097349,
+      "predicted_percent_of_reference_top5_tss_max": 258.43821002785637,
+      "predicted_fraction_of_reference_top5_tss_min": 0.5100913072097348,
+      "predicted_fraction_of_reference_top5_tss_max": 2.584382100278564,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "CTAATTTAAAAAATATGATATAATATTTCTTAAAGAAAAAGAAAGAGGTG",
+      "source_sequence_81bp": "ATATTGGTTGCTAATTTAAAAAATATGATATAATATTTCTTAAAGAAAAAGAAAGAGGTGACGTGGATGAATATTGAATTA",
+      "source_sequence_sha256": "0e12dc64e7d3d4dea980c56695508afb7d905d37f9d20596f8bbacc097ed3e69",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "3410738"
+    },
+    {
+      "dh5alpha_strength_rank": 3,
+      "candidate_id": "cand_00029",
+      "input_order": 1,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 3.5885224409929775,
+      "predicted_activity_training_table_au": 12.029647314006349,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.736560385923837,
+      "predicted_percent_of_reference": 173.6560385923837,
+      "predicted_percent_of_reference_top5_tss_min": 34.275286042611626,
+      "predicted_percent_of_reference_top5_tss_max": 173.6560385923837,
+      "predicted_fraction_of_reference_top5_tss_min": 0.34275286042611625,
+      "predicted_fraction_of_reference_top5_tss_max": 1.736560385923837,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "TCATACTATAAATATGCTATAATGGTATAAAATATTATTATATTTACAAC",
+      "source_sequence_81bp": "AATGATTTACTCATACTATAAATATGCTATAATGGTATAAAATATTATTATATTTACAACCTTAAATTTTTAGGAGGATAA",
+      "source_sequence_sha256": "61aabf8d63f94521b8caed2cc87a10326b1ee18b56d614ae934c57fd76b7cfc8",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "955968"
+    },
+    {
+      "dh5alpha_strength_rank": 4,
+      "candidate_id": "cand_00089",
+      "input_order": 7,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 3.5004129159710526,
+      "predicted_activity_training_table_au": 11.316947076367304,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.6336773198275059,
+      "predicted_percent_of_reference": 163.3677319827506,
+      "predicted_percent_of_reference_top5_tss_min": 32.244635943728554,
+      "predicted_percent_of_reference_top5_tss_max": 163.3677319827506,
+      "predicted_fraction_of_reference_top5_tss_min": 0.32244635943728556,
+      "predicted_fraction_of_reference_top5_tss_max": 1.633677319827506,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "ATCTGTCTTTTTTATTTAATGATATAATAGATATGTATTATAATTGACAT",
+      "source_sequence_81bp": "GCAGATGCTAATCTGTCTTTTTTATTTAATGATATAATAGATATGTATTATAATTGACATGTGAAAATGAAAAGTTAAAGT",
+      "source_sequence_sha256": "0fba9b399a34c3711c7800ab6efdaff6f1a2d71efce89c45c1aaf8a4018d241e",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "3807268"
+    },
+    {
+      "dh5alpha_strength_rank": 5,
+      "candidate_id": "cand_00072",
+      "input_order": 5,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 3.341309188215713,
+      "predicted_activity_training_table_au": 10.135245911394993,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.4630908198640638,
+      "predicted_percent_of_reference": 146.30908198640637,
+      "predicted_percent_of_reference_top5_tss_min": 28.877692226338368,
+      "predicted_percent_of_reference_top5_tss_max": 146.30908198640637,
+      "predicted_fraction_of_reference_top5_tss_min": 0.2887769222633837,
+      "predicted_fraction_of_reference_top5_tss_max": 1.4630908198640638,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "TATATCACCACCATGTAATTTATGGTATTATTATAATATAATACGAACAT",
+      "source_sequence_81bp": "TGTTCATTAGTATATCACCACCATGTAATTTATGGTATTATTATAATATAATACGAACATATGTTCAAGGTGGTGTGAAAA",
+      "source_sequence_sha256": "ffd26fc040e002725dd9c12491440be5ac47862d938df4bae5c780fdb77fc192",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "2835728"
+    },
+    {
+      "dh5alpha_strength_rank": 6,
+      "candidate_id": "cand_00035",
+      "input_order": 3,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 3.311268778191633,
+      "predicted_activity_training_table_au": 9.926387523711007,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.4329407088215198,
+      "predicted_percent_of_reference": 143.29407088215197,
+      "predicted_percent_of_reference_top5_tss_min": 28.282605704397504,
+      "predicted_percent_of_reference_top5_tss_max": 143.29407088215197,
+      "predicted_fraction_of_reference_top5_tss_min": 0.28282605704397507,
+      "predicted_fraction_of_reference_top5_tss_max": 1.4329407088215198,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "CTTGTATTAATCTATTTATTTACAAATTTTATGATATAATAAATTTATCT",
+      "source_sequence_81bp": "ATAATAAAAGCTTGTATTAATCTATTTATTTACAAATTTTATGATATAATAAATTTATCTTTTTAGGAGGTATTTGAAATG",
+      "source_sequence_sha256": "e7f13ab87f0afb8b0da816091135e28040beb894020e0dc281147d467650de20",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "+",
+      "source_tss_position": "3518571"
+    },
+    {
+      "dh5alpha_strength_rank": 7,
+      "candidate_id": "cand_00094",
+      "input_order": 8,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 3.291764185767515,
+      "predicted_activity_training_table_au": 9.793090288882492,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.4136983576939957,
+      "predicted_percent_of_reference": 141.36983576939957,
+      "predicted_percent_of_reference_top5_tss_min": 27.902810625358324,
+      "predicted_percent_of_reference_top5_tss_max": 141.36983576939957,
+      "predicted_fraction_of_reference_top5_tss_min": 0.27902810625358326,
+      "predicted_fraction_of_reference_top5_tss_max": 1.4136983576939957,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "TTAATATAGACACAGTGTTGACATAAAAAAATTATATAGTAAAATTAATA",
+      "source_sequence_81bp": "AATATTATAATTAATATAGACACAGTGTTGACATAAAAAAATTATATAGTAAAATTAATATATTTAAATTATGGAGAGAGT",
+      "source_sequence_sha256": "31d62c6894ba733b222a7671ffd5a42e35f951eb71f2bc11ab1a755f3275142a",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "+",
+      "source_tss_position": "879881"
+    },
+    {
+      "dh5alpha_strength_rank": 8,
+      "candidate_id": "cand_00070",
+      "input_order": 6,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 2.840363712365206,
+      "predicted_activity_training_table_au": 7.162005925944964,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 1.0338836584399993,
+      "predicted_percent_of_reference": 103.38836584399994,
+      "predicted_percent_of_reference_top5_tss_min": 20.40623430953178,
+      "predicted_percent_of_reference_top5_tss_max": 103.38836584399992,
+      "predicted_fraction_of_reference_top5_tss_min": 0.2040623430953178,
+      "predicted_fraction_of_reference_top5_tss_max": 1.0338836584399993,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "TTCGAGCCCATATGATATAATTTATGAAAATATAATATTTTATTGTTATA",
+      "source_sequence_81bp": "GCTTTTATTTTTCGAGCCCATATGATATAATTTATGAAAATATAATATTTTATTGTTATATTATTAATCTAAAGGAGGTGA",
+      "source_sequence_sha256": "ea6387a67625d04b7e12ec73f2046435cafeaac37f1d851e8dd3c4b611c5d5d8",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "1211538"
+    },
+    {
+      "dh5alpha_strength_rank": 9,
+      "candidate_id": "cand_00032",
+      "input_order": 2,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 2.564077781496953,
+      "predicted_activity_training_table_au": 5.913768551568064,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 0.8536922097639702,
+      "predicted_percent_of_reference": 85.36922097639702,
+      "predicted_percent_of_reference_top5_tss_min": 16.849713329400227,
+      "predicted_percent_of_reference_top5_tss_max": 85.36922097639702,
+      "predicted_fraction_of_reference_top5_tss_min": 0.1684971332940023,
+      "predicted_fraction_of_reference_top5_tss_max": 0.8536922097639702,
+      "outside_training_activity_range": false,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "TGCTTGCATATTAAACCTATACTATAATAATAATCATAAAATAATAATTA",
+      "source_sequence_81bp": "TTTATTCTCTTGCTTGCATATTAAACCTATACTATAATAATAATCATAAAATAATAATTATTGATTAAGGAGGTGAAAAAA",
+      "source_sequence_sha256": "73605e4ef34d9c778a457cb688eb196aee412208790d4b5feee6a9b0af4592a8",
+      "source_chromosome": "NZ_CP040626.1",
+      "source_genomic_strand": "+",
+      "source_tss_position": "3740781"
+    },
+    {
+      "dh5alpha_strength_rank": 10,
+      "candidate_id": "cand_00048",
+      "input_order": 4,
+      "target_host": "Escherichia coli DH5alpha",
+      "model_training_host": "Escherichia coli DH5alpha",
+      "predicted_log2_activity": 1.9909574124302027,
+      "predicted_activity_training_table_au": 3.9750070315213497,
+      "reference_promoter": "pptb_fU",
+      "reference_predicted_activity_training_table_au": 6.927284194385597,
+      "reference_assumed_tss_offset_0based": 113,
+      "reference_core_sequence_50bp": "TTCTAAAAAACTTAACTTCATGTGAAAAGTTTGTTAAAATATAAATGCGT",
+      "predicted_fraction_of_reference": 0.5738189628112847,
+      "predicted_percent_of_reference": 57.381896281128476,
+      "predicted_percent_of_reference_top5_tss_min": 11.325727136501724,
+      "predicted_percent_of_reference_top5_tss_max": 57.38189628112848,
+      "predicted_fraction_of_reference_top5_tss_min": 0.11325727136501725,
+      "predicted_fraction_of_reference_top5_tss_max": 0.5738189628112849,
+      "outside_training_activity_range": true,
+      "assumed_tss_offset_0based": 60,
+      "core_start_offset_0based": 10,
+      "core_end_offset_0based_exclusive": 60,
+      "core_sequence_50bp": "ACGATTACTTTTTACATAATTTTATGATATAATTTAAATGTTGACAGAAA",
+      "source_sequence_81bp": "TTAACTTTTAACGATTACTTTTTACATAATTTTATGATATAATTTAAATGTTGACAGAAAAGGAGGTAATTTATGAACAAA",
+      "source_sequence_sha256": "98aff2b1f3fb033f857257d9da5bcfe2d3b8fea78f19d747e47507631026947d",
+      "source_chromosome": "NZ_CP040627.1",
+      "source_genomic_strand": "-",
+      "source_tss_position": "338109"
+    }
+  ]
+}
