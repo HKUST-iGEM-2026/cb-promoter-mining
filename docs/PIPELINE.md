@@ -89,13 +89,15 @@ T12 groups only supplied housekeeping loci, not all CDSs or confirmed operons. S
 
 Four negative classes are coding, putative intergenic, downstream/3′ and SRS shuffles of cropped silver upstreams. None is experimentally guaranteed promoter-free. The custom Eulerian shuffle's plain-shuffle fallback needs per-sequence QC for exact dinucleotide preservation.
 
-The deployed split used **MMseqs2**, despite the historical `cdhit_splits.py` filename. The recovered `T15_xs/_cluster_mmseqs/all.fasta` and `mmseqs_cluster.tsv` account for all 50,190 DNA rows, and their compact cluster IDs exactly match every stored split row: 42,350 clusters, none shared across partitions. The retained recipe uses minimum identity 0.6, coverage 0.8 and coverage mode 1; the original invocation log/version is not recovered, so the membership table alone does not prove those flags. The splitter selects CD-HIT-EST only for its higher-identity option.
+The deployed split used **MMseqs2**, despite the historical `cdhit_splits.py` filename. The recovered `T15_xs/_cluster_mmseqs/all.fasta` and `mmseqs_cluster.tsv` account for all 50,190 DNA rows, and their compact cluster IDs exactly match every stored split row: 42,350 clusters, none shared across partitions. The retained source invokes `mmseqs easy-cluster` with minimum identity 0.6, coverage 0.8 and coverage mode 1 defaults; these retained-source defaults are not a pinned execution trace. The splitter selects CD-HIT-EST only for its higher-identity option.
 
 The splitter deduplicates DNA and pins clusters containing silver or cross-species positives to training. Overall labels are balanced, but partitions are not: train/validation/test contain 44,085/3,052/3,053 windows and 24,001/547/547 positive labels. Silver positives carry confidence weight 0.3; training negatives are rescaled to 0.7127265484963153, giving equal total positive and negative loss weight. Every validation/test weight is 1. The test's positive fraction, 547/3,053 = 0.179168, is the **random-ranking/no-skill AP baseline**, not any model's measured AP.
 
 ### Recover the original clustering command and version
 
-Backend and membership recovery is complete; exact invocation/version recovery is not. Eight local MMseqs cache entries are symbolic links to the original `/project/igem2026/cb-promoter-mining/.../_cluster_mmseqs/` paths, with unavailable local targets. They are not proof that the source-host files are empty or deleted. The two retained cache directories are `tmp/8435348419779229844` and `tmp/9316599144162474585`; their `clu_rep.source` links point to each directory's `input.source`. Original generated shell scripts, job logs, Snakemake metadata and contemporaneous environment records may still exist on the source host.
+Backend and membership recovery is complete. Historical `.bash_history` lines 439 and 448 recover the same outer `T15_xs` wrapper command: `python $REPO/dataset-construction/T15/cdhit_splits.py --positives inputs/reference_promoters.parquet inputs/published_tss_promoters.parquet inputs/literature_promoters_train.parquet results/T13/upstream_regions.tsv $TSS/ruminiclostridium_positives.parquet $TSS/blicheniformis_positives.parquet --negatives results/T14/negative_set.tsv --identity 0.6 --window 81 --seed 42 --out results/T15_xs`. This is historical command evidence, not an instruction to overwrite old outputs. In the retained wrapper, the clustering subprocess stdout was discarded, so no historical MMseqs banner or effective thread count was retained.
+
+The retained source invokes `mmseqs easy-cluster` with coverage 0.8 / coverage mode 1 defaults. An installed-package record identifies MMseqs2 18.8cc5c build `hd6d6fdc_0`, but does not establish that this build or executable ran the historical job. The historical effective defaults, thread count and execution linkage therefore remain unproven. Six of eight T15_xs cache symlinks on the original host remain broken; two valid FASTA-header links reach `all.fasta`. These observations do not show that all source-host files are unreachable, empty or deleted. The two retained cache directories are `tmp/8435348419779229844` and `tmp/9316599144162474585`; their `clu_rep.source` links point to each directory's `input.source`.
 
 The [read-only collector](../pipeline/datasets/clustering-and-splits/collect_mmseqs_provenance.py) prints candidate command/banner contexts, cache link targets, conda package/history records and executable hashes. It uses Python's standard library, does not run clustering or execute discovered binaries, and never infers a historical version from the current installation. Shell-history searches return matching commands only, without surrounding unrelated history.
 
@@ -115,7 +117,7 @@ ssh -o StrictHostKeyChecking=yes osoo@superpod.ust.hk \
 printf 'Evidence saved to %s\n' "$REPORT"
 ```
 
-The source mapping identifies `osoo@superpod.ust.hk`; `ust-hpc4` is the configured alternative alias for `osoo@hpc4.ust.hk`. If the original files remain on HPC4 rather than SuperPod, substitute `ust-hpc4` for the SSH destination in the same command. Both hosts timed out from the audit machine; no source-host collector output is claimed.
+The source mapping identifies `osoo@superpod.ust.hk`; `ust-hpc4` is the configured alternative alias for `osoo@hpc4.ust.hk`. The user successfully collected the source-host report through an interactive SuperPod SSH session. A later targeted noninteractive audit connection could not authenticate; this does not imply that the files are unavailable to the authorised user. If relevant original files reside on HPC4 instead, use `ust-hpc4` with the same read-only collection command.
 
 To inspect only the retained local material:
 
@@ -124,7 +126,7 @@ python3 pipeline/datasets/clustering-and-splits/collect_mmseqs_provenance.py \
   --root "$HOME/cb-promoter-original-run"
 ```
 
-A recovered command must be tied to the deployed `T15_xs` output and a contemporaneous version source, such as the same job's MMseqs banner, its environment transaction/package record or an identified container/executable. `mmseqs version` in an unrelated current environment and the current Python recipe are not evidence of the original run. Preserve the collected JSONL so that these associations can be audited before updating the historical claim.
+The recovered wrapper command is tied to the deployed `T15_xs` output by its six positive sources, output name and matching membership recovery. The separate conda package record establishes an installed MMseqs2 18.8cc5c/`hd6d6fdc_0` build, not the executable/build used by that job. No same-job banner, effective defaults/thread count or execution linkage was retained; `mmseqs version` in an unrelated current environment and the current Python recipe do not close that gap. Preserve the collected JSONL so that these associations can be audited without rerunning clustering or overwriting historical outputs.
 
 ### QC the split before trusting it
 
