@@ -18,6 +18,8 @@ The neutral `oxidative-stress` directory replaces the misleading `inducible` sou
 
 The target list supplied available upstream neighbourhoods. The aligned candidate/null pools contain **1,026/420 windows**; pooled member percentiles differ from the ordinary 929-candidate catalogue's target-only ranking. The selected peaks have reported q≤0.05, but selection and minimum window p-values do **not** establish calibrated biological peak FDR. The final table associates 24 upstream regions with 26 retained target-label identifiers; those annotations are not remapped to a later PGAP release.
 
+The retained inputs include **27 putative-leader upstream regions of 300 bp** and 5,940 target-oriented stride-1 windows. Target Bakta annotation is **v1.12.1, database v6.0 light**; this is distinct from training-cohort Bakta v1.11.4. The new-location CPU preparation scripts were exercised against exact retained inputs in scratch space, without overwriting them. Their mapped annotations precede the supplied post-deduplication snapshot, so that smoke is not an exact replay of the original hand-off. Retained annotation/region tables and score tracks remain unchanged.
+
 All 24 stored sequences exactly match transcription-oriented slices of complete assembly **GCF_014131795.1**. `summit` is the 0-based forward-genome start of an 81-bp window on either strand, not an experimentally mapped TSS. Bakta `contig_1`–`contig_4` correspond to `NZ_CP040626.1`–`NZ_CP040629.1` respectively. The checked NCBI FASTA SHA-256 is `a3f45eb7e8dcdd33383a35c1fd2200bd93fc2c44f9bf63a6e9f6a4b94efdbbe2`.
 
 ## Motif analysis
