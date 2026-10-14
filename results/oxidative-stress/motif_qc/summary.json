@@ -1,0 +1,95 @@
+{
+  "inputs": {
+    "candidate_table": "pipeline/mining/oxidative-stress/model_outputs/fdr/results/CB_oxidative_stress_final_promoters.csv",
+    "candidate_table_sha256": "497c694a837ab9e51629c40302a0322119b3ae5683fcf4230ead5baff47e0809",
+    "reference_motifs": "pipeline/mining/oxidative-stress/model_outputs/fdr/sigma_a_promoter_fixed.meme",
+    "reference_motifs_sha256": "d2d48ec23dc03348467eebb101e8a308fe8ad23f7fe3b01f05653ba11d8a2ab2",
+    "assembly_accession": "GCF_014131795.1"
+  },
+  "method": {
+    "analysis": "Reference-PWM rescoring, not de-novo motif discovery or a new classifier scan",
+    "reference_pwm_width_bp": 6,
+    "declared_background_ACGT": [
+      0.35,
+      0.15,
+      0.15,
+      0.35
+    ],
+    "reference_pwm_consensus": {
+      "minus10": "TATAAT",
+      "minus35": "TTGACA"
+    },
+    "reference_pwm_scientific_source": "Not recorded in the supplied motif file",
+    "search": "Every six-base window on the stored transcription-oriented sequence; no reverse-complement rescan",
+    "null": "Independent per-candidate mononucleotide permutations; exact length and A/C/G/T counts, not dinucleotides",
+    "null_replicates_per_candidate": 2000,
+    "seed": 7,
+    "empirical_p": "(1 + number of null maximum scores >= observed maximum score) / (1 + replicates)",
+    "multiple_comparisons": "Benjamini-Hochberg across all candidate \u00d7 motif comparisons together",
+    "interpretation": "Conditional descriptive QC after model selection; no calibrated biological FDR or activity/constitutivity claim"
+  },
+  "candidate_count": 24,
+  "sequence_lengths_bp": {
+    "81": 24
+  },
+  "mean_at_percent": 80.50411522633745,
+  "stored_fimo_architecture_counts": {
+    "minus10_only": 16,
+    "canonical": 2,
+    "none": 5,
+    "minus35_only": 1
+  },
+  "stored_fimo_two_hit_candidates": [
+    "cbut_0002",
+    "cbut_0005"
+  ],
+  "stored_fimo_edge_gaps_bp": [
+    15,
+    17
+  ],
+  "reference_pwm_qc": {
+    "minus10": {
+      "median_max_score_bits": 5.37287257469265,
+      "median_shuffle_p": 0.34832583708145926,
+      "windows_with_shuffle_p_le_0.05": 0,
+      "windows_with_shuffle_bh_q_le_0.05": 0,
+      "best_core_counts": {
+        "TATAAT": 14,
+        "GATAAT": 1,
+        "TAAAAT": 3,
+        "TACAAT": 1,
+        "TAGAAT": 2,
+        "TATACT": 1,
+        "TATATT": 1,
+        "TATTAT": 1
+      }
+    },
+    "minus35": {
+      "median_max_score_bits": 3.6878496844367294,
+      "median_shuffle_p": 0.4450274862568716,
+      "windows_with_shuffle_p_le_0.05": 3,
+      "windows_with_shuffle_bh_q_le_0.05": 0,
+      "best_core_counts": {
+        "GTGAAA": 1,
+        "TTGACA": 3,
+        "TTGATA": 3,
+        "TTGGGG": 1,
+        "TTGAAA": 2,
+        "TTGTTA": 1,
+        "TTGTAA": 1,
+        "TTGAAG": 1,
+        "TTGTCA": 1,
+        "TTGCAA": 1,
+        "TCCACA": 1,
+        "GTGGTA": 1,
+        "GTGAGA": 1,
+        "TTTCCA": 1,
+        "GTGCCA": 1,
+        "TACACA": 1,
+        "TAGGCG": 1,
+        "ATGCCT": 1,
+        "TTGGGA": 1
+      }
+    }
+  }
+}
