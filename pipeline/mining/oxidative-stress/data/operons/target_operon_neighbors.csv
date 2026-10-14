@@ -1,0 +1,159 @@
+Target RefSeq locus,Target function,Target Bakta locus,Target contig,Target strand,Target start,Target stop,Upstream rank,Neighbor Bakta locus,Neighbor gene,Neighbor product,Neighbor start,Neighbor stop,Neighbor strand,Same strand,Gap to next downstream gene,Potential operon member
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,1,AOOCHK_04178,,Oxidoreductase,583772,584806,-,True,213,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,2,AOOCHK_04179,,Oxidoreductase,584796,585776,-,True,-11,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,3,AOOCHK_04180,,4Fe-4S ferredoxin-type domain-containing protein,586206,587324,-,True,429,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,4,AOOCHK_04181,cbiO,Cobalt ABC transporter ATP-binding protein CbiO,587346,588071,-,True,21,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,5,AOOCHK_04182,cbiQ,"Cobalt ABC transporter, permease protein CbiQ",588087,588887,-,True,15,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,6,AOOCHK_04183,,PDGLE domain-containing protein,588880,589881,-,True,-8,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,7,AOOCHK_04184,,"Pyridinium-3,5-biscarboxylic acid mononucleotide sulfurtransferase",589955,590779,-,True,73,YES
+FF104_RS20715,superoxide dismutase,AOOCHK_04177,contig_2,-,582938,583558,8,AOOCHK_04185,,"Pyridinium-3,5-bisthiocarboxylic acid mononucleotide nickel insertion protein",590766,592073,-,True,-14,YES
+FF104_RS14075,peroxiredoxin,AOOCHK_02838,contig_1,+,3060038,3060511,1,AOOCHK_02837,,hypothetical protein,3058020,3059747,-,False,290,NO - opposite strand
+FF104_RS05950,NADH peroxidase,AOOCHK_01201,contig_1,-,1376902,1377447,1,AOOCHK_01202,,Topology modulation protein,1377713,1378219,+,False,265,NO - opposite strand
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,1,AOOCHK_02737,,Phytoene desaturase,2946289,2947776,-,True,272,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,2,AOOCHK_02738,,Chromate transporter,2947811,2948326,-,True,34,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,3,AOOCHK_02739,,Chromate transporter,2948328,2948861,-,True,1,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,4,AOOCHK_02740,pspC,PspC family transcriptional regulator,2949024,2950571,-,True,162,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,5,AOOCHK_02741,,Biotin carboxylase,2950702,2952048,-,True,130,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,6,AOOCHK_02742,,Biotin carboxyl carrier protein of acetyl-CoA carboxylase,2952091,2952552,-,True,42,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,7,AOOCHK_02743,,Allophanate hydrolase 2 subunit 2,2952567,2953568,-,True,14,YES
+FF104_RS13550,thiol peroxidase,AOOCHK_02736,contig_1,-,2945525,2946016,8,AOOCHK_02744,,Carboxyltransferase domain-containing protein,2953565,2954272,-,True,-4,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,1,AOOCHK_04287,,Glutathione peroxidase,708592,709068,-,True,55,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,2,AOOCHK_04288,cbiN,Cobalt transport protein CbiN,709684,709998,-,True,615,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,3,AOOCHK_04289,cbiM,Cobalt transport protein CbiM,710000,710746,-,True,1,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,4,AOOCHK_04290,,ABC transporter ATP-binding protein,711316,712158,-,True,569,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,5,AOOCHK_04291,cbiQ,Cobalt transport protein CbiQ,712168,712938,-,True,9,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,6,AOOCHK_04292,,histidine kinase,713199,714860,-,True,260,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,7,AOOCHK_04293,,hypothetical protein,715147,716619,-,True,286,YES
+FF104_RS21250,glutathione peroxidase,AOOCHK_04286,contig_2,-,707991,708536,8,AOOCHK_04294,,Replication initiation protein,717634,718746,+,False,1014,NO - opposite strand
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,1,AOOCHK_04288,cbiN,Cobalt transport protein CbiN,709684,709998,-,True,615,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,2,AOOCHK_04289,cbiM,Cobalt transport protein CbiM,710000,710746,-,True,1,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,3,AOOCHK_04290,,ABC transporter ATP-binding protein,711316,712158,-,True,569,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,4,AOOCHK_04291,cbiQ,Cobalt transport protein CbiQ,712168,712938,-,True,9,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,5,AOOCHK_04292,,histidine kinase,713199,714860,-,True,260,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,6,AOOCHK_04293,,hypothetical protein,715147,716619,-,True,286,YES
+FF104_RS21255,glutathione peroxidase,AOOCHK_04287,contig_2,-,708592,709068,7,AOOCHK_04294,,Replication initiation protein,717634,718746,+,False,1014,NO - opposite strand
+FF104_RS11680,rubrerythrin,AOOCHK_02358,contig_1,-,2590896,2591486,1,AOOCHK_02359,,Radical SAM protein,2591575,2592444,-,True,88,YES
+FF104_RS11680,rubrerythrin,AOOCHK_02358,contig_1,-,2590896,2591486,2,AOOCHK_02360,,hypothetical protein,2592643,2592882,-,True,198,YES
+FF104_RS11680,rubrerythrin,AOOCHK_02358,contig_1,-,2590896,2591486,3,AOOCHK_02361,,"1,4-alpha-glucan branching enzyme",2593504,2595336,+,False,621,NO - opposite strand
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,1,AOOCHK_03072,,Stage V sporulation protein R,3327854,3329224,-,True,104,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,2,AOOCHK_03073,,UPF0229 protein D4Z93_08455,3329228,3330400,-,True,3,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,3,AOOCHK_03074,,Non-specific serine/threonine protein kinase,3330407,3332335,-,True,6,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,4,AOOCHK_03075,,Peptidyl-prolyl cis-trans isomerase,3332607,3333254,-,True,271,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,5,AOOCHK_03076,,hypothetical protein,3333553,3333738,-,True,298,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,6,AOOCHK_03077,,Nucleotide-diphospho-sugar transferase domain-containing protein,3334202,3335143,-,True,463,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,7,AOOCHK_03078,,Glycosyltransferase 2-like domain-containing protein,3335172,3336335,-,True,28,YES
+FF104_RS15235,rubrerythrin,AOOCHK_03071,contig_1,-,3327207,3327749,8,AOOCHK_03079,,Nucleotide-diphospho-sugar transferase domain-containing protein,3336357,3337274,-,True,21,YES
+FF104_RS21205,rubrerythrin,AOOCHK_04277,contig_2,-,698578,699165,1,AOOCHK_04278,,Guanidinium exporter,699381,699701,-,True,215,YES
+FF104_RS21205,rubrerythrin,AOOCHK_04277,contig_2,-,698578,699165,2,AOOCHK_04279,,"Small, acid-soluble spore protein C1",700082,700282,-,True,380,YES
+FF104_RS21205,rubrerythrin,AOOCHK_04277,contig_2,-,698578,699165,3,AOOCHK_04280,,5-methyltetrahydropteroyltriglutamate--homocysteine methyltransferase,700446,702719,-,True,163,YES
+FF104_RS21205,rubrerythrin,AOOCHK_04277,contig_2,-,698578,699165,4,AOOCHK_04281,,HTH lysR-type domain-containing protein,702805,703713,-,True,85,YES
+FF104_RS21205,rubrerythrin,AOOCHK_04277,contig_2,-,698578,699165,5,AOOCHK_04282,,PAP2 family protein,704423,704950,+,False,709,NO - opposite strand
+FF104_RS04850,rubredoxin,,contig_1,-,1139882,1140040,1,AOOCHK_00979,,Exonuclease,1140173,1140790,-,True,132,YES
+FF104_RS04850,rubredoxin,,contig_1,-,1139882,1140040,2,AOOCHK_00980,,L-lactate dehydrogenase,1141025,1141978,+,False,234,NO - opposite strand
+FF104_RS18650,alkyl hydroperoxide reductase subunit C,AOOCHK_03756,contig_2,+,130363,130926,1,AOOCHK_03755,,Alcohol dehydrogenase,128960,130117,+,True,245,YES
+FF104_RS18650,alkyl hydroperoxide reductase subunit C,AOOCHK_03756,contig_2,+,130363,130926,2,AOOCHK_03754,,"Glycerol dehydratase, cobalamin-independent, small subunit",127986,128900,+,True,59,YES
+FF104_RS18650,alkyl hydroperoxide reductase subunit C,AOOCHK_03756,contig_2,+,130363,130926,3,AOOCHK_03753,,Glycerol dehydratase,125595,127958,+,True,27,YES
+FF104_RS18650,alkyl hydroperoxide reductase subunit C,AOOCHK_03756,contig_2,+,130363,130926,4,AOOCHK_03752,,IS4 family transposase,123817,124953,-,False,641,NO - opposite strand
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,1,AOOCHK_04277,,Rubrerythrin,698578,699165,-,True,58,YES
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,2,AOOCHK_04278,,Guanidinium exporter,699381,699701,-,True,215,YES
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,3,AOOCHK_04279,,"Small, acid-soluble spore protein C1",700082,700282,-,True,380,YES
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,4,AOOCHK_04280,,5-methyltetrahydropteroyltriglutamate--homocysteine methyltransferase,700446,702719,-,True,163,YES
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,5,AOOCHK_04281,,HTH lysR-type domain-containing protein,702805,703713,-,True,85,YES
+FF104_RS21200,desulfoferrodoxin,AOOCHK_04276,contig_2,-,698139,698519,6,AOOCHK_04282,,PAP2 family protein,704423,704950,+,False,709,NO - opposite strand
+FF104_RS10490,thioredoxin,AOOCHK_02118,contig_1,-,2353925,2354239,1,AOOCHK_02119,,Thioredoxin reductase,2354368,2355228,-,True,128,YES
+FF104_RS10490,thioredoxin,AOOCHK_02118,contig_1,-,2353925,2354239,2,AOOCHK_02120,yxeO,putative amino-acid import ATP-binding protein YxeO,2355553,2356290,-,True,324,YES
+FF104_RS10490,thioredoxin,AOOCHK_02118,contig_1,-,2353925,2354239,3,AOOCHK_02121,,Amino acid ABC transporter,2356304,2357743,-,True,13,YES
+FF104_RS10490,thioredoxin,AOOCHK_02118,contig_1,-,2353925,2354239,4,AOOCHK_02122,,hypothetical protein,2357863,2358048,-,True,119,YES
+FF104_RS10490,thioredoxin,AOOCHK_02118,contig_1,-,2353925,2354239,5,AOOCHK_02123,,Recombinase family protein,2358265,2359866,+,False,216,NO - opposite strand
+FF104_RS14045,thioredoxin,AOOCHK_02832,contig_1,-,3053684,3053992,1,AOOCHK_02833,,Viral A-type inclusion protein,3054272,3055030,-,True,279,YES
+FF104_RS14045,thioredoxin,AOOCHK_02832,contig_1,-,3053684,3053992,2,AOOCHK_02834,,Sulfide dehydrogenase subunit alpha,3055196,3056425,-,True,165,YES
+FF104_RS14045,thioredoxin,AOOCHK_02832,contig_1,-,3053684,3053992,3,AOOCHK_02835,eamA,EamA domain-containing protein,3056628,3057041,+,False,202,NO - opposite strand
+FF104_RS05020,thioredoxin,AOOCHK_01012,contig_1,+,1178169,1178483,1,AOOCHK_01011,,ABC transporter ATP-binding protein,1176258,1177964,+,True,204,YES
+FF104_RS05020,thioredoxin,AOOCHK_01012,contig_1,+,1178169,1178483,2,AOOCHK_01010,,hypothetical protein,1175914,1176165,-,False,92,NO - opposite strand
+FF104_RS17295,thioredoxin-disulfide reductase,AOOCHK_03484,contig_1,-,3741372,3742307,1,AOOCHK_03485,clpC,ATP-dependent Clp protease ATP-binding subunit ClpC,3742696,3745140,-,True,388,YES
+FF104_RS17295,thioredoxin-disulfide reductase,AOOCHK_03484,contig_1,-,3741372,3742307,2,AOOCHK_03486,,Protein-arginine kinase,3745165,3746178,-,True,24,YES
+FF104_RS17295,thioredoxin-disulfide reductase,AOOCHK_03484,contig_1,-,3741372,3742307,3,AOOCHK_03487,clpE,ATP-dependent Clp protease ATP-binding subunit ClpE,3746159,3746743,-,True,-20,YES
+FF104_RS17295,thioredoxin-disulfide reductase,AOOCHK_03484,contig_1,-,3741372,3742307,4,AOOCHK_03488,ctsR,Transcriptional regulator CtsR,3746758,3747216,-,True,14,YES
+FF104_RS17295,thioredoxin-disulfide reductase,AOOCHK_03484,contig_1,-,3741372,3742307,5,AOOCHK_03489,,Zn-dependent hydrolase,3747497,3748141,+,False,280,NO - opposite strand
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,1,AOOCHK_03484,,Thioredoxin reductase,3741372,3742307,-,True,3,YES
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,2,AOOCHK_03485,clpC,ATP-dependent Clp protease ATP-binding subunit ClpC,3742696,3745140,-,True,388,YES
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,3,AOOCHK_03486,,Protein-arginine kinase,3745165,3746178,-,True,24,YES
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,4,AOOCHK_03487,clpE,ATP-dependent Clp protease ATP-binding subunit ClpE,3746159,3746743,-,True,-20,YES
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,5,AOOCHK_03488,ctsR,Transcriptional regulator CtsR,3746758,3747216,-,True,14,YES
+FF104_RS17285,glutaredoxin domain-containing protein,AOOCHK_03483,contig_1,-,3741141,3741368,6,AOOCHK_03489,,Zn-dependent hydrolase,3747497,3748141,+,False,280,NO - opposite strand
+FF104_RS17290,glutaredoxin domain-containing protein,AOOCHK_03482,contig_1,+,3740851,3741078,1,AOOCHK_03481,,hypothetical protein,3740479,3740646,+,True,204,YES
+FF104_RS17290,glutaredoxin domain-containing protein,AOOCHK_03482,contig_1,+,3740851,3741078,2,AOOCHK_03480,radA,DNA repair protein RadA,3738909,3740285,-,False,193,NO - opposite strand
+FF104_RS10275,thioredoxin family protein,AOOCHK_02075,contig_1,-,2309133,2309462,1,AOOCHK_02076,ywtE,5-amino-6-(5-phospho-D-ribitylamino)uracil phosphatase YwtE,2309493,2310305,-,True,30,YES
+FF104_RS10275,thioredoxin family protein,AOOCHK_02075,contig_1,-,2309133,2309462,2,AOOCHK_02077,ybhF,Transporter YbhF,2310521,2311453,+,False,215,NO - opposite strand
+FF104_RS06915,peroxide stress protein,AOOCHK_01398,contig_1,+,1572359,1573159,1,AOOCHK_01397,,hypothetical protein,1571900,1572055,-,False,303,NO - opposite strand
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,1,AOOCHK_03564,,Iron-sulfur cluster carrier protein,3815581,3816426,-,True,299,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,2,AOOCHK_03565,,Lipoprotein,3816444,3817274,-,True,17,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,3,AOOCHK_03566,,Phosphatidylglycerol--prolipoprotein diacylglyceryl transferase 2,3817264,3818034,-,True,-11,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,4,AOOCHK_03567,psbP,PsbP C-terminal domain-containing protein,3818143,3818703,-,True,108,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,5,AOOCHK_03568,,Transmembrane protein,3818719,3820236,-,True,15,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,6,AOOCHK_03569,,Ribosomal RNA small subunit methyltransferase A,3820372,3821217,-,True,135,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,7,AOOCHK_03570,,Ribonuclease M5,3821218,3821793,-,True,0,YES
+FF104_RS17690,ferredoxin,AOOCHK_03563,contig_1,-,3815093,3815281,8,AOOCHK_03571,,G5 domain-containing protein,3822021,3823079,-,True,227,YES
+FF104_RS08905,ferredoxin,AOOCHK_01799,contig_1,-,2013857,2014039,1,AOOCHK_01800,,hypothetical protein,2014406,2015050,-,True,366,YES
+FF104_RS08905,ferredoxin,AOOCHK_01799,contig_1,-,2013857,2014039,2,AOOCHK_01801,czcD,Cobalt-zinc-cadmium resistance protein czcD,2015168,2016058,-,True,117,YES
+FF104_RS08905,ferredoxin,AOOCHK_01799,contig_1,-,2013857,2014039,3,AOOCHK_01802,,Alpha/beta hydrolase,2016339,2017958,-,True,280,YES
+FF104_RS08905,ferredoxin,AOOCHK_01799,contig_1,-,2013857,2014039,4,AOOCHK_01803,,Esterase,2018231,2019040,+,False,272,NO - opposite strand
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,1,AOOCHK_01930,,CASTOR ACT domain-containing protein,2138725,2139099,-,True,65,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,2,AOOCHK_01931,,N-acetyltransferase domain-containing protein,2139317,2139931,-,True,217,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,3,AOOCHK_01932,,Ferredoxin,2140017,2140778,-,True,85,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,4,AOOCHK_01933,,HTH arsR-type domain-containing protein,2140914,2141219,-,True,135,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,5,AOOCHK_01934,,AAA-ATPase-like domain-containing protein,2141216,2142808,-,True,-4,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,6,AOOCHK_01935,,GATA-type domain-containing protein,2143120,2143380,-,True,311,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,7,AOOCHK_01936,,ABC-F type ribosomal protection protein,2143830,2145737,-,True,449,YES
+FF104_RS09545,EFR1 family ferrodoxin,AOOCHK_01929,contig_1,-,2137901,2138659,8,AOOCHK_01937,,HTH merR-type domain-containing protein,2145779,2146144,-,True,41,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,1,AOOCHK_01933,,HTH arsR-type domain-containing protein,2140914,2141219,-,True,135,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,2,AOOCHK_01934,,AAA-ATPase-like domain-containing protein,2141216,2142808,-,True,-4,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,3,AOOCHK_01935,,GATA-type domain-containing protein,2143120,2143380,-,True,311,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,4,AOOCHK_01936,,ABC-F type ribosomal protection protein,2143830,2145737,-,True,449,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,5,AOOCHK_01937,,HTH merR-type domain-containing protein,2145779,2146144,-,True,41,YES
+FF104_RS09560,EFR1 family ferrodoxin,AOOCHK_01932,contig_1,-,2140017,2140778,6,AOOCHK_01938,,Short-chain dehydrogenase,2146231,2147016,+,False,86,NO - opposite strand
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,1,AOOCHK_00717,,Agmatinase,860285,861136,+,True,142,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,2,AOOCHK_00716,,Carboxynorspermidine/carboxyspermidine decarboxylase,859085,860230,+,True,54,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,3,AOOCHK_00715,,Saccharopine dehydrogenase,857747,858946,+,True,138,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,4,AOOCHK_00714,,Polyamine aminopropyltransferase,856834,857688,+,True,58,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,5,AOOCHK_00713,,Arginine decarboxylase,855225,856751,+,True,82,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,6,AOOCHK_00712,,S-adenosylmethionine decarboxylase proenzyme,854394,855212,+,True,12,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,7,AOOCHK_00711,,YibE/F-like protein,852712,853836,+,True,557,YES
+FF104_RS03560,flavodoxin family protein,AOOCHK_00718,contig_1,+,861279,861770,8,AOOCHK_00710,,Alkaline phosphatase 4,851136,852695,+,True,16,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,1,AOOCHK_01524,,Uridine kinase,1729973,1730575,+,True,235,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,2,AOOCHK_01523,,ECF transporter S component,1729435,1729983,+,True,-11,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,3,AOOCHK_01522,,5'-Nucleotidase domain-containing protein,1725394,1729242,+,True,192,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,4,AOOCHK_01521,,Thermostable carboxypeptidase 2,1724092,1725273,+,True,120,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,5,AOOCHK_01520,,Uncharacterized protein related to glutamine synthetase,1721743,1723836,+,True,255,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,6,AOOCHK_01519,,Serine aminopeptidase S33 domain-containing protein,1720269,1721249,+,True,493,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,7,AOOCHK_01518,,Rho termination factor-like N-terminal domain-containing protein,1718960,1720054,+,True,214,YES
+FF104_RS07550,flavodoxin family protein,AOOCHK_01525,contig_1,+,1730811,1731293,8,AOOCHK_01517,,8-oxo-dGTP diphosphatase,1718404,1718802,-,False,157,NO - opposite strand
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,1,AOOCHK_01637,,Ubiquinone biosynthesis O-methyltransferase,1855208,1855819,+,True,133,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,2,AOOCHK_01636,yflN,Putative metallo-hydrolase YflN,1854315,1855025,+,True,182,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,3,AOOCHK_01635,,hypothetical protein,1854092,1854313,+,True,1,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,4,AOOCHK_01634,,Homocysteine S-methyltransferase,1853136,1854059,+,True,32,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,5,AOOCHK_01633,,VOC domain-containing protein,1852595,1853059,+,True,76,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,6,AOOCHK_01632,,CpXC domain-containing protein,1852058,1852513,+,True,81,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,7,AOOCHK_01631,,MmcQ-like protein,1851479,1851850,+,True,207,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,8,AOOCHK_01630,,General stress protein 39,1850233,1851099,+,True,379,YES
+FF104_RS10540,flavodoxin,AOOCHK_02128,contig_1,-,2363484,2363894,1,AOOCHK_02129,eamA,EamA domain-containing protein,2364100,2364984,-,True,205,YES
+FF104_RS10540,flavodoxin,AOOCHK_02128,contig_1,-,2363484,2363894,2,AOOCHK_02130,,Thioredoxin domain-containing protein,2365083,2365712,-,True,98,YES
+FF104_RS10540,flavodoxin,AOOCHK_02128,contig_1,-,2363484,2363894,3,AOOCHK_02131,,N-acetyltransferase domain-containing protein,2365734,2366267,-,True,21,YES
+FF104_RS10540,flavodoxin,AOOCHK_02128,contig_1,-,2363484,2363894,4,AOOCHK_02132,,Sodium/proline symporter,2366510,2368024,+,False,242,NO - opposite strand
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,1,AOOCHK_02978,,UDP-N-acetylglucosamine--N-acetylmuramyl-(pentapeptide) pyrophosphoryl-undecaprenol N-acetylglucosamine transferase,3215367,3216440,-,True,152,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,2,AOOCHK_02979,recJ,Single-stranded-DNA-specific exonuclease RecJ,3216861,3218627,-,True,420,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,3,AOOCHK_02980,,DJ-1/PfpI domain-containing protein,3218691,3219245,-,True,63,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,4,AOOCHK_02981,,DNA topoisomerase (ATP-hydrolyzing),3219442,3222357,-,True,196,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,5,AOOCHK_02982,,DNA topoisomerase (ATP-hydrolyzing),3222423,3224372,-,True,65,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,6,AOOCHK_02983,,Glycosyltransferase 2-like domain-containing protein,3224949,3226337,-,True,576,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,7,AOOCHK_02984,,Glutamate dehydrogenase,3226986,3228332,-,True,648,YES
+FF104_RS14770,flavodoxin,AOOCHK_02977,contig_1,-,3214789,3215214,8,AOOCHK_02985,,Membrane-spanning protein,3228511,3229146,-,True,178,YES
+FF104_RS19340,flavodoxin family protein,AOOCHK_03897,contig_2,-,281920,282546,1,AOOCHK_03898,,N-acetyltransferase domain-containing protein,282714,283217,+,False,167,NO - opposite strand
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,1,AOOCHK_01637,,Ubiquinone biosynthesis O-methyltransferase,1855208,1855819,+,True,133,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,2,AOOCHK_01636,yflN,Putative metallo-hydrolase YflN,1854315,1855025,+,True,182,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,3,AOOCHK_01635,,hypothetical protein,1854092,1854313,+,True,1,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,4,AOOCHK_01634,,Homocysteine S-methyltransferase,1853136,1854059,+,True,32,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,5,AOOCHK_01633,,VOC domain-containing protein,1852595,1853059,+,True,76,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,6,AOOCHK_01632,,CpXC domain-containing protein,1852058,1852513,+,True,81,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,7,AOOCHK_01631,,MmcQ-like protein,1851479,1851850,+,True,207,YES
+FF104_RS08110,flavodoxin family protein,AOOCHK_01638,contig_1,+,1855953,1856669,8,AOOCHK_01630,,General stress protein 39,1850233,1851099,+,True,379,YES

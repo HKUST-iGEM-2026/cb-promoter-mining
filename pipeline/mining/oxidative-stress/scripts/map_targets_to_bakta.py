@@ -1,9 +1,9 @@
 import csv
 import re
 
-targets_file = "pipeline/mining/oxidative-stress/CB_oxidative_stress_genes.csv"
-bakta_file = "pipeline/mining/oxidative-stress/bakta_annotation/DSM10702.tsv"
-output_file = "pipeline/mining/oxidative-stress/CB_oxidative_stress_genes_mapped.csv"
+targets_file = "pipeline/mining/oxidative-stress/data/genes/CB_oxidative_stress_genes.csv"
+bakta_file = "pipeline/mining/oxidative-stress/bakta/bakta_annotation/DSM10702.tsv"
+output_file = "pipeline/mining/oxidative-stress/data/genes/CB_oxidative_stress_genes_mapped.csv"
 
 seq_map = {
     "NZ_CP040626.1": "contig_1",

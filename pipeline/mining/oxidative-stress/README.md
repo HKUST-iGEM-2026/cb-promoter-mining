@@ -8,7 +8,7 @@ The neutral `oxidative-stress` directory replaces the misleading `inducible` sou
 
 | Artifact | Contents |
 |---|---|
-| [Target list](CB_oxidative_stress_genes.csv) | 31 annotated stress-associated target records |
+| [Target list](data/genes/CB_oxidative_stress_genes.csv) | 31 annotated stress-associated target records |
 | [Final promoter table](model_outputs/fdr/results/CB_oxidative_stress_final_promoters.csv) | 24 peaks, oriented 81-bp summit DNA, target/leader annotations and stored motif labels |
 | [Summit FASTA](model_outputs/fdr/results/top80_promoters_summits.fasta) | The same 24 sequences; `top80` is a filename limit, not the delivered count |
 | [Screening description](model_outputs/fdr/results/analysis.md) | Candidate/null pooling and selected-peak p/q conventions |

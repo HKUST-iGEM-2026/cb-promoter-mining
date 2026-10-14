@@ -2,9 +2,9 @@ import csv
 import re
 from collections import defaultdict
 
-mapped_file = "pipeline/mining/oxidative-stress/CB_oxidative_stress_genes_mapped.csv"
-bakta_file = "pipeline/mining/oxidative-stress/bakta_annotation/DSM10702.tsv"
-output_file = "pipeline/mining/oxidative-stress/target_operon_neighbors.csv"
+mapped_file = "pipeline/mining/oxidative-stress/data/genes/CB_oxidative_stress_genes_mapped.csv"
+bakta_file = "pipeline/mining/oxidative-stress/bakta/bakta_annotation/DSM10702.tsv"
+output_file = "pipeline/mining/oxidative-stress/data/operons/target_operon_neighbors.csv"
 
 # How many genes to inspect upstream of each target
 MAX_UPSTREAM_GENES = 8
