@@ -1,5 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=cb_evo2
+#SBATCH --account=igem2026
+#SBATCH --partition=preempt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
@@ -10,18 +12,19 @@
 set -eo pipefail
 
 # Initialize Conda
-source "$(conda info --base)/etc/profile.d/conda.sh"
+source /cm/shared/apps/Anaconda3/2023.09-0/etc/profile.d/conda.sh
 
 # Activate the Evo2-specific environment
-conda activate "${ENV_EVO2:?set it or source env.sh}"
+conda activate /project/igem2026/envs/evo2
 
 # Go to the project directory
-cd "${PROMOTER_REPO:?set it or source env.sh}"
+cd /project/igem2026/cb-promoter-mining
 
 # Hugging Face shared cache
 export PYTHONNOUSERSITE=1
-if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
-export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
+export HF_HOME=/project/igem2026/hf_shared
+export HF_HUB_CACHE="$HF_HOME/hub"
+export HF_HUB_OFFLINE=1
 
 # Input/output paths
 GENOME="pipeline/mining/inducible/bakta/bakta_annotation/DSM10702.fna"

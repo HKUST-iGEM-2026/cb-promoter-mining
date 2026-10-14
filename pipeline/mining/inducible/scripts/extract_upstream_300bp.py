@@ -7,23 +7,23 @@ from collections import defaultdict
 # ============================================================
 
 OPERON_FILE = (
-    "pipeline/mining/inducible/"
+    "pipeline/mining/inducible/data/operons/"
     "CB_oxidative_stress_operon_leaders.csv"
 )
 
 GENOME_FASTA = (
-    "pipeline/mining/inducible/"
+    "pipeline/mining/inducible/bakta/"
     "bakta_annotation/"
     "DSM10702.fna"
 )
 
 OUTPUT_FASTA = (
-    "pipeline/mining/inducible/"
+    "pipeline/mining/inducible/data/regions/"
     "CB_oxidative_stress_upstream_300bp.fasta"
 )
 
 OUTPUT_CSV = (
-    "pipeline/mining/inducible/"
+    "pipeline/mining/inducible/data/regions/"
     "CB_oxidative_stress_upstream_300bp.csv"
 )
 

@@ -1,17 +1,19 @@
-# Stress-neighborhood FDR screening
+# T27 empirical-FDR promoter mine — C. butyricum — ensemble `prokbert + cnnv2 + evo2`
 
-Historical T27 stress-associated run, separate from the ordinary 929/180/45 catalogue. Candidate/null counts are 1,026/420. Mean member percentiles are computed over each combined candidate+null pool, not ordinary target ranks. The intergenic null is putative; exchangeability, exact composition matching and promoter-free status are not established.
+**Restricted scan + tailored null.** Candidates are the 1,026 upstream-of-gene windows; the null is the 420 convergent-intergenic samples (both strands of the 81 bp negatives). Both are intergenic + AT-rich, so the empirical p is a composition-matched comparison. Ensemble = mean rank-percentile pooled over the RESTRICTED candidates + null (calibration-free).
 
-## Screening rule
+## Null score distribution (ensemble rank-percentile)
+median 0.5189 · p95 0.8690 · p99 0.9604 · max 0.9945
+Smallest achievable p-value = 1/(Nnull+1) = 2.38e-03.
 
-Window p = (count(null score ≥ candidate score) + 1)/(Nnull + 1). Select p≤0.05, merge same-strand windows, assign each peak its minimum selected p, then apply BH over selected peaks. Selection/minimum p-values do not establish calibrated peak-level or biological FDR≤5%. An oxidative-stress neighborhood does not prove inducibility.
+## Discoveries
+- candidate windows tested: 1,026
+- windows passing empirical p <= 0.05: peak-called into **24 promoter loci**
+- loci at q <= 0.05: **24**   ·   q <= 0.10: 24
+- reported: top 24 by ensemble score (0 summit windows truncated at a contig end -> blank sequence)
+- top-24 ensemble range [0.8797, 0.9963], q range [1.90e-02, 4.51e-02]
 
-## Recorded result
-
-Null median/p95/p99/max is 0.5189/0.8690/0.9604/0.9945, minimum attainable p 2.38e-03. There are 24 screening loci at q≤0.05 and the same count at q≤0.10. Reported top 24 scores span 0.8797–0.9963, q 1.90e-02–4.51e-02; no summit sequence was truncated.
-
-## Top 20
-
+## Top 20 promoters (full set in `top80_promoters.csv`)
 | candidate_id | contig | summit | strand | ensemble | p_value | q_value | n_windows |
 |---|---|---|---|---|---|---|---|
 | cbut_0001 | contig_1 | 3740720 | + | 0.9963 | 2.375e-03 | 1.900e-02 | 9 |
@@ -35,9 +37,9 @@ Null median/p95/p99/max is 0.5189/0.8690/0.9604/0.9945, minimum attainable p 2.3
 | cbut_0019 | contig_1 | 2014217 | - | 0.9458 | 1.900e-02 | 2.400e-02 | 6 |
 | cbut_0020 | contig_1 | 1140037 | - | 0.9424 | 2.138e-02 | 2.565e-02 | 2 |
 
+## Files
+- `top80_promoters.csv` — candidate_id, contig, summit, strand, ensemble_score, p_value, q_value, n_windows, sequence
+- `top80_promoters_motif.csv` — the above + FIMO -10/-35 architecture (written by the sbatch motif step)
+- `peaks_fdr.csv` — every called locus with p/q (the full FDR table)
 
-## Files and coordinates
-
-peaks_fdr.csv stores all peaks; top80_promoters.csv stores the reported sequence subset. top80_promoters_motif.csv adds motif annotations. summit is the 0-based forward-genome start of an 81-bp window, including on the reverse strand; sequence is in reading orientation, not a mapped TSS.
-
-Reproduction needs aligned candidate **and** null raw member tracks on the same grid/settings. Stored peak tables alone cannot reconstruct pooled ranks/window p-values; a mean of raw null scores is not the pooled-rank null. Motifs and downstream gene associations need biological testing. [Interpretation](../../../../../../docs/RESULTS.md#interpreting-candidates-and-downstream-units) defines the separate claims.
+_Reproducible: ensembling + p/q are deterministic (this file is CPU-only, no GPU, no RNG)._

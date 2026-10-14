@@ -1,9 +1,9 @@
 import csv
 from collections import defaultdict
 
-BAKTA_FILE = "pipeline/mining/inducible/bakta_annotation/DSM10702.tsv"
-TARGET_FILE = "pipeline/mining/inducible/CB_oxidative_stress_genes_mapped.csv"
-OUTPUT_FILE = "pipeline/mining/inducible/CB_oxidative_stress_operon_leaders.csv"
+BAKTA_FILE = "pipeline/mining/inducible/bakta/bakta_annotation/DSM10702.tsv"
+TARGET_FILE = "pipeline/mining/inducible/data/genes/CB_oxidative_stress_genes_mapped.csv"
+OUTPUT_FILE = "pipeline/mining/inducible/data/operons/CB_oxidative_stress_operon_leaders.csv"
 
 MAX_DIST = 100
 

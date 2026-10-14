@@ -60,6 +60,7 @@ The [strength guide](docs/ECOLI_STRENGTH_PREDICTIONS.md#loading-the-fitted-model
 - [929 ranked sequences](results/candidates/g131795_ranked_seq.tsv) and [45 promoters with both −10 and −35 motifs](results/candidates/g131795_tier1_canonical_seq.tsv).
 - [Results](docs/RESULTS.md): benchmark definitions, motif evidence and downstream-unit interpretation.
 - [Pipeline](docs/PIPELINE.md): stage commands; the legacy default Snakemake target is not an end-to-end recipe.
+- [Targeted oxidative-stress candidates](pipeline/mining/inducible/): retained gene/region tables, prediction outputs and scripts from `main`, kept in the canonical layout. These predictions do not establish stress-dependent expression or native promoter activity.
 
 Here, **silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. Negative windows are putative negatives, not experimentally established promoter-free DNA.
 
@@ -71,7 +72,7 @@ Project code/documentation is [MIT](LICENSE). ProkBERT, CNN/probe, external code
 
 The local wiki is maintained separately and is not included in the GitHub source repository. Do not move it into another tracked directory or link repository documentation to its local files. `.gitignore` excludes it; already-tracked wiki files must also be removed from Git's index without deleting the local copies.
 
-The source-layout branch is `reorganise`; the GitHub default `main` branch retains the older layout. Historical names such as `T21_xs` identify retained run-output directories, not current source directories. Review the current working tree and index before publishing; do not use a blanket “take theirs” resolution to restore obsolete source directories or undo scientific corrections.
+The source-layout integration branch is `reorganise`; merge its reviewed changes into the GitHub default `main` branch through a pull request. Historical names such as `T21_xs` identify retained run-output directories, not current source directories. Review the current working tree and index before publishing; do not use a blanket “take theirs” resolution to restore obsolete source directories or undo scientific corrections.
 
 For ordinary source updates when no merge is in progress:
 
