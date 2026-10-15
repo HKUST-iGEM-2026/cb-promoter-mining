@@ -1,6 +1,8 @@
 # Reproduce the pipeline
 
-Start with [setup](SETUP.md) and source `env.sh`. Run data stages from `workflow/`; root-stage commands below use PROMOTER_REPO. Source scripts live under `pipeline/`, not the obsolete numbered task-source directories. Names such as `T15_xs` and `T21_xs` below are existing data/run-output directories, not instructions to use the former source layout. Commands identify inputs and dependencies, not a one-command recreation of every historical run. Large recovered inputs are local, not committed.
+The pipeline converts heterogeneous promoter/genome sources into aligned classifier inputs, then turns common-coordinate scores into a candidate catalogue. Each phase produces the prerequisite for the next: source curation → labelled windows and splits → model encodings/fits → evaluation → target mining. Start with [setup](SETUP.md) and source `env.sh`; data stages run from `workflow/`, while root-stage commands use PROMOTER_REPO.
+
+The commands identify inputs and dependencies, not a one-command recreation of every historical run. Source scripts live under `pipeline/`; `T15_xs` and `T21_xs` name existing run-output directories, not the former numbered source layout. Large recovered inputs are local, not committed. Preserve original outputs when producing a new run.
 
 ## Step 0 — check the wiring
 
@@ -14,6 +16,8 @@ snakemake -n results/T14/negative_set.tsv    # plans Phase B up to the negatives
 Use explicit targets. The default legacy DAG reaches obsolete training wiring and optional C. difficile inputs.
 
 ## Phase A — acquire and curate
+
+Curation comes first because a sequence label is only meaningful with its source and evidence attached. This phase stages curated promoters, published starts and separately held-out synthetic sequences. Raw-read acquisition is a different route and must not be mistaken for the published-table labels used in deployment.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -44,6 +48,10 @@ Published windows use transcription-oriented −60:+20 DNA with TSS offset 60. G
 The 20 C. difficile libraries enter a prepared-only TEX/TAP TSSpredator path, not deployed labels. The other 27 Hocq/Al-Bassam runs use published tables. See [TSS sources](../pipeline/acquisition/tss-literature/README.md).
 
 ## Phase B — build the dataset
+
+The staged sources differ in length, annotation and confidence. Dataset construction first puts their DNA on a **shared 81-bp frame**, then controls related-sequence leakage by assigning whole clusters. Published starts use 60 upstream bases, the start-site base and 20 downstream bases; other sources are normalised without inventing mapped starts. **81 bp follows this source convention, not a ProkBERT length limit** ([capacity and rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp)).
+
+The four background classes test more than a trivial promoter-versus-random distinction, while the 0.3 silver weight reduces the influence of inferred positives. Once the split is fixed, per-model encoding changes representation, not rows, labels or partition membership.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -151,7 +159,7 @@ Zero shared cluster IDs is necessary, not proof of no related-sequence or genome
 
 ## Phase C — train
 
-These are the recorded deployed settings; rerunning training does not guarantee bit-identical weights.
+Training now receives a fixed partition and its confidence weights, so differences in representation do not require another split. ProkBERT fine-tunes a pretrained backbone and two-class head; CNN-v2 learns local/composition features from scratch. The commands retain the deployed settings, but rerunning them does not guarantee bit-identical weights.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -172,6 +180,8 @@ python ../pipeline/training/cnn/train_cnn_v2.py \
 ```
 
 ### The Evo2 probe
+
+Evo2 takes a different route: first extract embeddings with a frozen backbone, then fit the scaler/logistic probe on those features. Only the second step trains the classifier parameters, which is why it can run on CPU after the GPU extraction finishes.
 
 ```bash
 cd "$PROMOTER_REPO"
@@ -237,6 +247,8 @@ python ../pipeline/training/hyperparameter-sweep/hyperparameter_sweep.py \
 
 ## Phase D — evaluate
 
+Evaluate the labelled-window task before interpreting genomic use, then examine whether ranking recovers published starts. These are different questions, not interchangeable accuracy figures. A good held-out classifier can still exploit composition or produce many unmatched genomic peaks; [Results](RESULTS.md#evaluation-regimes) separates those controls and measurements.
+
 ```bash
 cd "$PROMOTER_REPO/workflow"
 conda activate "$ENV_MAIN"
@@ -297,6 +309,8 @@ The historical 279-row mixture contains 93 T9 positives and 186 putative negativ
 
 ## Phase E — mine the target
 
+After selecting the trio, mining applies its ranking rule to the target rather than another labelled test set. Common coordinates are essential: members must rank the same windows before their percentiles are averaged. Peak calling and multi-window support narrow the output, and motif placement adds a separate prioritisation signal; none of these filters measures expression.
+
 ```bash
 cd "$PROMOTER_REPO"
 conda activate "$ENV_MAIN"
@@ -354,6 +368,8 @@ Sort is motif tier, score, supporting windows, then best motif p-value. Current 
 
 ## Separate analyses
 
-[Inducible-neighborhood code](../pipeline/mining/inducible/) selects oxidative-stress-associated loci; proximity does not prove inducibility. Its 24 FDR-screening peaks are not the ordinary catalogue. [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated peak FDR.
+The ordinary catalogue ends at candidate selection. The analyses below ask additional questions about neighbourhoods, null screening, longer context or reporter activity, so their scores/counts must remain distinct from the deployed rank catalogue.
+
+[Oxidative-stress-neighbourhood code](../pipeline/mining/oxidative-stress/) selects loci associated with annotated stress-response functions. Its 24 screening peaks are intended as putative constitutive-promoter candidates for future work; no construct use or constitutive/inducible activity was measured. They are separate from the ordinary catalogue. [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated peak FDR. The [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser) remains in its own private repository and addresses coding sequences, not promoter ranking.
 
 [Long-context positives](../pipeline/datasets/positives-with-context/) are an NTv3 experiment, not the deployed 81-bp dataset. Flanks require overlap/provenance checks. [Candidate interpretation](RESULTS.md#interpreting-candidates-and-downstream-units) distinguishes downstream clusters from transcripts. [DH5α strength](ECOLI_STRENGTH_PREDICTIONS.md) is an independent CPU analysis, not a member score.

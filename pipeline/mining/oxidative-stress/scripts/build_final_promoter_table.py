@@ -1,17 +1,17 @@
 import pandas as pd
 
 mapping_file = (
-    "pipeline/mining/inducible/model_outputs/fdr/results/"
+    "pipeline/mining/oxidative-stress/model_outputs/fdr/results/"
     "CB_oxidative_stress_promoter_mapping.csv"
 )
 
 motif_file = (
-    "pipeline/mining/inducible/model_outputs/fdr/results/"
+    "pipeline/mining/oxidative-stress/model_outputs/fdr/results/"
     "top80_promoters_motif.csv"
 )
 
 out_file = (
-    "pipeline/mining/inducible/model_outputs/fdr/results/"
+    "pipeline/mining/oxidative-stress/model_outputs/fdr/results/"
     "CB_oxidative_stress_final_promoters.csv"
 )
 

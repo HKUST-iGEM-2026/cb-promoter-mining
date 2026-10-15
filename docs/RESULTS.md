@@ -1,6 +1,8 @@
 # Results
 
-The numerical results below are computational evaluations, rankings and predictions, not measured promoter activity. Keep checkpoint, split, weighting and benchmark protocol attached to each number. Separately, the team reports ordering plasmids after mining, performing transformation and testing GFP in *E. coli*. Time limits prevented proceeding to Cb. Tested candidate identities, reporter strain and quantitative assay results were not supplied; the reported work does not characterise the entire 929/180/45 catalogue or validate genotype-specific DH5α SVR predictions.
+The results follow the intended use: first ask whether a model distinguishes labelled windows, then whether composition controls support that distinction, then whether its rankings recover published starts. Only after those checks do we interpret the target shortlist and ask a separate question about reporter activity. The numbers are evaluations, rankings and predictions, not measured candidate expression; checkpoint, split, weighting and protocol must stay attached to each comparison.
+
+The team separately reports plasmid ordering, transformation and GFP testing in *E. coli*, with time limits preventing native Cb validation. Candidate identities, reporter strain and quantitative outcomes were not supplied, so this account cannot characterise the entire 929/180/45 catalogue or validate the DH5α predictions.
 
 ## Evaluation regimes
 
@@ -12,6 +14,8 @@ The numerical results below are computational evaluations, rankings and predicti
 
 
 ### Regime A — historical held-out scores
+
+Held-out classification asks how well the learnt labels are ranked. It is useful for selecting a fit, but does not by itself show that genome-wide output will be experimentally useful.
 
 | Model | Reported test AUPRC |
 |---|---|
@@ -27,7 +31,15 @@ These historical comparisons mix checkpoints/splits and NTv3's 384-bp context. E
 
 Deployed ProkBERT validation/test AP is 0.8080683612857302/0.8249372466065321, and CNN-v2 is 0.7380835045313733/0.7255828423854476. Their trainers weight loss, not AP. The recovered Evo2 probe reproduced test AP 0.70258010/AUROC 0.89534660 on saved features, supplying sample weights. Every recovered test weight is 1, so weighted and unweighted test AP/AUROC coincide; the evaluation records have different origins. It refits on train+validation, so validation is not a final held-out cohort. [Model evidence](MODELS.md#verified-original-data-and-encodings) identifies the recovery checks.
 
+### Regime B — composition controls
+
+Between those tasks, composition controls ask whether the classifier separates real examples from sequence backgrounds that are harder than unconstrained random DNA. They help test a shortcut, not identify a specific biological mechanism.
+
+Historical plain-0.6 CNN-v2 real-versus-SRS AUROC is 0.924. Shuffled controls test sequence-order information under the supplied sampling, not a unique −10/−35 mechanism. Evo2 was not measured in this regime. Species/sigma panels use earlier checkpoints, sparse/confounded labels and are not candidate sigma assignments.
+
 ### Regime C — restricted published-TSS benchmark
+
+The genomic test moves from recognising supplied examples to locating published starts. Compare models at a fixed recall so the amount of unmatched output is judged at a common level of known-TSS recovery.
 
 **Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. Putative-negative windows are not experimentally established promoter-free DNA.
 
@@ -48,11 +60,11 @@ The Evo2 row is the standalone run. In the paired trio run, Evo2 is **69.4/58.4%
 
 CPU recomputation from retained aligned tracks and published-TSS tables reproduced the paired trio: C. ljungdahlii 125/(125+43) = 74.4048% at recall 0.1 and 623/(623+388) = 61.6222% at recall 0.5; C. autoethanogenum 289/(289+43) = 87.0482% and 1443/(1443+442) = 76.5517%. This verifies the saved-score benchmark, not a new DNA scan.
 
-### Regime B — composition controls
-
-Historical plain-0.6 CNN-v2 real-versus-SRS AUROC is 0.924. Shuffled controls test sequence-order information under the supplied sampling, not a unique −10/−35 mechanism. Evo2 was not measured in this regime. Species/sigma panels use earlier checkpoints, sparse/confounded labels and are not candidate sigma assignments.
+The [six-model comparison CSV](../results/benchmarks/reported_six_model_genomic_comparison.csv) exports the reported individual-run values for both genomes. It is a table of reported results, not raw score tracks or a matched-grid comparison; the paired-trio figures remain separate.
 
 ## Delivered candidates
+
+The selected ranking method was next applied to the target. Its shared 81-bp input follows the [published-TSS frame](MODELS.md#why-the-discovery-workflow-uses-81-bp), not an architectural ProkBERT limit. Thresholded, supported peaks form the initial set; motif annotations then define nested subsets for inspection.
 
 Current frame is complete DSM 10702 assembly **GCF_014131795.1**. Ordinary mining uses common-window average rank percentiles, a ≥0.9 gate and ≥5 supporting windows.
 
@@ -67,9 +79,9 @@ Exclusive labels are 749 `confident`, 135 `has_minus10` and 45 promoters with bo
 
 | File in [results/candidates/](../results/candidates) | Rows | Scope |
 |---|---|---|
-| `g131795_ranked_seq.tsv` | 929 | ranked catalogue with motif tiers and summit/box sequences |
-| `g131795_tier1_canonical_seq.tsv` | 45 | both-box subset |
-| `g131795_wetlab_shortlist.xlsx` | 45 | spreadsheet hand-off of promoters with both −10 and −35 motifs |
+| [g131795_ranked_seq.tsv](../results/candidates/g131795_ranked_seq.tsv) | 929 | ranked catalogue with motif tiers and summit/box sequences |
+| [g131795_tier1_canonical_seq.tsv](../results/candidates/g131795_tier1_canonical_seq.tsv) | 45 | both-box subset |
+| [g131795_wetlab_shortlist.xlsx](../results/candidates/g131795_wetlab_shortlist.xlsx) | 45 | spreadsheet hand-off of promoters with both −10 and −35 motifs |
 | `g131795_final_wetlab.tsv`, `g131795_dropped.tsv` | 899, 30 | 20-mer redundancy/known-reference filtering outputs |
 | `g131795_wetlab_final_ranked.tsv`, `g131795_wetlab_final_novelty.xlsx` | 45 | later two-motif hand-off; sequence-screen annotations do not confirm biological novelty |
 | `g409755_*` | 912 confident / 306 −10 / 100 with both motifs | **historical**, superseded `GCF_000409755.1` draft-assembly mine; `top_candidates.tsv` has 82 rows |
@@ -83,15 +95,19 @@ All 929 summit sequences match oriented 81-bp slices of the checksum-verified co
 
 Recovered `t31_g131795/meme/meme.txt` and `fimo/fimo.xml` identify MEME/FIMO 5.3.0 and five de-novo motifs learned from the top 500 summit sequences, with widths 14/7/8/18/10 bp. FIMO scanned 929 oriented windows with `--norc`, emitted p≤0.0001 and used NRDB background A/C/G/T = 0.282/0.222/0.229/0.267. Builder p≤0.001 filters emitted hits, then labels centres 3–18 bp upstream as −10 and 22–42 as −35 without checking motif ID. The labels are positional, not verified σA grammar. The supplied width-six `sigma_a_promoter.meme` is a separate QC reference, not this original scan's input.
 
-All 180 −10 and 333 −35 contexts equal their selected original FIMO matched sequences, and the recovered hits reproduce the builder fields. Of the −35 selections, 288 use the same 14-bp MEME-1 motif also used for 170 of the −10 selections; a positional label is therefore not a motif-specific assignment. `spacer_bp` is centre-to-centre distance, not an edge spacer. Separate width-six QC cores give TATAAT/TTGATA and matched-null median percentiles 98/52; this is selected-context QC, not independent activity validation. Recovered target tracks reproduce the funnel 179,172→11,302→3,267→929.
+All 180 −10 and 333 −35 contexts equal their selected original FIMO matched sequences, and the recovered hits reproduce the builder fields. Of the −35 selections, 288 use the same 14-bp MEME-1 motif also used for 170 of the −10 selections; a positional label is therefore not a motif-specific assignment. `spacer_bp` is centre-to-centre distance, not an edge spacer. Separate width-six QC cores give TATAAT/TTGATA and AT-rich-null median percentiles 98/52; this is selected-context QC, not independent activity validation. Recovered target tracks reproduce the funnel 179,172→11,302→3,267→929.
+
+Download the [QC numerical report](../pipeline/mining/motif_qc/reanalysis_results.json) and [signal-versus-null panel](../pipeline/mining/motif_qc/fig2_signal_vs_null.png). The panel's shared y-axis is probability density, not candidate count; its controls are synthetic AT-rich 14-mers.
 
 ## Interpreting candidates and downstream units
 
+After selection, coordinates and annotations make candidates useful to an experimental reader. They suggest where to look and which downstream genes may be relevant, while leaving transcriptional starts, activity and gene co-regulation to their respective measurements.
+
 A promoter is regulatory DNA, not a protein-coding gene. High mean rank does not require unanimity and is not probability or strength. Housekeeping selection, motif support and a nearby oxidative-stress gene do not prove constitutive/inducible behavior.
 
-A separate map assigns the nearest downstream same-strand CDS and groups adjacent CDSs at next_start−previous_end≤100 bp. With inclusive coordinates this is one bp greater than the intervening gap. single_gene_unit and putative_multigene_operon are proximity-defined hypotheses, not measured transcripts. T12 groups only input housekeeping loci, not all CDSs.
+A separate map assigns the nearest downstream same-strand coding locus, then groups adjacent same-strand coding loci separated by ≤100 **intervening bases**. For 1-based inclusive coordinates, the gap is `next.start − previous.end − 1` on the + strand, or `previous.start − next.end − 1` in transcriptional order on the − strand. Multipart CDS segments with the same contig/locus tag count as one locus. These proximity-defined units are hypotheses, not measured transcripts. T12 groups only input housekeeping loci, not all coding loci.
 
-The first-ten map uses PGAP annotation GCF_014131795.1-RS_2026_04_15. Nine units are single CDSs; cand_00089 has two members with a reported 44-bp CDS gap. The full map/transcript evidence is not committed.
+The [first-ten mapping CSV](../results/candidates/g131795_first10_canonical_gene_context.csv) and [JSON with input hashes and method](../results/candidates/g131795_first10_canonical_gene_context.json) use PGAP annotation GCF_014131795.1-RS_2026_04_15. They contain ten candidate associations and eleven gene-member rows: nine single-gene units and the two-gene `cand_00089` unit. Its `nrdG` CDS spans 3,806,612–3,807,121 and the aldose 1-epimerase-family CDS spans 3,805,692–3,806,567 on the − strand, leaving **44 intervening bases**. The two programmed-frameshift CDS segments of `prfB` remain one gene. No circular-origin wrap is inferred, and no transcript evidence is supplied.
 
 | Candidate | Inferred downstream members, in transcription order | Annotated product(s) |
 |---|---|---|
@@ -109,11 +125,31 @@ The first-ten map uses PGAP annotation GCF_014131795.1-RS_2026_04_15. Nine units
 
 Use stable locus tags, optional gene symbols and predicted products—not invented operon names. A hypothetical protein lacks a reliable specific functional assignment; it is not necessarily inactive or useless. Cotranscription requires junction-spanning transcript evidence.
 
+To reproduce the export, set `GFF` to the exact extracted `genomic.gff` annotation file. Its SHA-256 must match `930f3b0d339cd48b70c902b81a4f26cba49bcf478ee344ce2474bc50375af961`; downloading the same assembly later does not guarantee the same annotation release.
+
+```bash
+python3 pipeline/mining/candidate-table/export_gene_context.py \
+  --candidates results/candidates/g131795_tier1_canonical_seq.tsv \
+  --gff "$GFF" \
+  --csv results/candidates/g131795_first10_canonical_gene_context.csv \
+  --json results/candidates/g131795_first10_canonical_gene_context.json
+```
+
 ## DH5α strength predictions for the first ten promoters with both −10 and −35 motifs
 
-The independent DH5α RBF SVR uses 50-bp cores at summit_seq[10:60], not ensemble ranks or whole-insert expression. cand_00098 gives 32.8751 AU (4.7457× primary predicted pptb_fU), cand_00101 17.9027 AU (2.5844×). Five reference-start scenarios give 6.927284–35.097146 AU and a leading ratio of 0.9367–4.7457×, not a confidence interval. At candidate offset 58 cand_00048 leads; at 59–62 cand_00098 leads.
+Recognising promoter-like DNA does not determine its expression strength. We therefore applied an independent DH5α RBF SVR to 50-bp `summit_seq[10:60]` cores, not ensemble ranks or whole inserts. `cand_00098` gives 32.8751 AU (4.7457× primary predicted `pptb_fU`), and `cand_00101` gives 17.9027 AU (2.5844×). Five reference-start scenarios give 6.927284–35.097146 AU and a leading ratio of 0.9367–4.7457×, showing that the comparison depends on framing rather than supplying a confidence interval. Candidate framing also changes the leader: `cand_00048` leads at offset 58; `cand_00098` at 59–62.
 
 The 88-record fit has selection-CV R² 0.266090; the source paper reports held-out Pearson 0.57. [Strength method](ECOLI_STRENGTH_PREDICTIONS.md) provides full tables, reference DNA, reproduction and the separate generic initiation comparison. The two models' AU are not interchangeable.
+
+Download the first-ten predictions as [CSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.csv), [TSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.tsv) or [JSON](../results/candidates/g131795_first10_canonical_dh5alpha_strength.json). The [framing-sensitivity results](../results/candidates/g131795_first10_canonical_dh5alpha_tss_sensitivity.json) and [pptb_fU reference record](../results/candidates/pptb_fU_reference.json) preserve the alternative starts and reference DNA needed to interpret those estimates. These are model outputs, not GFP measurements.
+
+## Future-use tools for oxidative-stress constructs
+
+The team prepared the separate [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser) and [oxidative-stress promoter workflow](../pipeline/mining/oxidative-stress/README.md), but time constraints prevented using either in experimental constructs. The optimiser addresses coding sequences; the promoter workflow provides putative constitutive-promoter candidates, not evidence of constitutive regulation or stress protection.
+
+The [24-row final table](../pipeline/mining/oxidative-stress/model_outputs/fdr/results/CB_oxidative_stress_final_promoters.csv) and [24-sequence FASTA](../pipeline/mining/oxidative-stress/model_outputs/fdr/results/top80_promoters_summits.fasta) belong to complete assembly GCF_014131795.1. They arise from a 31-target list and separate 1,026/420 candidate/null window pools, not a subset filter on the ordinary 929-candidate score pool. Stored six-base FIMO reference annotations give 2 both-hit, 16 −10-only, 1 −35-only and 5 neither windows. The both-hit candidates `cbut_0002`/`cbut_0005` have 15/17-bp **edge gaps**, distinct from ordinary `spacer_bp` centre distances.
+
+The new [per-candidate motif CSV](../results/oxidative-stress/motif_qc/candidate_motif_qc.csv), [summary JSON](../results/oxidative-stress/motif_qc/summary.json) and [PNG](../results/oxidative-stress/motif_qc/signal_vs_shuffled.png)/[SVG](../results/oxidative-stress/motif_qc/signal_vs_shuffled.svg) compare full-window maximum reference-PWM scores with 2,000 per-candidate base-count-preserving shuffles. Median empirical p-values are 0.3483/0.4450 for −10/−35-like scores; none passes q≤0.05 after adjustment across 48 comparisons. This is selected-sequence QC, not a calibrated biological FDR or activity result. No new classifier training, genome scoring or de-novo motif discovery is claimed. The codon table currently uses draft GCF_000409755.1, so future constructs must reconcile reference inputs and verify gene identities before testing basal/stress expression.
 
 ## Calibration and FDR
 
