@@ -85,7 +85,18 @@ The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/valida
 
 Silver positives are **not mapped TSS or experimentally measured promoters**. Silver confidence weight 0.3 scales training loss, not biological probability; silver and cross-species positives are training-only. There are 19,344 in-genus positives. Housekeeping selection reduced 22,760 selected loci to 14,659 proximity-derived representatives among selected loci, not a full operon map. All 166 annotations record Bakta 1.11.4/database 6.0 light; an assembly manifest is in the public results index.
 
-Putative-negative classes are CDS, intergenic, downstream and training-only SRS shuffles of silver cores. The custom shuffle has a fallback, and none is guaranteed experimentally promoter-free. **Retained error:** 888 *B. licheniformis* positives used GCF_000011645.1/NC_006270.3 rather than source-compatible GCF_000008425.1/NC_006322.1. They remain in deployed weights; this card update is not retraining. Target *C. butyricum* was excluded from supervised construction. This CNN was trained from scratch; unknown backbone pretraining exposure concerns the other ensemble members, not this CNN.
+Putative-negative classes are CDS, intergenic, downstream and SRS shuffles of 81-bp silver cores. **SRS negatives occur in train, validation and test**, unlike training-only silver/cross-species positives: the splitter's training-pin condition requires `label == 1`. The custom shuffle intends dinucleotide preservation but has a plain-shuffle fallback; neither exact dinucleotide preservation nor motif destruction is guaranteed, and no class is experimentally guaranteed promoter-free.
+
+| Negative source | Train | Validation | Test |
+|---|---:|---:|---:|
+| SRS | 5,505 | 652 | 701 |
+| T14_CDS | 5,593 | 663 | 656 |
+| T14_Downstream_3Prime | 5,477 | 721 | 663 |
+| T14_Intergenic_NonPromoter | 3,509 | 469 | 486 |
+
+The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) counts label-0 rows in retained T15_xs Parquets; all three SHA-256 values match the published training manifest. The saved config uses `results/T16_xs/cnn` and `onehot,dinuc,trinuc,enac`; dinucleotide/trinucleotide frequencies are **input features, not replacement negative generation**. Recorded alignment connects these windows to CNN encodings and Evo2 labels; Evo2 embeds the same labelled windows and its probe refits on train+validation. Earlier SRS-training-only prose was incorrect. This card-only factual correction changes no weights, splits or metrics.
+
+**Retained error:** 888 *B. licheniformis* positives used GCF_000011645.1/NC_006270.3 rather than source-compatible GCF_000008425.1/NC_006322.1. They remain in deployed weights; this card update is not retraining. Target *C. butyricum* was excluded from supervised construction. This CNN was trained from scratch; unknown backbone pretraining exposure concerns the other ensemble members, not this CNN.
 
 Training used AdamW/cosine-annealing warm restarts, sample-weighted loss and unweighted validation-AP early stopping: learning rate 0.0003748224111698842, batch 32, dropout 0.10382857322260322, weight decay 0.00024777455052193346, maximum 30 epochs/patience 8, seed 42.
 

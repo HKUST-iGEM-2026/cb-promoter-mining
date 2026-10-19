@@ -60,6 +60,8 @@ Nine units have one gene; `cand_00089` has two with **44 intervening bases**. Th
 
 The deployed dataset contains **50,190 windows** from a 166-assembly cohort with no supervised Cb target. Train/validation/test counts are **44,085/3,052/3,053**, with **24,001/547/547 positive labels**. Silver positives are annotation/position-derived putative promoter DNA, weighted 0.3 for training loss and confined to training. Putative negatives are not proven promoter-free. Cluster-ID intersections across splits are zero, not proof of biological independence or unknown backbone pretraining exclusion. See the [training manifest](../results/training_sources.json) and [pipeline provenance](PIPELINE.md#genome-assemblies-and-coordinate-provenance).
 
+Negative-source counts from checksum-matched retained T15_xs Parquets show **SRS train/validation/test = 5,505/652/701**; see the [12-row negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) and [full count table](../results/README.md#training-source-manifest). The training-only restriction applies to silver/cross-species **positive** labels, not their SRS negatives. Earlier documentation stating otherwise was incorrect. SRS intends a dinucleotide shuffle of 81-bp silver cores, with a plain-shuffle fallback: exact preservation and motif destruction are not guaranteed. CNN k-mer frequencies are features of the same labelled windows, not replacement negative generation; Evo2 embeds those windows and refits its probe on train+validation. No split, fitted artifact or numerical result changes with this correction.
+
 | Deployed member | Validation AP | Test AP | Test AUROC |
 |---|---:|---:|---:|
 | ProkBERT-mini | 0.8080683613 | **0.8249372466** | — |

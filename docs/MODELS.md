@@ -27,6 +27,13 @@ CNN-v2 combines one-hot/ENAC convolution branches (kernels 7/5/3, widths 64/128/
 
 Evo2 uses a trusted StandardScaler→LogisticRegression probe with 4096 features, classes [0,1] and scaler count 47,137. Current DNA inference mean-pools blocks.28.mlp.l3 from evo2_7b; the exact historical extraction revision/layer is not established. Backbone weights stay frozen and are obtained separately.
 
+### Shared negative labels, different representations
+
+All three classifiers use the T15_xs labelled windows. Negative sources are SRS, CDS, downstream/3′ and putative intergenic; SRS is present in **train/validation/test (5,505/652/701)**, not training-only. The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) supplies all 12 counts, derived from retained Parquets whose SHA-256 values match the training manifest. Only silver/cross-species **positive** labels trigger the splitter's training pin. SRS intends dinucleotide shuffling of the 81-bp silver core; its plain-shuffle fallback guarantees neither exact dinucleotide preservation nor motif destruction, and negative labels are not experimental proof of promoter absence.
+
+CNN's dinucleotide/trinucleotide frequencies are **input features**, not a switch to k-mer-generated negatives. The saved CNN config points to `results/T16_xs/cnn` with `onehot,dinuc,trinuc,enac`; recorded source-to-encoding alignment connects it to these windows. Evo2 embeds the same labelled 81-bp windows; the fitted probe uses **train+validation (47,137 rows)**, so validation is not held out from that final artifact. Earlier SRS-training-only prose was wrong; correcting it does not retrain models, alter splits or revise metrics.
+
+
 ## Loading
 
 ### Public Hugging Face repositories

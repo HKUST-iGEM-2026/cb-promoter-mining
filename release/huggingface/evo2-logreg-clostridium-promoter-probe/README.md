@@ -77,7 +77,18 @@ The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/valida
 
 Silver labels are **not mapped TSS or experimentally measured promoters**. Their sample-confidence weight 0.3 affects fitting, not biological probability; silver and cross-species positives are training-only. There are 19,344 in-genus positives. Bakta 1.11.4/database 6.0 light annotations supplied housekeeping products; 22,760 selected loci reduced to 14,659 proximity-derived representatives among selected loci, not a full operon map. The public results index includes the 166-assembly manifest.
 
-Putative negatives are CDS, intergenic, downstream and training-only SRS shuffles of silver cores. The custom shuffle has a fallback and no class is guaranteed promoter-free. **Retained error:** 888 *B. licheniformis* positives use GCF_000011645.1/NC_006270.3 rather than source-compatible GCF_000008425.1/NC_006322.1. They remain in the fitted probe's training history; this update does not retrain it. Target *C. butyricum* was excluded from supervised construction; backbone pretraining exposure is unknown.
+Putative negatives are CDS, intergenic, downstream and SRS shuffles of 81-bp silver cores. **SRS negatives occur in train, validation and test**, unlike training-only silver/cross-species positives: the splitter's training-pin condition requires `label == 1`. The custom shuffle intends dinucleotide preservation but has a plain-shuffle fallback; neither exact dinucleotide preservation nor motif destruction is guaranteed, and no class is experimentally guaranteed promoter-free.
+
+| Negative source | Train | Validation | Test |
+|---|---:|---:|---:|
+| SRS | 5,505 | 652 | 701 |
+| T14_CDS | 5,593 | 663 | 656 |
+| T14_Downstream_3Prime | 5,477 | 721 | 663 |
+| T14_Intergenic_NonPromoter | 3,509 | 469 | 486 |
+
+The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) counts label-0 rows in retained T15_xs Parquets; all three SHA-256 values match the published training manifest. Evo2 embeds these same labelled 81-bp windows, including SRS; the final probe refits on **train+validation**, so validation is not held out from the fitted artifact. CNN dinucleotide/trinucleotide frequencies are **input features, not replacement negative generation**. Recorded source/encoding/feature-label alignment connects all 50,190 rows. Earlier SRS-training-only prose was incorrect; absence of a separate Evo2 SRS-only control measurement does not mean SRS negatives were absent. This card-only factual correction changes no fitted artifact, splits or metrics.
+
+**Retained error:** 888 *B. licheniformis* positives use GCF_000011645.1/NC_006270.3 rather than source-compatible GCF_000008425.1/NC_006322.1. They remain in the fitted probe's training history; this update does not retrain it. Target *C. butyricum* was excluded from supervised construction; backbone pretraining exposure is unknown.
 
 Package files: `evo2_promoter_classifier.pkl`, `evo2_common.py`, `apply_probe.py`, `SOURCE_CODE_LICENSE`, `REGULONDB_LICENSE.md`, `verification.json` and `recovery_SHA256SUMS`. Recorded provenance aligns all 50,190 source rows/encodings and hashes 159 recovered files. The historical verification record is not a statement of current access status or a complete data archive.
 

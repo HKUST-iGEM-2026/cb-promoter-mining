@@ -23,7 +23,9 @@ Start with the [public results and downloads index](../../results/README.md) for
 
 ## Publish these documentation changes only
 
-**Use this path for the rewritten cards. No weight reupload, model retraining, checkpoint recovery or repository visibility change is required.** Publish the GitHub documentation/results first so the cards' `main/results/README.md` links resolve to the new public index; then run from the repository root:
+**This is a new factual correction after the completed public-results publication.** Retained checksum-matched T15_xs Parquets show SRS negatives in train/validation/test (**5,505/652/701**), not training-only; only silver/cross-species positive labels trigger the training pin. The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) contains all 12 counts. CNN k-mer frequencies are input features rather than replacement negative generation; Evo2 embeds the same labelled windows and refits its probe on train+validation.
+
+Publish/merge **`fix/srs-split-documentation`** from the separate `cb-promoter-srs-correction` checkout using the [scoped source instructions](../../README.md#publish-source-updates) first, so the new CSV's `main` URL resolves. Then **reupload README.md only for these three classifier cards**, even though the earlier card publication is complete. No weight reupload, model retraining, full artifact release, checkpoint recovery or repository visibility change is required. Run the following manually from that checkout's repository root:
 
 ```bash
 pip install -U huggingface_hub
@@ -36,11 +38,9 @@ hf upload CloBiT/cnn-fusion-clostridium-promoter \
   release/huggingface/cnn-fusion-clostridium-promoter/README.md README.md
 hf upload CloBiT/evo2-logreg-clostridium-promoter-probe \
   release/huggingface/evo2-logreg-clostridium-promoter-probe/README.md README.md
-hf upload CloBiT/dh5alpha-promoter-strength-svr \
-  release/huggingface/dh5alpha-promoter-strength-svr/README.md README.md
 ```
 
-Choose write-authorised CloBiT credentials for those uploads. Each command updates **only `README.md`** in its existing model repository; it does not upload this release guide, reupload weights or change visibility. Review the four resulting Hub cards and check their public results/download links signed out. Each upload creates a new card revision; the cards intentionally keep previously inspected artifact/code revisions pinned. Do not replace those pins merely because the documentation commit changed.
+Choose write-authorised CloBiT credentials for those uploads. Each command updates **only `README.md`** in its existing model repository; it does not upload this release guide, reupload weights or change visibility. Review the three resulting Hub cards and their count-artifact links signed out. The independent DH5α card contains no incorrect SRS claim and is unchanged; **do not reupload it for this correction**. Each classifier upload creates a new card revision; keep previously inspected artifact/code revisions pinned rather than replacing them with a documentation revision.
 
 A public download failure is not evidence that an authorised account or duplicate model release is needed: check the exact repository/path/revision and upstream dependency conditions. Write authentication is for publication, not reading these public packages.
 
@@ -105,5 +105,7 @@ uv run --no-project --with huggingface-hub python \
 These are retained artifact/package identities, not proof of every original training dependency. The exact historical Evo2 extraction code/layer remains unresolved; its current helper defaults and saved-feature evaluation do not audit a fresh CUDA extraction. ProkBERT is not limited to 81 bp: the chosen deployment frame tokenizes to 78 tokens, and the checkpoint supports 1,024 positions. Neither point establishes accuracy on a different input frame.
 
 [verification.json](verification.json) records original alignment/historical metrics/saved-feature evidence; [recovery_SHA256SUMS](recovery_SHA256SUMS) is the immutable 159-file original relative-path receipt. Preserve their historical bytes/paths. Earlier access statements in these historical records describe their recording context, **not current repository visibility**. Recorded checks align all 50,190 source rows/encodings; large splits/features/tracks are not part of the model packages. No new scan, fit or assay is implied by this documentation release.
+
+Any historical SRS-training-only statement in immutable verification/recovery records is superseded by the checksum-matched negative-source CSV and current cards: SRS is label 0 across all three splits, while silver/cross-species positive labels are training-only. Those historical records/receipts remain byte-for-byte unchanged; the correction changes no model, split, AP, benchmark metric, licence or provenance identity.
 
 The DH5α package's historical read-back matched all 14 payload files and reproduced ten predictions with NumPy alone; fitted NPZ SHA-256: `153f41e1d051d432a2172b21b6e94f07799fa2229a45d795ae974fc8140130a8`. Its [card](dh5alpha-promoter-strength-svr/README.md) and [verification](dh5alpha-promoter-strength-svr/verification.json) retain the conditional model/evidence boundary.

@@ -83,7 +83,18 @@ The `T15_xs` cohort contains **50,190 windows**, 25,095 per class. Train/validat
 | *R. cellulolyticum* H10 TSS | 663 | Cross-species relative |
 | DBTBS | 373 | Curated cross-species *B. subtilis* |
 
-Silver means putative promoter-positive upstream DNA, **not mapped TSS or experimentally measured promoter activity**. Silver confidence weight 0.3 scales training loss, not biological probability; silver and cross-species positives are training-only. Four putative-negative classes are CDS, intergenic, downstream and training-only SRS shuffles of silver cores. The custom shuffle has a fallback; no class is guaranteed promoter-free. All 166 annotations record Bakta 1.11.4/database 6.0 light; the assembly manifest is in the public results index. Of 25,095 positives, 19,344 are in-genus. Housekeeping selection reduced 22,760 selected loci to 14,659 proximity-derived representatives among those loci, not a full operon map.
+Silver means putative promoter-positive upstream DNA, **not mapped TSS or experimentally measured promoter activity**. Silver confidence weight 0.3 scales training loss, not biological probability; silver and cross-species positives are training-only. All 166 annotations record Bakta 1.11.4/database 6.0 light; the assembly manifest is in the public results index. Of 25,095 positives, 19,344 are in-genus. Housekeeping selection reduced 22,760 selected loci to 14,659 proximity-derived representatives among those loci, not a full operon map.
+
+Four putative-negative classes are CDS, intergenic, downstream and SRS shuffles of 81-bp silver cores. **SRS negatives occur in train, validation and test**, unlike the positive-label restriction: the splitter's training-pin condition requires `label == 1`. The custom shuffle intends dinucleotide preservation but has a plain-shuffle fallback; neither exact dinucleotide preservation nor motif destruction is guaranteed, and no class is experimentally guaranteed promoter-free.
+
+| Negative source | Train | Validation | Test |
+|---|---:|---:|---:|
+| SRS | 5,505 | 652 | 701 |
+| T14_CDS | 5,593 | 663 | 656 |
+| T14_Downstream_3Prime | 5,477 | 721 | 663 |
+| T14_Intergenic_NonPromoter | 3,509 | 469 | 486 |
+
+The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) counts label-0 rows in retained T15_xs Parquets; all three SHA-256 values match the published training manifest. CNN k-mer frequencies are **input features, not replacement negative generation**; Evo2 embeds the same labelled windows and its probe refits on train+validation. Recorded alignment connects the 50,190 source rows to model inputs. Earlier SRS-training-only prose was incorrect. This card-only factual correction changes no weights, splits or metrics.
 
 **Retained training-data error:** 888 *B. licheniformis* positives used GCF_000011645.1/NC_006270.3 rather than source-compatible GCF_000008425.1/NC_006322.1. They remain in deployed weights; this documentation update does not retrain them. Target *C. butyricum* was excluded from supervised construction; backbone pretraining exposure is unknown.
 
