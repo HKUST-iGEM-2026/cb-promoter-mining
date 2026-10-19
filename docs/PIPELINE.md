@@ -2,6 +2,8 @@
 
 Start with [setup](SETUP.md) and source `env.sh`. Run data stages from `workflow/`; root-stage commands below use PROMOTER_REPO. Source scripts live under `pipeline/`, not the obsolete numbered task-source directories. Names such as `T15_xs` and `T21_xs` below are existing data/run-output directories, not instructions to use the former source layout. Commands identify inputs and dependencies, not a one-command recreation of every historical run. Large recovered inputs are local, not committed.
 
+For retained numerical outputs and sequences, use the [public results/download index](../results/README.md); rerunning this workflow is not required to inspect them. The [Results guide](RESULTS.md) distinguishes saved-score verification, new inference and biological validation. Project model packages are public and ungated; see [pinned loading and checkpoint staging](MODELS.md#local-checkpoints). Large original split/encoding/score-track recovery is a separate prerequisite, not implied by a successful model download.
+
 ## Step 0 — check the wiring
 
 ```bash
@@ -29,7 +31,7 @@ Training positives come from RegulonDB/DBTBS, Hocq in-genus TSS, Wiegand/Xu cros
 
 **Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. Putative-negative windows are not experimentally established promoter-free DNA.
 
-The historical cohort contains 166 versioned assemblies, with no C. butyricum target. Preserve [the inventory](../pipeline/acquisition/clostridium-genomes/genome_list.tsv) and LFS archive. Both benchmark strains supplied silver positives and putative-negative training windows; published benchmark starts were withheld.
+The historical cohort contains 166 versioned assemblies, with no C. butyricum supervised target. Preserve the [public source manifest](../results/training_sources.json), [assembly inventory](../pipeline/acquisition/clostridium-genomes/genome_list.tsv) and LFS archive. Both benchmark strains supplied silver positives and putative-negative training windows; published benchmark starts were withheld. Backbone pretraining exposure is unknown.
 
 **Known error:** deployed B. licheniformis extraction used GCF_000011645.1/NC_006270.3, but the source coordinates fit GCF_000008425.1/NC_006322.1. The 888 windows are training-only and remain in all deployed members. The recipe below records the historical choice. Correct extraction followed by regenerated splits/retraining is a new run, not repaired old weights.
 
@@ -44,6 +46,8 @@ Published windows use transcription-oriented −60:+20 DNA with TSS offset 60. G
 The 20 C. difficile libraries enter a prepared-only TEX/TAP TSSpredator path, not deployed labels. The other 27 Hocq/Al-Bassam runs use published tables. See [TSS sources](../pipeline/acquisition/tss-literature/README.md).
 
 ## Phase B — build the dataset
+
+The shared 81-bp input is 60 upstream bases, the TSS base and 20 downstream bases for published starts. Other sources are length-normalised without inventing mapped starts. This source convention—not a ProkBERT architectural limit—defines the deployed frame. [Model rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp) explains 78-token ProkBERT encoding, Evo2's per-window 81-bp inputs and the separate NTv3 384-bp context trial.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -186,7 +190,7 @@ python pipeline/training/Evo2/evo2_promoter_classifier.py --emb-dir evo2_embeddi
   --out workflow/results/regimeC/evo2/evo2_probe_xs.pkl
 ```
 
-The backbone stays frozen. The probe selects weighted validation AP, then refits on train+validation; test stays separate. Current extraction mean-pools blocks.28.mlp.l3 to 4096 features, but exact historical revision/layer remains unresolved. To use the trusted deployed probe instead of fitting:
+The backbone stays frozen and the retained extraction selected each row's 81-bp `sequence`, not stitched examples or longer flanks. The probe selects weighted validation AP, then refits on train+validation; test stays separate. Current extraction mean-pools blocks.28.mlp.l3 to 4096 features, but exact historical revision/layer remains unresolved. Never load untrusted pickle/joblib artifacts: they can execute code. To use the trusted deployed probe instead of fitting:
 
 ```bash
 mkdir -p workflow/results/regimeC/evo2
@@ -354,6 +358,6 @@ Sort is motif tier, score, supporting windows, then best motif p-value. Current 
 
 ## Separate analyses
 
-[Inducible-neighborhood code](../pipeline/mining/inducible/) selects oxidative-stress-associated loci; proximity does not prove inducibility. Its 24 FDR-screening peaks are not the ordinary catalogue. [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated peak FDR.
+[Oxidative-stress neighbourhood source](../pipeline/mining/inducible/) retains its legacy directory name on `main`. The [published candidate outputs and later motif QC](../results/README.md) are exposed separately under `results/oxidative-stress/`: 31 target entries/30 loci/27 regions produced 24 peaks; 2,000 per-candidate mononucleotide shuffles gave no q≤0.05 result across 48 motif tests. Preserved QC metadata names the original later `pipeline/mining/oxidative-stress/` paths and hashes; those paths are provenance, not executable source locations in this checkout. The retained `inducible/` scripts are not claimed to reproduce that later QC. Neither proximity nor the term “inducible” proves regulation, activity or protection. These candidates and the separate codon optimiser were not used in experimental constructs. [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated biological peak FDR.
 
-[Long-context positives](../pipeline/datasets/positives-with-context/) are an NTv3 experiment, not the deployed 81-bp dataset. Flanks require overlap/provenance checks. [Candidate interpretation](RESULTS.md#interpreting-candidates-and-downstream-units) distinguishes downstream clusters from transcripts. [DH5α strength](ECOLI_STRENGTH_PREDICTIONS.md) is an independent CPU analysis, not a member score.
+[Long-context positives](../pipeline/datasets/positives-with-context/) are an NTv3 experiment, not the deployed 81-bp dataset. Flanks require overlap/provenance checks. [Candidate interpretation](RESULTS.md#downstream-genes-and-putative-units) distinguishes downstream clusters from transcripts. [DH5α strength](ECOLI_STRENGTH_PREDICTIONS.md) is an independent CPU analysis, not a member score.

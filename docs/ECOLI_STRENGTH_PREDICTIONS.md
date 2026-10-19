@@ -10,7 +10,9 @@ We reproduce the SVR procedure from Wang et al., *Nucleic Acids Research* 48:640
 
 Each of the first ten already-oriented 81-bp records with both −10 and −35 motifs supplies `summit_seq[10:60]`, the 50 bases upstream of the assumed TSS offset 60. No padding or second reverse complement is added. Actual DH5α starts are not mapped. Legacy artifact filenames and the machine-readable `canonical` tier value are unchanged.
 
-The reference is the exact supplied **149-bp pptb_fU sequence**, labelled DL10 in the notebooks. Its same-model primary core prediction is **6.927284194385597 training-table AU**, set to 1×/100%. No notebook fluorescence or measured J23119 value enters the denominator.
+The reference is the exact supplied **149-bp `pptb_fU` sequence**, independently supplied and historically aliased DL10 in notebooks. **The current shortlist DL10 is instead `cand_00101` / `P_prfB`**; these are not the same sequence. Its same-model primary core prediction is **6.927284194385597 training-table AU**, set to 1×/100%. No notebook fluorescence or measured J23119 value enters the denominator.
+
+The [results/download index](../results/README.md) collects the [named first-ten TSV](../results/candidates/g131795_first10_canonical_named.tsv), [oriented 81-bp FASTA](../results/candidates/g131795_first10_canonical_named.fasta), [reporter/reference DNA](../results/candidates/sfGFP_pptb_reporter_sequences.fasta) and gene-context records. Naming does not change candidate ranking, activity predictions or annotation confidence. The shared 81-bp discovery frame is a dataset convention, not a ProkBERT input limit; see [input rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp).
 
 ```text
 activity = 2 ** predicted_log2_activity
@@ -55,7 +57,7 @@ The calculator's MG1655-labelled setting is not DH5α-calibrated; it selects a c
 | 110 | 35.097146 |
 
 
-Holding candidate starts at 60, cand_00098 ranges from 0.936689–4.745743× reference (93.67–474.57%). This is a framing scenario range, not a confidence interval or robust improvement claim. Earlier notebook inspection reported DL1–DL4 in 1002 and DL10 in 1004/1007, with saturation noted in two of three 1004 reference replicates. Those notebook details are report-only here: the linked Colab notebooks require sign-in and their underlying numeric CSVs are not retained with these predictions. The reference artifact records the supplied DNA/DL10 identification; no notebook fluorescence enters the SVR denominator.
+Holding candidate starts at 60, cand_00098 ranges from 0.936689–4.745743× reference (93.67–474.57%). This is a framing scenario range, not a confidence interval or robust improvement claim. Earlier notebook inspection reported DL1–DL4 and the historically DL10-aliased reference in separate notebooks, including saturation in two reference replicates. Underlying numeric assay CSVs are not retained with these predictions, so no notebook fluorescence enters the SVR denominator and no measured fold-change is inferred. Keep that historical reference alias separate from current shortlist DL10 / `P_prfB`.
 
 ### Reproduced model and data
 
@@ -80,11 +82,11 @@ uv pip install --python /tmp/cb-dh5alpha-strength/bin/python \
   --out-prefix results/candidates/g131795_first10_canonical_dh5alpha_strength
 ```
 
-The runner writes TSV/JSON/CSV, checks bundled hashes and records dependencies. Observed stack: Python 3.13.5, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1. No GPU, TensorFlow, private classifier weights or prediction service is needed. `--tss-offset` controls candidate anchors; the reference artifact supplies offset 113.
+The runner writes TSV/JSON/CSV, checks bundled hashes and records dependencies. Observed stack: Python 3.13.5, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1. No GPU, classifier weights or prediction service is needed. `--tss-offset` controls candidate anchors; the reference artifact supplies offset 113.
 
 ### Loading the fitted model
 
-The committed local [fitted artifact](../release/huggingface/dh5alpha-promoter-strength-svr/) contains numeric support vectors, coefficients, intercept and gamma in `model.npz`, plus checksum/provenance metadata. Inference uses NumPy and does not execute pickle or repeat fitting. The [private Hub package](https://huggingface.co/CloBiT/dh5alpha-promoter-strength-svr) also exists: an authenticated download of revision `0c5202892f4255eb8eb17493bed8d51e04f8cfc4` reproduced all ten results. Downloads require authorised access. This reporter-activity SVR is separate from the three genome-mining classifiers; there is no public prediction service or packaged ensemble claimed here.
+The committed local [fitted artifact](../release/huggingface/dh5alpha-promoter-strength-svr/) contains numeric support vectors, coefficients, intercept and gamma in `model.npz`, plus checksum/provenance metadata. Inference uses NumPy with no pickle execution or repeat fitting. The same fit is available from the [public, ungated Hub package](https://huggingface.co/CloBiT/dh5alpha-promoter-strength-svr): the recorded download at revision `0c5202892f4255eb8eb17493bed8d51e04f8cfc4` reproduced all ten results. Downloads need no account/token; uploading requires write authorisation. This SVR is separate from the three mining classifiers, not a hosted service or packaged ensemble.
 
 The local inference route does not depend on Hub access:
 
@@ -101,7 +103,7 @@ The current audit exercised this local NumPy-only route without refitting or upl
 
 To export another reproduction of the unchanged procedure, add `--export-model` with a new output directory to the fitting command above. Do not overwrite the retained fitted artifact when only running inference.
 
-With authorised Hub access, the same retained fit can instead be downloaded at its recorded revision:
+The same retained fit can instead be downloaded anonymously at its recorded revision:
 
 ```bash
 hf download CloBiT/dh5alpha-promoter-strength-svr \
