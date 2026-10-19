@@ -2,11 +2,13 @@
 
 Use [env.sh](../env.sh) and the [conda recipes](../environments/) for the deployed workflow. Root `uv sync` installs the Python ≥3.13 pandas/tabular helper environment, not the Linux/CUDA/bioinformatics stack. CPU classifier scoring needs compatible packages and recovered weights; Evo2 DNA inference also needs its NVIDIA/CUDA runtime and backbone. The [DH5α SVR](ECOLI_STRENGTH_PREDICTIONS.md#reproduction) has a separate pinned CPU environment.
 
+If you only want sequences, tables or reported numerical results, start with the [public download index](../results/README.md); no ML environment or login is needed. All four project Hub packages are public and ungated. [Model loading](MODELS.md#public-hugging-face-repositories) pins retained package revisions and explains remote-code/pickle safety. Public download does not waive model, upstream-code or data licence restrictions.
+
 ## Paths
 
 ```bash
 git lfs install
-git clone <repository-url> cb-promoter-mining
+git clone https://github.com/HKUST-iGEM-2026/cb-promoter-mining.git
 cd cb-promoter-mining
 git lfs pull
 source env.sh
@@ -112,7 +114,7 @@ NTv3 uses a separate main-stack supervised path; optional JAX encoding needs [up
 
 ## Stage inputs
 
-Materialise LFS archives, not pointer files. Zero-byte workflow inputs/annotation TSVs are placeholders, not prepared datasets. [Pipeline](PIPELINE.md#phase-a-acquire-and-curate) gives explicit staging and split commands; do not use the legacy default DAG as an end-to-end recipe.
+Materialise LFS archives, not pointer files. Zero-byte workflow inputs/annotation TSVs are placeholders, not prepared datasets. [Pipeline](PIPELINE.md#phase-a--acquire-and-curate) gives explicit staging and split commands; do not use the legacy default DAG as an end-to-end recipe.
 
 ```bash
 bash workflow/check_state.sh
@@ -121,7 +123,7 @@ bash workflow/verify_env.sh
 
 check_state.sh reports sizes/missing outputs but still suggests an obsolete T15.done target. verify_env.sh performs integrity/model smoke work and is not read-only. Inspect its prerequisites before running.
 
-Recovered checkpoints under `workflow/results/T21_xs/` are ignored by git. A fresh clone needs authorised private-Hub downloads. Original splits/encodings/tracks live separately under `~/cb-promoter-original-run/`. [Model evidence](MODELS.md#verified-original-data-and-encodings) records alignment and saved-feature evaluation. Optional original calibration inputs and T22_xs predictions remain unavailable; neither is needed for raw ranks.
+Recovered checkpoints under `workflow/results/T21_xs/` are ignored by git. A fresh clone can stage the public Hub packages anonymously using the [checkpoint commands](MODELS.md#local-checkpoints). Large original splits/encodings/tracks live separately under `~/cb-promoter-original-run/` and are not supplied by a public model download. The [166-assembly manifest](../results/training_sources.json) and [public output index](../results/README.md) expose provenance and retained outputs, not all reconstruction inputs. [Model evidence](MODELS.md#verified-original-data-and-encodings) records historical alignment and saved-feature evaluation. Optional original calibration inputs and T22_xs predictions remain unavailable; neither is needed for raw ranks.
 
 Retain exact tokenizer/code revisions, solved dependencies and source licences. Do not load untrusted pickles or executable remote code. Recovery does not repair the 888 wrong-assembly training labels.
 
@@ -160,11 +162,11 @@ hf download arcinstitute/evo2_7b
 export HF_HOME=/shared/hf_cache HF_HUB_OFFLINE=1
 ```
 
-Also stage private classifiers, trusted remote code/dependencies and genomic inputs. Offline mode cannot supply missing cache entries. Keep FASTA, annotation, BED and truth contig/version identifiers identical.
+Also stage the public project classifiers at the [documented pinned revisions](MODELS.md#public-hugging-face-repositories), reviewed remote code/dependencies and genomic inputs. Separate upstream-backbone conditions still apply. Offline mode cannot supply missing cache entries. Keep FASTA, annotation, BED and truth contig/version identifiers identical.
 
 ## Documents
 
-Wiki sources and exports are maintained locally and published separately; they are not part of the GitHub source repository. Do not link repository documentation into that directory or move it into another tracked location. [Source publication instructions](../README.md#publish-source-updates) keep the local wiki files while removing them from Git tracking.
+Public source documentation and retained downloads live in `docs/` and `results/`; local wiki sources/exports are separate and are not reconstruction prerequisites. Do not link public repository docs into ignored local directories. [Source publication instructions](../README.md#publish-source-updates) describe scoped staging from the clean documentation branch and a PR to `main`; Hugging Face cards require a separate upload.
 
 Compile TeX from each source directory; the exercised toolchain was Tectonic 0.17.0 with this bundle:
 

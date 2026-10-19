@@ -1,0 +1,13 @@
+model,genome,precision_proxy_at_recall_0.1_percent,precision_proxy_at_recall_0.5_percent,scope,source
+"Evo2, standalone run",Clostridium ljungdahlii,71.0,58.0,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+"Evo2, standalone run",Clostridium autoethanogenum,85.8,71.4,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+ProkBERT,Clostridium ljungdahlii,64.4,47.7,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+ProkBERT,Clostridium autoethanogenum,76.7,64.6,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+CNN-v2,Clostridium ljungdahlii,64.4,47.2,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+CNN-v2,Clostridium autoethanogenum,81.0,66.0,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+CNN-v1,Clostridium ljungdahlii,49.0,40.3,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+CNN-v1,Clostridium autoethanogenum,72.6,63.0,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+NT-LoRA,Clostridium ljungdahlii,43.9,36.1,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+NT-LoRA,Clostridium autoethanogenum,64.9,58.7,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+NTv3 context,Clostridium ljungdahlii,35.7,28.0,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark
+NTv3 context,Clostridium autoethanogenum,58.5,48.3,"Reported individual-model scan comparison; differing pools, not a matched-grid control",docs/RESULTS.md#regime-c--restricted-published-tss-benchmark

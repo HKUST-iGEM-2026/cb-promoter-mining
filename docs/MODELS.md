@@ -13,6 +13,12 @@ Three complementary sequence representations feed the genome-mining ranking. A s
 
 Members read **81-bp transcription-oriented DNA**, nominal TSS offset 60. Silver windows are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped starts or experimentally measured promoters; curated length normalization does not locate a start. The mine intersects step-10 tracks on contig/start/strand, converts each member's scores to average-tie percentiles in that common pool, then takes their mean. This is neither probability, strength nor unanimity. No calibrator is used. Only strictly increasing score-only transforms preserve ranks without changing ties.
 
+### Why the discovery workflow uses 81 bp
+
+Published-TSS extraction takes 60 upstream bases, the TSS base and 20 downstream bases, giving zero-based TSS offset 60. This shared source convention keeps labels, encodings and scan coordinates aligned; normalising curated sequences does not map their starts. **81 bp is not a ProkBERT architectural limit or a demonstrated optimal window length.** Its recovered config supports 1024 token positions. Overlapping six-mers turn 81 bp into 76 sequence tokens plus CLS/SEP, or **78 tokens**; the example below pads to width 81 tokens.
+
+The deployed Evo2 extraction job selected the per-row `sequence` column: all retained inputs are 81 bp, with no `sequence_context` column. Examples were not stitched together or extended with flanks. Longer backbone capacity does not imply that the fitted probe was trained on longer inputs.
+
 ### Architectures
 
 ProkBERT has six layers/six heads, hidden size 384, overlapping six-base tokens and padding-masked learned attention pooling before its two-class head. The recovered config records float32 and Transformers 5.3.0. Saved training arguments confirm learning rate 4.675283456079137e-05, train/eval batches 16/64, 10 maximum epochs, weight decay 0.07894770663194649 and seed 42. Warmup ratio 0.11090738634337446 is stored in float warmup_steps; warmup_ratio is None. Saved training uses fused AdamW, linear schedule, epoch evaluation/saving and bf16; CPU inference uses float32.
@@ -23,9 +29,9 @@ Evo2 uses a trusted StandardScaler→LogisticRegression probe with 4096 features
 
 ## Loading
 
-### Private Hugging Face repositories
+### Public Hugging Face repositories
 
-CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR package all exist as private Hugging Face repositories; downloads require an authorised account/HF_TOKEN. Authenticated weight hashes match recovered local copies. Review executable remote code before trusting it. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree. See [compatible setup](SETUP.md), and do not rely on anonymous download.
+CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR are public and ungated. Project-package downloads require no account or HF_TOKEN; uploads require write-authorised credentials. Released weight hashes match recovered local copies. Review executable remote code before trusting it, and follow separate upstream-backbone access and licence conditions. Never load untrusted pickle/joblib files: they can execute code. Cards do not sync automatically from GitHub. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr`. See [compatible setup](SETUP.md) and the [public results/download index](../results/README.md).
 
 | Repository | Model-card license |
 |---|---|
@@ -40,6 +46,7 @@ ProkBERT's external tokenizer/model code separately declares CC-BY-NC-ND-4.0. [R
 **ProkBERT:** pin tokenizer files and code revisions separately; the inspected revisions below are not proven historical-training revisions. max_length counts tokens, not bases.
 
 ```python
+import csv
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -50,7 +57,8 @@ tok = AutoTokenizer.from_pretrained(
     code_revision="366d9336b6b89d7c1feddf56d9b01be8065ccc43")
 model = AutoModelForSequenceClassification.from_pretrained(
     REPO, trust_remote_code=True, revision="815f637e1a77ac25757b0add21a22668090cce31").eval()
-seqs = ["A" * 81]  # API illustration only; replace with correctly oriented 81 bp DNA
+with open("results/candidates/g131795_tier1_canonical_seq.tsv") as source:
+    seqs = [row["summit_seq"] for row in csv.DictReader(source, delimiter="\t")][:10]
 enc = tok(seqs, padding="max_length", truncation=True, max_length=81, return_tensors="pt")
 with torch.no_grad():
     scores = torch.softmax(model(**enc).logits.float(), dim=1)[:, 1]
@@ -60,7 +68,7 @@ print(scores)  # uncalibrated positive-class scores
 **CNN-v2:** reconstruct the recorded features and ENAC width.
 
 ```python
-import json, sys, torch
+import csv, json, sys, torch
 from huggingface_hub import snapshot_download
 
 path = snapshot_download("CloBiT/cnn-fusion-clostridium-promoter",
@@ -72,7 +80,9 @@ with open(f"{path}/config.json") as fh:
     cfg = json.load(fh)
 model = build_model_from_config(cfg, device="cpu")
 model.load_state_dict(torch.load(f"{path}/best_model.pt", map_location="cpu", weights_only=True))
-scores = predict_proba(model, ["A" * 81], device="cpu",
+with open("results/candidates/g131795_tier1_canonical_seq.tsv") as source:
+    seqs = [row["summit_seq"] for row in csv.DictReader(source, delimiter="\t")][:10]
+scores = predict_proba(model, seqs, device="cpu",
                        enac_window=int(cfg.get("enac_window", 5)))
 print(scores)  # uncalibrated positive-class scores, not measured promoter probabilities
 ```
@@ -80,8 +90,9 @@ print(scores)  # uncalibrated positive-class scores, not measured promoter proba
 **Evo2:** DNA inference needs the compatible CUDA stack; saved-feature evaluation needs only the numerical probe stack. The committed trusted pickle records scikit-learn 1.9.0.
 
 ```bash
-INPUT_FASTA="$PWD/windows.fna"  # existing oriented input, captured before changing directory
-hf download CloBiT/evo2-logreg-clostridium-promoter-probe --local-dir evo2_probe
+INPUT_FASTA="$PWD/results/candidates/g131795_first10_canonical_named.fasta"
+hf download CloBiT/evo2-logreg-clostridium-promoter-probe \
+  --revision 6e521c874dd61517df9b17a56f2a75847a054b87 --local-dir evo2_probe
 cd evo2_probe
 python apply_probe.py --fasta "$INPUT_FASTA" --out scores.csv
 ```
@@ -101,7 +112,7 @@ uv run --no-project --with numpy==2.5.3 python \
   --out-prefix dh5alpha_first10
 ```
 
-The private package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides the complete results and source assay context.
+The public package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. DL10 in the current shortlist means `cand_00101` / `P_prfB`, not the independent `pptb_fU` reference. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides complete results and source assay context.
 ### Local checkpoints
 
 Default root is `workflow/results/`. The mining jobs use this location directly; PROMOTER_RESULTS overrides alone do not relocate every output.
@@ -120,13 +131,26 @@ $PROMOTER_RESULTS/regimeC/evo2/evo2_probe_xs.pkl
 
 These CNN/ProkBERT files are ignored by git. The deployed Evo2 probe is committed at `pipeline/training/Evo2/evo2_promoter_classifier.pkl`.
 
+To stage public package contents into these CLI paths, run from the repository root after sourcing `env.sh`:
+
+```bash
+hf download CloBiT/prokbert-mini-clostridium-promoter \
+  --revision 815f637e1a77ac25757b0add21a22668090cce31 \
+  --local-dir "$PROMOTER_RESULTS/T21_xs/prokbert/best_model"
+hf download CloBiT/cnn-fusion-clostridium-promoter \
+  --revision 191fc88fffeb52ecbf4bdb27702a734365545815 \
+  --local-dir "$PROMOTER_RESULTS/T21_xs/cnn_v2"
+```
+
+These are existing public revisions, not retrained or repaired weights. Inspect downloaded executable code before loading; tokenizer files/code still use the separate pins above.
+
 The local FASTA CLI scores one neural classifier, not Evo2 or the ensemble. Its legacy id,prob CSV contains raw positive-class scores:
 
 ```bash
 source env.sh
 conda activate "$ENV_MAIN"
-python pipeline/mining/score_promoters.py --model prokbert --fasta seqs.fa --out prokbert_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
-python pipeline/mining/score_promoters.py --model cnn_v2 --fasta seqs.fa --out cnn_v2_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
+python pipeline/mining/score_promoters.py --model prokbert --fasta results/candidates/g131795_first10_canonical_named.fasta --out /tmp/prokbert_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
+python pipeline/mining/score_promoters.py --model cnn_v2 --fasta results/candidates/g131795_first10_canonical_named.fasta --out /tmp/cnn_v2_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
 ```
 
 Without `--models-dir` it expects models_deployed; prefer the explicit flag. If intentionally creating that default, preserve unrelated existing files:
@@ -214,5 +238,11 @@ This checks loading, framing and finite scores. It does not recompute held-out A
 The trio led at recall 0.5 on both restricted benchmarks; paired Evo2 led slightly at recall 0.1 in C. autoethanogenum. Complementary representations motivated testing, not a measured claim of maximally decorrelated errors.
 
 Historical alternatives were one-hot CNN-v1, NT-v2 query/value LoRA and NTv3 384-bp-context full fine-tuning. NTv3's high reported AP has unresolved context-overlap/provenance limits; an unmasked token-reconstruction or constant-only probe record is not classifier evidence. The off-the-shelf prokbert-mini-promoter baseline is separate from our prokbert-mini training base. Cluster-disjoint CV code exists, but completed CV output is not supplied.
+
+### NTv3 context-length requirement and extraction
+
+The provider's [architecture guide](https://github.com/instadeepai/nucleotide-transformer/blob/main/docs/nucleotide_transformer_v3.md) requires multiples of 128 bp for the main seven-downsample models. The supervised trial chose **384 bp = 3×128**, not the only supported length. The [launcher](../pipeline/training/nucleotide-transformer-v3/current/finetune_ntv3.sbatch) selects `sequence_context`; [context construction](../pipeline/datasets/positives-with-context/build_context_sources.py) uses published coordinates or locates source DNA in its matched genome, then extracts contiguous strand-oriented flanks around the same 81-bp core (151/152 flanking positions). Missing flanks and sequence-only sources use N-padding, which supplies length, not biological context.
+
+This construction method does not certify all unavailable historical context rows or resolve context-overlap leakage. NTv3's scanner reports 81-bp core coordinates despite reading longer context, so common coordinates—not identical input lengths—are the ensemble alignment requirement. A longer-context Evo2 experiment would require a compatible probe and renewed evaluation; no evidence establishes longer inputs as better here.
 
 The dataset retains 888 incompatible-assembly B. licheniformis positives; all deployed weights remain affected. [Pipeline provenance](PIPELINE.md#genome-assemblies-and-coordinate-provenance) explains the correction/retraining boundary. Target exclusion is supervised only; backbone pretraining exposure is unknown. Motif/rank outputs require biological testing.
