@@ -97,6 +97,19 @@ The deployed split used **MMseqs2**, despite the historical `cdhit_splits.py` fi
 
 The splitter deduplicates DNA and pins clusters containing silver or cross-species positives to training. Overall labels are balanced, but partitions are not: train/validation/test contain 44,085/3,052/3,053 windows and 24,001/547/547 positive labels. Silver positives carry confidence weight 0.3; training negatives are rescaled to 0.7127265484963153, giving equal total positive and negative loss weight. Every validation/test weight is 1. The test's positive fraction, 547/3,053 = 0.179168, is the **random-ranking/no-skill AP baseline**, not any model's measured AP.
 
+**The training-only rule applies to silver/cross-species positive labels, not SRS negatives.** `train_pin` requires `label == 1` and a silver or cross-species source; an SRS row has label 0 and is not pinned by its silver origin (although a shared train-pinned cluster would still stay in training). SRS is regenerated from the 81-bp silver core with an intended dinucleotide shuffle; the plain-shuffle fallback means neither exact dinucleotide preservation nor motif destruction is guaranteed.
+
+The [negative-source count CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) counts `label == 0` rows by `source` in retained T15_xs Parquets. All three Parquet SHA-256 values match [training_sources.json](../results/training_sources.json).
+
+| Negative source | Train | Validation | Test |
+|---|---:|---:|---:|
+| SRS | 5,505 | 652 | 701 |
+| T14_CDS | 5,593 | 663 | 656 |
+| T14_Downstream_3Prime | 5,477 | 721 | 663 |
+| T14_Intergenic_NonPromoter | 3,509 | 469 | 486 |
+
+CNN dinucleotide/trinucleotide frequencies are **input features**, not replacement negative generation. Source-to-encoding alignment records connect these labelled windows to the deployed CNN; Evo2 embeds the same labelled 81-bp windows and its final probe refits on train+validation. The earlier SRS-training-only documentation claim was incorrect; this count correction changes no splits, weights or metrics and performs no retraining.
+
 ### Recover the original clustering command and version
 
 Backend and membership recovery is complete. Historical `.bash_history` lines 439 and 448 recover the same outer `T15_xs` wrapper command: `python $REPO/dataset-construction/T15/cdhit_splits.py --positives inputs/reference_promoters.parquet inputs/published_tss_promoters.parquet inputs/literature_promoters_train.parquet results/T13/upstream_regions.tsv $TSS/ruminiclostridium_positives.parquet $TSS/blicheniformis_positives.parquet --negatives results/T14/negative_set.tsv --identity 0.6 --window 81 --seed 42 --out results/T15_xs`. This is historical command evidence, not an instruction to overwrite old outputs. In the retained wrapper, the clustering subprocess stdout was discarded, so no historical MMseqs banner or effective thread count was retained.

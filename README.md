@@ -70,21 +70,26 @@ Project code/documentation is [MIT](LICENSE). Model artifacts, executable upstre
 
 ## Publish source updates
 
-Publish from the clean **`docs/public-results-20261019`** branch in the publication checkout, then open a pull request to **`main`**. No `reorganise` merge is a prerequisite. Do not stage from the unrelated dirty working checkout. Review and stage only intended documentation/release/results paths; for this publication batch:
+The earlier public-results GitHub/Hugging Face publication is complete. This **new factual SRS correction** is prepared on **`fix/srs-split-documentation`** in the separate `cb-promoter-srs-correction` checkout, based on published `main`. Publish this branch through a pull request to **`main`**; do not stage from the original dirty or prior publication checkouts. Scope staging to these correction paths:
 
 ```bash
-git switch docs/public-results-20261019
+git switch fix/srs-split-documentation
 git add -- README.md docs/MODELS.md docs/RESULTS.md docs/PIPELINE.md \
-  docs/SETUP.md docs/ECOLI_STRENGTH_PREDICTIONS.md release/huggingface results
+  results/README.md results/training_negative_sources.csv \
+  pipeline/datasets/clustering-and-splits/cdhit_splits.py \
+  release/huggingface/README.md \
+  release/huggingface/prokbert-mini-clostridium-promoter/README.md \
+  release/huggingface/cnn-fusion-clostridium-promoter/README.md \
+  release/huggingface/evo2-logreg-clostridium-promoter-probe/README.md
 git diff --cached --stat
 git diff --cached --name-status
 git diff --cached
 # Confirm only the intended public payload is staged before continuing.
-git commit -m "Publish results-led documentation and public download index"
-git push -u origin docs/public-results-20261019
-gh pr create --base main --head docs/public-results-20261019 \
-  --title "Publish results-led documentation and downloads" \
-  --body "Refresh public guides and model cards; expose retained numerical results, DNA and provenance with explicit limitations."
+git commit -m "Correct SRS negative split documentation and publish source counts"
+git push -u origin fix/srs-split-documentation
+gh pr create --base main --head fix/srs-split-documentation \
+  --title "Correct SRS negative split documentation" \
+  --body "Document SRS negatives across all splits with retained source counts; distinguish positive-label pins and CNN features without changing models or metrics."
 ```
 
-These are manual publication instructions, not actions already performed. Keep local wiki/export directories out of the payload. Hugging Face cards **do not sync automatically** from GitHub: separately review and upload each package using the [release instructions](release/huggingface/README.md#publish-these-documentation-changes-only), with write-authorised credentials. Recheck anonymous download links after publication; no visibility change is needed for already-public packages.
+These are manual instructions, not staging or publication actions performed for this correction. Merge the GitHub correction first so the new `main/results/training_negative_sources.csv` link resolves, then **reupload only README.md for the three classifier cards** using the [release instructions](release/huggingface/README.md#publish-these-documentation-changes-only). The independent DH5α card has no incorrect SRS claim and needs no upload. Historical verification/recovery JSON and receipts, weights, splits, metrics and licences remain unchanged. No retraining, full model release or visibility change is required. Keep local wiki/export directories out of the payload.

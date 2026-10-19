@@ -54,6 +54,17 @@ The precision proxy is covered catalogue TSS / (covered catalogue TSS + unmatche
 | Validation | 3,052 | 547 | 2,505 |
 | Test | 3,053 | 547 | 2,506 |
 
+[training_negative_sources.csv](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) gives all 12 split/source counts for negative labels, counted from retained T15_xs Parquets whose SHA-256 values match `training_sources.json`.
+
+| Negative source | Training | Validation | Test |
+|---|---:|---:|---:|
+| SRS | 5,505 | 652 | 701 |
+| T14_CDS | 5,593 | 663 | 656 |
+| T14_Downstream_3Prime | 5,477 | 721 | 663 |
+| T14_Intergenic_NonPromoter | 3,509 | 469 | 486 |
+
+SRS negatives occur in **all three splits**, unlike training-only silver/cross-species positives: the splitter's pin condition requires positive label 1. SRS generation intends dinucleotide shuffling of the 81-bp silver core, but its plain-shuffle fallback guarantees neither exact dinucleotide preservation nor motif destruction. No negative class is experimentally guaranteed promoter-free. CNN k-mer frequencies are input features, not a new negative class; Evo2 embeds the same labelled windows and refits its probe on train+validation. Earlier SRS-training-only prose was wrong. This factual documentation correction does not change models, splits or reported metrics.
+
 The same 166 assemblies supply silver-positive and genomic-negative windows. Silver positives are gene-anchored, annotation-derived upstream DNA, not mapped TSS or validated promoters; they are training-only with confidence/loss weight 0.3. The deployed dataset still includes **888 wrong-assembly *B. licheniformis* training positives**. Target DSM 10702 was excluded from project supervised training; foundation-model pretraining exposure is not established. Publishing this manifest does not repair or retrain the models.
 
 ## Independent DH5α activity estimates
