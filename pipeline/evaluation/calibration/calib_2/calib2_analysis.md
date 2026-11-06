@@ -2,6 +2,8 @@
 
 Historical three-model calibration, not the deployed ProkBERT/CNN-v2/Evo2 ensemble. The 279-row mixture has 93 T9 positives and 186 putative negatives (130 convergent/56 CDS). Stored inputs are 49–52-bp positives and 52-bp negatives. Padding does not supply 81-bp biological context.
 
+The reported round used historical `T21/<model>/trial_*` checkpoints. The current `run_calibration_2.sh` relies on Python defaults now pointing to `T21_final_06`; running it unchanged does not reproduce these measurements. Use explicit checkpoint paths from the retained round metadata and preserve these outputs. [Calibration notes](../CALIBRATION_NOTES.md#historical-checkpoint-bindings) distinguish the historical identity from current driver behavior.
+
 ## Method
 
 StandardScaler→LogisticRegression compares score-only/score+AT, unregularized/L2, with 5×5 stratified OOF selection on log-loss (tol 0.005, L2 C=1). This round chose unregularized score+AT. Lower ECE/Brier/log-loss is better; higher AUROC/AP is better. ± values are repeated-CV standard deviations, not confidence intervals.

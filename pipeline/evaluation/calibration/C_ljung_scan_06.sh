@@ -123,8 +123,8 @@ echo "outdir  : $OUTDIR"
 
 # =========================================================================== 1) SCAN (GPU, --emit-logit)
 # Full-genome scan once per model. NT runs in its own env; the rest in MAIN_ENV.
-# RESUME-SAFE: an existing non-empty track is kept (delete it to force a rescan) so a preempt requeue
-# doesn't redo completed GPU scans.
+# Resume heuristic only: any nonempty track is skipped, including an interrupted partial CSV.
+# Verify completeness and checkpoint/settings before reuse; preserve unverified tracks and rescan separately.
 for M in "${MODELS[@]}"; do
     if [[ -s "$OUTDIR/clj_${M}_track.csv" ]]; then
         echo "=== scan $M: track exists — skipping (rm $OUTDIR/clj_${M}_track.csv to force rescan) ==="

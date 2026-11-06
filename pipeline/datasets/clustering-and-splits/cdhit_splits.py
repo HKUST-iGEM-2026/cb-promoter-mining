@@ -58,9 +58,9 @@ GOLD = 1.0
 
 
 def dinucleotide_shuffle(seq, rng):
-    """Dinucleotide-preserving (Eulerian) shuffle — same method as T14, so the SRS null stays
-    consistent project-wide: destroys the -10/-35 motif while preserving base + dinucleotide
-    composition. `rng` is a seeded random.Random for reproducibility."""
+    """Intended dinucleotide (Eulerian) shuffle, using the same method as T14.
+    The plain-shuffle fallback need not preserve dinucleotides; neither path guarantees
+    motif destruction. `rng` is a seeded random.Random for reproducibility."""
     seq = seq.replace("N", "")
     if len(seq) < 2:
         return seq
@@ -312,7 +312,7 @@ def main():
     # 2b. regenerate the SRS null AT the target window ---------------------------------
     #     T14's committed SRS is a dinucleotide shuffle of the full 300bp T13 upstream; the matched null
     #     for an 81bp positive is a shuffle of THAT 81bp window. So drop T14's SRS and re-shuffle the
-    #     re-windowed T13 positives 1:1 (preserves base/dinucleotide composition, destroys the motif).
+    #     re-windowed T13 positives 1:1 (intended dinucleotide control; fallback/motifs need QC).
     df = df[df["source"] != "T14_SRS"].reset_index(drop=True)
     has_ctx = "sequence_context" in df.columns
     t13 = df[(df.label == 1) & (df.source == "T13_inferred")]
@@ -375,7 +375,7 @@ def main():
         df["sequence"].tolist(), args.identity, args.cluster_tool,
         args.cluster_coverage, args.cov_mode, args.word_size, args.threads, args.out)
 
-    # 6. cluster-disjoint, label-stratified 80/10/10 — EVAL (val/test) is VERIFIED-ONLY -----
+    # 6. cluster-disjoint, label-stratified 80/10/10 — EVAL POSITIVES are VERIFIED-ONLY -----
     #    T13 silver positives carry INFERRED labels (the "AT-rich upstream = promoter" assumption);
     #    selecting / early-stopping on them would reward the AT-trap. So any CLUSTER holding a
     #    silver positive is pinned to TRAIN, and only verified-positive + negative clusters are eligible
@@ -385,6 +385,7 @@ def main():
     #    Ruminiclostridium promoters in val/test distorts the deployment metric (and did so silently for
     #    T8 before this). So any cluster holding a silver OR cross-species positive is train-pinned;
     #    val/test hold only in-genus verified positives + negatives.
+    #    The label==1 condition does not pin SRS label-0 rows by their silver origin.
     train_pin = set(df.loc[(df.label == 1) &
                            ((df.source == "T13_inferred") | (~df["in_genus"].astype(bool))),
                            "cluster_id"])
@@ -435,7 +436,7 @@ def main():
           f"identity={args.identity} (tool={tool_used})")
     print(f"positives total: in-genus={int(pos.in_genus.sum())}  out-of-genus={int((~pos.in_genus).sum())}  "
           f"silver(T13)={int((pos.source == 'T13_inferred').sum())}")
-    # EVAL INVARIANT: val/test are verified-only — report the verified-in-genus count that actually matters
+    # EVAL INVARIANT: val/test POSITIVES are verified-only; negatives include SRS.
     for sp in ("val", "test"):
         m = df["split"] == sp
         nsilver = int((m & (df.label == 1) & (df.source == "T13_inferred")).sum())

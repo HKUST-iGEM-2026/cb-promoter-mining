@@ -3,6 +3,8 @@
 Sigma-factor reference PWMs for scanning *Clostridium butyricum* DSM 10702
 upstream regions with FIMO / TOMTOM.
 
+This four-matrix reference dataset is separate from both the five motifs learned by MEME in the original mining scan and the two imported width-six [QC reference matrices](../pipeline/mining/motif-annotation/sigma_a_promoter.meme). A reference consensus is not a consensus discovered in the candidate DNA; the selected both-hit six-base QC cores instead summarize to TATAAT/TTGATA.
+
 ## Contents
 
 | File | What it is |
@@ -40,9 +42,7 @@ upstream regions with FIMO / TOMTOM.
   site count only affects how FIMO weights this motif's pseudocounts and
   significance relative to the E. coli matrices. If the true SigA promoter count
   turns up on DBTBS, correct it in `reference_pwms.meme`.
-- **B. subtilis is a proxy, not a Clostridium PWM.** No Clostridium-specific PWM
-  database exists; B. subtilis is used as the nearest well-characterised
-  Firmicute. Frame it that way in the report.
+- **B. subtilis is a cross-species proxy, not a validated Clostridium PWM.** This folder does not establish a *C. butyricum*-specific motif model or the absence of such models elsewhere. Species-specific use requires its own provenance and validation.
 - Background frequencies are set uniform (0.25 each). For scanning a genome as
   AT-rich as *C. butyricum*, consider passing FIMO a genome-derived background
   file (`fasta-get-markov`) instead — uniform background will inflate scores for

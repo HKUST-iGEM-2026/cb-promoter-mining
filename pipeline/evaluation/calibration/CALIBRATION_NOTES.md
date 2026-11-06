@@ -22,7 +22,7 @@ Common flags: `--model-dir`, `--positives`, `--convergent-negatives`, `--cds-neg
 
 ## Rounds
 
-| Driver | Checkpoints | Output folder | Committed |
+| Driver | Historical checkpoint identity | Output folder | Committed |
 |---|---|---|---|
 | `run_calibration_2.sh` | 0.9-sweep trial checkpoints (`results/T21/<model>/trial_*`) | `calib_2/` | three-model calibrators, metrics, predictions, report |
 | `run_calibration_3.sh` | `results/T21_final/` | `calib_3/` | four-model calibrators, metrics, predictions, report |
@@ -31,6 +31,14 @@ Common flags: `--model-dir`, `--positives`, `--convergent-negatives`, `--cds-neg
 
 
 Drivers switch from ENV_MAIN to ENV_NT for the historical NT member. The xs driver reads negatives under negative_generation; others read this directory. [Pipeline recipe](../../../docs/PIPELINE.md#calibration-optional-the-mine-does-not-use-it) gives extraction/scoring. Matching calibrator/checkpoint/cohort is required; older maps are not replacements.
+
+### Historical checkpoint bindings
+
+The round table identifies the retained experiments, not a guarantee about the current driver defaults. In particular, `run_calibration_2.sh` omits `--model-dir`, while the current ProkBERT, CNN-v1 and NT calibration programs default to `T21_final_06` checkpoints rather than the historical `T21/<model>/trial_*` inputs. Re-running that driver unchanged is not a reproduction of `calib_2`. Recover each model path from the round's retained metrics and invoke the corresponding Python program with an explicit `--model-dir` and a separate `--out-dir`; preserve the historical outputs.
+
+### Restarting genome scans
+
+`C_ljung_scan_xs.sh` and `C_ljung_scan_06.sh` skip any nonempty final track CSV. The scanner streams directly to that filename, so an interrupted scan can leave a partial file that the driver will wrongly reuse. A nonempty file is not completion evidence. Verify the expected contig/strand/window coverage and checkpoint/settings before reuse; preserve incomplete or unverified tracks and rescan to a separate output location. This source-level restart defect does not demonstrate corruption of the retained benchmark results.
 
 ## Outputs
 

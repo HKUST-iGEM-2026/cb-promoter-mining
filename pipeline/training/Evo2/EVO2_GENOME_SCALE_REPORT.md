@@ -57,4 +57,4 @@ Compare members within a genome. Catalogue density/completeness differs; absolut
 
 These results motivate Evo2's inclusion, not a causal pretraining explanation or promoter confirmation. Original run checks are not preserved as a new audit; source inspection alone does not replace execution. The probe retains the 888 wrong-assembly training positives. Historical runtime around one GPU-hour depends on hardware/batching/coverage. Removing `--regions` from a benchmark cannot reconstruct unscored windows.
 
-[Pipeline](../../../docs/PIPELINE.md) gives reproduction prerequisites; [interpretation](../../../docs/RESULTS.md#interpreting-candidates-and-downstream-units) separates ranks/motifs from biological claims.
+[Pipeline](../../../docs/PIPELINE.md) gives reproduction prerequisites; [interpretation](../../../docs/RESULTS.md#downstream-genes-and-putative-units) separates ranks/motifs from biological claims.

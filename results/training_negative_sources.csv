@@ -1,0 +1,13 @@
+split,negative_source,windows
+train,SRS,5505
+train,T14_CDS,5593
+train,T14_Downstream_3Prime,5477
+train,T14_Intergenic_NonPromoter,3509
+val,SRS,652
+val,T14_CDS,663
+val,T14_Downstream_3Prime,721
+val,T14_Intergenic_NonPromoter,469
+test,SRS,701
+test,T14_CDS,656
+test,T14_Downstream_3Prime,663
+test,T14_Intergenic_NonPromoter,486

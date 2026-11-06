@@ -25,7 +25,7 @@ A CPU smoke run of that checkpoint accepted untruncated 81-, 161- and 257-bp seq
 
 Each representation offers a different input to the same classification task. ProkBERT learns token relationships; CNN-v2 combines local patterns and composition; Evo2 supplies a frozen embedding to a small fitted probe. The settings below identify the retained fits, rather than implying that a larger backbone or a more elaborate representation must perform better.
 
-ProkBERT has six layers/six heads, hidden size 384, overlapping six-base tokens and padding-masked learned attention pooling before its two-class head. The recovered config records float32 and Transformers 5.3.0. Saved training arguments confirm learning rate 4.675283456079137e-05, train/eval batches 16/64, 10 maximum epochs, weight decay 0.07894770663194649 and seed 42. Warmup ratio 0.11090738634337446 is stored in float warmup_steps; warmup_ratio is None. Saved training uses fused AdamW, linear schedule, epoch evaluation/saving and bf16; CPU inference uses float32.
+ProkBERT has six layers/six heads, hidden size 384, overlapping six-base tokens and padding-masked learned attention pooling before its two-class head. The recovered config records float32 and Transformers 5.3.0. Saved training arguments confirm learning rate 4.675283456079137e-05, train/eval batches 16/64, 10 maximum epochs, weight decay 0.07894770663194649 and seed 42. The float **0.11090738634337446 is stored as `warmup_steps`, not `warmup_ratio`**; saved `warmup_ratio` is `None`. The CLI flag's name does not establish ratio-based warmup in the retained fit. Saved training uses fused AdamW, linear schedule, epoch evaluation/saving and bf16; CPU inference uses float32.
 
 CNN-v2 combines one-hot/ENAC convolution branches (kernels 7/5/3, widths 64/128/256, batch normalization/pooling) with 16-d dinucleotide and 64-d trinucleotide projections. Concatenation order is onehot,dinuc,trinuc,enac; fusion dimension is 256. A/C/G/T channels, all-position k-mer denominators and clipped centered ENAC width 5 define the features. N adds no base-channel count; inputs are center-cropped or N-padded to 81 bp. Recorded training uses learning rate 0.0003748224111698842, batch 32, dropout 0.10382857322260322, weight decay 0.00024777455052193346, 30 epochs, patience 8 and seed 42.
 
@@ -33,11 +33,19 @@ Evo2 uses a trusted StandardScaler→LogisticRegression probe with 4096 features
 
 **Evo2 input length:** the retained completed extraction job `516257` explicitly logs `col='sequence'` for 44,085 training, 3,052 validation and 3,053 test rows. Inspection of the actual three input Parquets finds every `sequence` is 81 bp and no `sequence_context` column. The deployed frozen-embedding probe therefore did **not** stitch examples together or append longer genomic flanks. The extractor's optional `--sequence-col sequence_context` supports a different experiment; its existence does not show it was used. The 384-bp context trial was NTv3. This establishes the deployed input frame, not every historical extraction revision or the backbone's pretraining context.
 
+The Hub can infer a `finetune` relationship from the valid `base_model: arcinstitute/evo2_7b` attribution. That relationship category does not establish which parameters were updated: this artifact is a frozen-feature probe, not evidence of Evo2 backbone fine-tuning or a training/scoring failure. Preserve the attribution rather than removing it to suppress an automatic tag; see [Hub base-model metadata](https://huggingface.co/docs/hub/en/model-cards#specifying-a-base-model).
+
+### Shared negative labels, different representations
+
+All three classifiers use the T15_xs labelled windows. Negative sources are SRS, CDS, downstream/3′ and putative intergenic; SRS is present in **train/validation/test (5,505/652/701)**, not training-only. The [negative-source CSV](../results/training_negative_sources.csv) supplies all 12 counts, derived from retained Parquets whose SHA-256 values match the training manifest. Only silver/cross-species **positive** labels trigger the splitter's training pin. SRS intends dinucleotide shuffling of the 81-bp silver core; its plain-shuffle fallback guarantees neither exact dinucleotide preservation nor motif destruction, and negative labels are not experimental proof of promoter absence.
+
+CNN's dinucleotide/trinucleotide frequencies are **input features**, not a switch to k-mer-generated negatives. The saved CNN config points to `results/T16_xs/cnn` with `onehot,dinuc,trinuc,enac`; recorded source-to-encoding alignment connects it to these windows. Evo2 embeds the same labelled 81-bp windows; the fitted probe uses **train+validation (47,137 rows)**, so validation is not held out from that final artifact. Earlier SRS-training-only prose was wrong; correcting it does not retrain models, alter splits or revise metrics.
+
 ## Loading
 
 ### Public Hugging Face repositories
 
-CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR are available from public Hugging Face repositories; project-package downloads do not require an authorised account or HF_TOKEN. Released weight hashes match the recovered local copies. Review executable remote code before trusting it, and follow any separate access or licence conditions for upstream backbones. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree. See [compatible setup](SETUP.md).
+CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR are public and ungated. Project-package downloads require no account or HF_TOKEN; uploads require write-authorised credentials. Released weight hashes match recovered local copies. Review executable remote code before trusting it, and follow separate upstream-backbone access and licence conditions. Never load untrusted pickle/joblib files: they can execute code. Cards do not sync automatically from GitHub. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr`. See [compatible setup](SETUP.md) and the [public results/download index](../results/README.md).
 
 | Repository | Model-card license |
 |---|---|
@@ -52,6 +60,7 @@ ProkBERT's external tokenizer/model code separately declares CC-BY-NC-ND-4.0. [R
 **ProkBERT:** pin tokenizer files and code revisions separately; the inspected revisions below are not proven historical-training revisions. `max_length` counts **tokens**, not DNA bases: this example pads a clean 81-bp input's 78 tokens to width 81, with three masked padding positions. It does not impose an 81-bp limit on the backbone. Keep the deployed input frame even though the architecture can accept longer sequences.
 
 ```python
+import csv
 import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 
@@ -62,7 +71,8 @@ tok = AutoTokenizer.from_pretrained(
     code_revision="366d9336b6b89d7c1feddf56d9b01be8065ccc43")
 model = AutoModelForSequenceClassification.from_pretrained(
     REPO, trust_remote_code=True, revision="815f637e1a77ac25757b0add21a22668090cce31").eval()
-seqs = ["A" * 81]  # API illustration only; replace with correctly oriented 81 bp DNA
+with open("results/candidates/g131795_tier1_canonical_seq.tsv") as source:
+    seqs = [row["summit_seq"] for row in csv.DictReader(source, delimiter="\t")][:10]
 enc = tok(seqs, padding="max_length", truncation=True, max_length=81, return_tensors="pt")
 with torch.no_grad():
     scores = torch.softmax(model(**enc).logits.float(), dim=1)[:, 1]
@@ -72,7 +82,7 @@ print(scores)  # uncalibrated positive-class scores
 **CNN-v2:** reconstruct the recorded features and ENAC width.
 
 ```python
-import json, sys, torch
+import csv, json, sys, torch
 from huggingface_hub import snapshot_download
 
 path = snapshot_download("CloBiT/cnn-fusion-clostridium-promoter",
@@ -84,7 +94,9 @@ with open(f"{path}/config.json") as fh:
     cfg = json.load(fh)
 model = build_model_from_config(cfg, device="cpu")
 model.load_state_dict(torch.load(f"{path}/best_model.pt", map_location="cpu", weights_only=True))
-scores = predict_proba(model, ["A" * 81], device="cpu",
+with open("results/candidates/g131795_tier1_canonical_seq.tsv") as source:
+    seqs = [row["summit_seq"] for row in csv.DictReader(source, delimiter="\t")][:10]
+scores = predict_proba(model, seqs, device="cpu",
                        enac_window=int(cfg.get("enac_window", 5)))
 print(scores)  # uncalibrated positive-class scores, not measured promoter probabilities
 ```
@@ -92,8 +104,9 @@ print(scores)  # uncalibrated positive-class scores, not measured promoter proba
 **Evo2:** DNA inference needs the compatible CUDA stack; saved-feature evaluation needs only the numerical probe stack. The committed trusted pickle records scikit-learn 1.9.0.
 
 ```bash
-INPUT_FASTA="$PWD/windows.fna"  # existing oriented input, captured before changing directory
-hf download CloBiT/evo2-logreg-clostridium-promoter-probe --local-dir evo2_probe
+INPUT_FASTA="$PWD/results/candidates/g131795_first10_canonical_named.fasta"
+hf download CloBiT/evo2-logreg-clostridium-promoter-probe \
+  --revision 6e521c874dd61517df9b17a56f2a75847a054b87 --local-dir evo2_probe
 cd evo2_probe
 python apply_probe.py --fasta "$INPUT_FASTA" --out scores.csv
 ```
@@ -113,7 +126,7 @@ uv run --no-project --with numpy==2.5.3 python \
   --out-prefix dh5alpha_first10
 ```
 
-The public package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides the complete results and source assay context.
+The public package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. DL10 in the current shortlist means `cand_00101` / `P_prfB`, not the independent `pptb_fU` reference. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides complete results and source assay context.
 ### Local checkpoints
 
 Default root is `workflow/results/`. The mining jobs use this location directly; PROMOTER_RESULTS overrides alone do not relocate every output.
@@ -132,13 +145,26 @@ $PROMOTER_RESULTS/regimeC/evo2/evo2_probe_xs.pkl
 
 These CNN/ProkBERT files are ignored by git. The deployed Evo2 probe is committed at `pipeline/training/Evo2/evo2_promoter_classifier.pkl`.
 
+To stage public package contents into these CLI paths, run from the repository root after sourcing `env.sh`:
+
+```bash
+hf download CloBiT/prokbert-mini-clostridium-promoter \
+  --revision 815f637e1a77ac25757b0add21a22668090cce31 \
+  --local-dir "$PROMOTER_RESULTS/T21_xs/prokbert/best_model"
+hf download CloBiT/cnn-fusion-clostridium-promoter \
+  --revision 191fc88fffeb52ecbf4bdb27702a734365545815 \
+  --local-dir "$PROMOTER_RESULTS/T21_xs/cnn_v2"
+```
+
+These are existing public revisions, not retrained or repaired weights. Inspect downloaded executable code before loading; tokenizer files/code still use the separate pins above.
+
 The local FASTA CLI scores one neural classifier, not Evo2 or the ensemble. Its legacy id,prob CSV contains raw positive-class scores:
 
 ```bash
 source env.sh
 conda activate "$ENV_MAIN"
-python pipeline/mining/score_promoters.py --model prokbert --fasta seqs.fa --out prokbert_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
-python pipeline/mining/score_promoters.py --model cnn_v2 --fasta seqs.fa --out cnn_v2_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
+python pipeline/mining/score_promoters.py --model prokbert --fasta results/candidates/g131795_first10_canonical_named.fasta --out /tmp/prokbert_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
+python pipeline/mining/score_promoters.py --model cnn_v2 --fasta results/candidates/g131795_first10_canonical_named.fasta --out /tmp/cnn_v2_scores.csv --models-dir "$PROMOTER_RESULTS/T21_xs"
 ```
 
 Without `--models-dir` it expects models_deployed; prefer the explicit flag. If intentionally creating that default, preserve unrelated existing files:
@@ -187,6 +213,8 @@ Saved float32 Evo2 features have 4096 columns and matching labels/weights. The u
 
 Recovered original-run ProkBERT validation/test AP is 0.8080683612857302/0.8249372466065321; CNN-v2 is 0.7380835045313733/0.7255828423854476. Their losses use weights, whereas these AP values are unweighted; evaluation origins differ. These are historical metrics, not remeasurements. Saved-feature evaluation does not audit new GPU extraction or benchmark scanning. Original T22_xs predictions and optional calib_xs maps/cohort remain unavailable; raw scoring/ranks do not need them.
 
+The 2026-11-03 audit separately evaluated recovered checkpoints on the held-out test set on **CPU FP32**: ProkBERT AP **0.8259149947673579**, CNN-v2 AP **0.7255402903111163**. Torch 2.11/2.15 FP32 scores agreed; CPU BF16 ProkBERT AP was **0.8248204288011242**. These differ from the recorded GPU-era AP above and do not replace it. Exact original GPU kernels/runtime were not replayed; precision-dependent agreement is not bit-identical historical reproduction.
+
 ### Verified recovered-checkpoint check
 
 Both classifiers previously scored all 45 promoters with both −10 and −35 motifs on CPU with Python 3.13.5, torch 2.11.0, Transformers 5.3.0, NumPy 2.5.3 and scikit-learn 1.9.0. IDs/order were preserved; helper-versus-six-decimal-CSV difference was at most 4.92e-7. ProkBERT fixed (45,81) versus longest (45,78) padding gave identical scores on those inputs, not a general padding guarantee.
@@ -229,6 +257,8 @@ The trio led at recall 0.5 on both restricted benchmarks; paired Evo2 led slight
 
 Historical alternatives were one-hot CNN-v1, NT-v2 query/value LoRA and NTv3 384-bp-context full fine-tuning. NTv3's high reported AP has unresolved context-overlap/provenance limits; an unmasked token-reconstruction or constant-only probe record is not classifier evidence. The off-the-shelf prokbert-mini-promoter baseline is separate from our prokbert-mini training base. Cluster-disjoint CV code exists, but completed CV output is not supplied.
 
+Current orchestration/reporting limits are documented in [Pipeline](PIPELINE.md#phase-d--evaluate): generated CV jobs hard-code `results/T23` and all three models despite custom `--out`/`--models`, and the summary consumer omits CNN-v2 external metrics. The sweep also hard-codes legacy `results/T16` and can exit successfully with zero completed trials; it cannot currently select `T16_xs`. These are runtime/tooling defects, not revised scientific measurements.
+
 ### NTv3 context-length requirement and extraction
 
 The provider's [NTv3 architecture guide](https://github.com/instadeepai/nucleotide-transformer/blob/main/docs/nucleotide_transformer_v3.md) requires input lengths divisible by 128 for the main seven-downsample models. The supervised context run selected 384 bp (3 × 128), not because 384 is the model's only valid length. Its retained preflight records `T15_xs_ctx` and `max_length=384`; the [classifier launcher](../pipeline/training/nucleotide-transformer-v3/current/finetune_ntv3.sbatch) selects `sequence_context`.
@@ -236,6 +266,5 @@ The provider's [NTv3 architecture guide](https://github.com/instadeepai/nucleoti
 For recoverable loci, [context construction](../pipeline/datasets/positives-with-context/build_context_sources.py) uses published-TSS coordinates or searches the source promoter/background region in its matched genome. It extracts a contiguous, strand-oriented 384-bp window. An 81-bp core has 151/152 flanking positions, reversed in order after reverse complementation; the current extraction function was exercised on actual forward/reverse reference loci and a contig-boundary case. Unavailable flanks are represented by N, including [sequence-only source padding](../pipeline/datasets/clustering-and-splits/npad_context.py). N-padding supplies length, not biological context. This describes the construction method; it does not certify every row of an unavailable original context split or repair the separately identified flawed intermediate.
 
 The deployed Evo2 probe instead selected the 81-bp core column. Keeping the deployed members on one frame controls an input difference, but it is not required for score-track combination: the [NTv3 scanner](../pipeline/training/nucleotide-transformer-v3/current/ntv3_genome_scan.py) itself reads 384 bp and reports 81-bp core coordinates. A longer-input Evo2 experiment would require a compatible probe and renewed ensemble evaluation, not automatically retraining every other member. Neither the current evidence nor model architecture establishes 81 bp as an accuracy optimum.
-
 
 The dataset retains 888 incompatible-assembly B. licheniformis positives; all deployed weights remain affected. [Pipeline provenance](PIPELINE.md#genome-assemblies-and-coordinate-provenance) explains the correction/retraining boundary. Target exclusion is supervised only; backbone pretraining exposure is unknown. Motif/rank outputs require biological testing.

@@ -26,7 +26,8 @@
 # (Oak's decision, 2026-08; see the README, "Why three models?"). Only these three are supported here. evo2 is special-cased
 # (own scanner + env); prokbert/cnn_v2 go through genome_inference. Raw scores are ranked per model
 # over the shared candidate-plus-null pool. This does not calibrate promoter probabilities or establish
-# biological FDR control. Subsets of the three members are supported; additional model types are not.
+# biological FDR control. Select at least TWO of the three members: alignment rejects a single track.
+# Two-member subsets and the default trio are supported; additional model types are not.
 #
 # The null TSV(s) MUST contain clean 81 bp sequences; extract_negatives.py defaults to 52.
 # Run only ONE job per OUT at a time. Cached tracks are not fingerprinted by assembly/checkpoint:

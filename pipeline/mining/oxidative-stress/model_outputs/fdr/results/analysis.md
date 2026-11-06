@@ -6,6 +6,8 @@ Historical T27 stress-associated run, separate from the ordinary 929/180/45 cata
 
 Window p = (count(null score ≥ candidate score) + 1)/(Nnull + 1). Select p≤0.05, merge same-strand windows, assign each peak its minimum selected p, then apply BH over selected peaks. Selection/minimum p-values do not establish calibrated peak-level or biological FDR≤5%. An oxidative-stress neighborhood does not prove inducibility.
 
+These sequences are not validated constitutive or stress-inducible promoters, and stress protection was not measured. This screen is distinct from the [later reference-motif QC](../../../../../../results/oxidative-stress/motif_qc/summary.json): none of its 48 comparisons passes adjusted q≤0.05 against 2,000 per-sequence base-count-preserving shuffles.
+
 ## Recorded result
 
 Null median/p95/p99/max is 0.5189/0.8690/0.9604/0.9945, minimum attainable p 2.38e-03. There are 24 screening loci at q≤0.05 and the same count at q≤0.10. Reported top 24 scores span 0.8797–0.9963, q 1.90e-02–4.51e-02; no summit sequence was truncated.
@@ -40,4 +42,6 @@ Null median/p95/p99/max is 0.5189/0.8690/0.9604/0.9945, minimum attainable p 2.3
 
 peaks_fdr.csv stores all peaks; top80_promoters.csv stores the reported sequence subset. top80_promoters_motif.csv adds motif annotations. summit is the 0-based forward-genome start of an 81-bp window, including on the reverse strand; sequence is in reading orientation, not a mapped TSS.
 
-Reproduction needs aligned candidate **and** null raw member tracks on the same grid/settings. Stored peak tables alone cannot reconstruct pooled ranks/window p-values; a mean of raw null scores is not the pooled-rank null. Motifs and downstream gene associations need biological testing. [Interpretation](../../../../../../docs/RESULTS.md#interpreting-candidates-and-downstream-units) defines the separate claims.
+Reproduction needs aligned candidate **and** null raw member tracks on the same grid/settings. Given identical saved tracks, the pooled-rank/p/q arithmetic is deterministic and can be recomputed on CPU; this report alone does not reconstruct the neural scans. Stored peak tables cannot reconstruct pooled ranks/window p-values, and a mean of raw null scores is not the pooled-rank null. The historical `top80` filenames do not imply 80 retained candidates. [Interpretation](../../../../../../docs/RESULTS.md#downstream-genes-and-putative-units) defines the separate claims.
+
+The exported 81-bp sequences match the retained reference genome. The target tags for `cbut_0001` (`FF104_RS17290`) and `cbut_0021` (`FF104_RS17285`) conflict in strand/coordinates with the dated PGAP annotation used for the ordinary catalogue. Resolve the original target-list annotation provenance before assigning replacement tags or claiming a target-gene relationship.
