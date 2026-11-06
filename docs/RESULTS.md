@@ -33,7 +33,9 @@ All 929 summit sequences match oriented 81-bp slices of the checksum-verified co
 
 Recovered MEME/FIMO 5.3.0 records identify five de-novo motifs learned from the top 500 summits (widths 14/7/8/18/10 bp). FIMO scanned all 929 oriented windows with `--norc`, emitted p≤0.0001 and used NRDB A/C/G/T background 0.282/0.222/0.229/0.267. The builder filters emitted hits at p≤0.001 and labels centres 3–18 bp upstream as −10 and 22–42 bp upstream as −35 **without checking motif ID**. These are positional labels, not verified σA grammar.
 
-All 180 selected −10 and 333 selected −35 contexts reproduce the original FIMO fields. Of the −35 selections, 288 use the same 14-bp MEME-1 motif used for 170 −10 selections. `spacer_bp` is centre-to-centre distance, not an edge spacer. Separate width-six reference-PWM QC gives TATAAT/TTGATA cores and AT-rich-null median percentiles 98/52; selected-context QC is not independent activity validation. The width-six reference file was not the original discovery scan input.
+The recovered patterns are `WWWTATGWTATAAT`, `AAGGAGG`, `TRTTGACA`, `TCGCTTGAGGGTGACAAC` and `KADWGAGGTG`, respectively. Discovery therefore includes a pattern containing `TTGACA`.
+
+All 180 selected −10 and 333 selected −35 contexts reproduce the original FIMO fields. Of the −35 selections, 288 use the same 14-bp MEME-1 motif used for 170 −10 selections. `spacer_bp` is centre-to-centre distance, not an edge spacer. Separate width-six reference PWMs have `TATAAT`/`TTGACA` consensuses. The context-wide QC reports AT-rich-null median percentiles 98/52 for the 180/333 contexts; the separate logos summarize best-scoring six-base cores from only the **45 both-hit candidates**, with observed `TATAAT`/`TTGATA` consensuses. Reference patterns, full-context statistics and selected-core logos are different objects, and none independently validates activity. The reference file was not the discovery scan input. The `Updated Motif analysis` diagnostic incorrectly compares centre separation with a 15–19-bp edge-gap rule (for example, `cand_00029` has centre distance 28 but edge gap 17); those diagnostic flags do not invalidate the reproduced catalogue. See the [QC report](../pipeline/mining/motif_qc/REANALYSIS.md).
 
 ### Downstream genes and putative units
 
@@ -52,7 +54,17 @@ A promoter is regulatory DNA, not a protein-coding gene. Nearest downstream same
 | `cand_00098` | `FF104_RS20510` | Hypothetical protein |
 | `cand_00101` | `FF104_RS15625` (*prfB*) | Peptide chain release factor 2 |
 
-Nine units have one gene; `cand_00089` has two with **44 intervening bases**. The programmed-frameshift CDS segments of *prfB* remain one gene. Use locus tags and annotated products rather than invented operon names; cotranscription needs transcript evidence. “Hypothetical” means an uncertain specific function, not inactivity.
+Nine units have one gene; `cand_00089` has two with **44 intervening bases**. Its *nrdG* CDS spans 3,806,612–3,807,121 and the aldose 1-epimerase-family CDS spans 3,805,692–3,806,567 on the − strand. The programmed-frameshift CDS segments of *prfB* remain one gene. Use locus tags and annotated products rather than invented operon names; cotranscription needs transcript evidence. “Hypothetical” means an uncertain specific function, not inactivity.
+
+To reproduce the export, set `GFF` to the exact extracted `genomic.gff` annotation file. Its SHA-256 must match `930f3b0d339cd48b70c902b81a4f26cba49bcf478ee344ce2474bc50375af961`; downloading the same assembly later does not guarantee the same annotation release.
+
+```bash
+python3 pipeline/mining/candidate-table/export_gene_context.py \
+  --candidates results/candidates/g131795_tier1_canonical_seq.tsv \
+  --gff "$GFF" \
+  --csv results/candidates/g131795_first10_canonical_gene_context.csv \
+  --json results/candidates/g131795_first10_canonical_gene_context.json
+```
 
 ## 2. Classifier evaluation
 
@@ -60,7 +72,7 @@ Nine units have one gene; `cand_00089` has two with **44 intervening bases**. Th
 
 The deployed dataset contains **50,190 windows** from a 166-assembly cohort with no supervised Cb target. Train/validation/test counts are **44,085/3,052/3,053**, with **24,001/547/547 positive labels**. Silver positives are annotation/position-derived putative promoter DNA, weighted 0.3 for training loss and confined to training. Putative negatives are not proven promoter-free. Cluster-ID intersections across splits are zero, not proof of biological independence or unknown backbone pretraining exclusion. See the [training manifest](../results/training_sources.json) and [pipeline provenance](PIPELINE.md#genome-assemblies-and-coordinate-provenance).
 
-Negative-source counts from checksum-matched retained T15_xs Parquets show **SRS train/validation/test = 5,505/652/701**; see the [12-row negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) and [full count table](../results/README.md#training-source-manifest). The training-only restriction applies to silver/cross-species **positive** labels, not their SRS negatives. Earlier documentation stating otherwise was incorrect. SRS intends a dinucleotide shuffle of 81-bp silver cores, with a plain-shuffle fallback: exact preservation and motif destruction are not guaranteed. CNN k-mer frequencies are features of the same labelled windows, not replacement negative generation; Evo2 embeds those windows and refits its probe on train+validation. No split, fitted artifact or numerical result changes with this correction.
+Negative-source counts from checksum-matched retained T15_xs Parquets show **SRS train/validation/test = 5,505/652/701**; see the [12-row negative-source CSV](../results/training_negative_sources.csv) and [full count table](../results/README.md#training-source-manifest). The training-only restriction applies to silver/cross-species **positive** labels, not their SRS negatives. Earlier documentation stating otherwise was incorrect. SRS intends a dinucleotide shuffle of 81-bp silver cores, with a plain-shuffle fallback: exact preservation and motif destruction are not guaranteed. CNN k-mer frequencies are features of the same labelled windows, not replacement negative generation; Evo2 embeds those windows and refits its probe on train+validation. No split, fitted artifact or numerical result changes with this correction.
 
 | Deployed member | Validation AP | Test AP | Test AUROC |
 |---|---:|---:|---:|
@@ -69,6 +81,8 @@ Negative-source counts from checksum-matched retained T15_xs Parquets show **SRS
 | Evo2-7B frozen probe | selection cohort later used in refit | **0.70258010** | **0.89534660** |
 
 ProkBERT/CNN trainers weight loss, not AP. Evo2's retained saved-feature replay supplies sample weights; all test weights are 1, so weighted/unweighted AP and AUROC coincide. Evo2 refits on train+validation; validation is not a final held-out cohort. The test prevalence **547/3,053 = 0.179168** is the no-skill AP reference; no-skill AUROC is 0.5. Dashes mean not reported here, not zero.
+
+Fresh held-out **CPU FP32** evaluation of the recovered checkpoints gave ProkBERT AP **0.8259149947673579** and CNN-v2 AP **0.7255402903111163**, close to but unequal to the recorded GPU-era values above. Torch 2.11/2.15 FP32 scores agreed; CPU BF16 changed ProkBERT AP to **0.8248204288011242**. The exact original GPU kernels/runtime were not replayed. These precision-dependent remeasurements neither replace historical AP nor establish bit-identical original-GPU reproduction.
 
 Historical comparisons reported test AP NTv3 (384-bp context) **0.960**, ProkBERT **0.884**, NT-v2 LoRA **0.854**, CNN-v2 **0.848**, CNN-v1 **0.804**, Evo2 probe **0.703**. These mix checkpoints/splits and input contexts and must not replace the deployed table. Earlier plain-0.6 prevalence was 967/3,318. NTv3 context-overlap/provenance remains unresolved. [Models](MODELS.md) records architectures, input frames and recovery evidence.
 
@@ -96,6 +110,8 @@ Download the [reported six-model comparison CSV](../results/benchmarks/reported_
 
 Retained aligned-score recomputation reproduced paired counts: *C. ljungdahlii* 125/(125+43)=74.4048% and 623/(623+388)=61.6222%; *C. autoethanogenum* 289/(289+43)=87.0482% and 1443/(1443+442)=76.5517%. This verifies saved-score arithmetic, not a new DNA scan.
 
+The historical restriction masks have a half-open boundary-touch deviation: `[19,100)` is accepted for region `[100,200)` despite no overlap, while right-touching `[200,281)` is rejected. Benchmark replay preserves that convention. No change to retained catalogue/benchmark counts was demonstrated; [pipeline caveats](PIPELINE.md#genome-scale-benchmark-regime-c) distinguish current masking from strict interval intersection.
+
 ## 3. Independent DH5α reporter-core estimates
 
 The 88-record RBF SVR scores **50-bp `summit_seq[10:60]` cores**, not ensemble ranks or whole constructs. `cand_00098` predicts **32.8751 AU / 474.57%** of primary predicted `pptb_fU`; `cand_00101` predicts **17.9027 AU / 258.44%**. The primary reference predicts **6.927284 AU**. These AU are the external training table's unspecified numerical activity scale—not RFU or validated RPU.
@@ -106,11 +122,13 @@ Download [CSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength
 
 ## 4. Oxidative-stress-associated candidates
 
-The separate [source workflow](../pipeline/mining/inducible/) selects stress-associated gene neighbourhoods. Its target list has **31 entries / 30 distinct loci / 27 regions**, producing **24 peaks** from separate **1,026 candidate / 420 null windows** on GCF_014131795.1. It is not a subset filter on the ordinary 929-region score pool.
+The separate [source workflow and motif-QC scripts](../pipeline/mining/oxidative-stress/) select stress-associated gene neighbourhoods and support future-use analysis in this integrated layout. Its target list has **31 entries / 30 distinct loci / 27 regions**, producing **24 peaks** from separate **1,026 candidate / 420 null windows** on GCF_014131795.1. It is not a subset filter on the ordinary 929-region score pool.
 
 Download the [24-row final CSV](../results/oxidative-stress/CB_oxidative_stress_final_promoters.csv) and [24-sequence FASTA](../results/oxidative-stress/top80_promoters_summits.fasta); `top80` is a historical filename, not the sequence count. Stored six-base reference FIMO annotations give **2 both-hit / 16 −10-only / 1 −35-only / 5 neither**. Both-hit `cbut_0002`/`cbut_0005` have 15/17-bp edge gaps, distinct from ordinary catalogue centre distances.
 
-[Per-candidate motif QC](../results/oxidative-stress/motif_qc/candidate_motif_qc.csv), [summary JSON](../results/oxidative-stress/motif_qc/summary.json) and [signal-versus-shuffled SVG](../results/oxidative-stress/motif_qc/signal_vs_shuffled.svg) compare full-window maximum reference-PWM scores with **2,000 mononucleotide-count-preserving shuffles per candidate**. Median empirical p-values are **0.3483 / 0.4450** for −10/−35-like scores; **none passes q≤0.05 across 48 tests**. This is selected-sequence QC, not a calibrated biological FDR or activity result.
+**Unresolved target annotation:** stored DNA matches are verified, but oxidative `cbut_0001` → `FF104_RS17290` and `cbut_0021` → `FF104_RS17285` conflict in strand/coordinates with dated PGAP `GCF_014131795.1-RS_2026_04_15`, used for the ordinary first-ten map. The respective retained PGAP targets are on − at 3,741,141–3,741,368 and + at 3,740,851–3,741,078, opposite the candidates' +/− strands. Resolve the original target-list annotation version before interpreting these associations; no replacement locus tags are established.
+
+[Per-candidate motif QC](../results/oxidative-stress/motif_qc/candidate_motif_qc.csv), [summary JSON](../results/oxidative-stress/motif_qc/summary.json) and [signal-versus-shuffled PNG](../results/oxidative-stress/motif_qc/signal_vs_shuffled.png)/[SVG](../results/oxidative-stress/motif_qc/signal_vs_shuffled.svg) compare full-window maximum reference-PWM scores with **2,000 mononucleotide-count-preserving shuffles per candidate**. Median empirical p-values are **0.3483 / 0.4450** for −10/−35-like scores; **none passes q≤0.05 across 48 tests**. This is selected-sequence QC, not a calibrated biological FDR or activity result. No new classifier training, genome scoring or de-novo motif discovery is claimed.
 
 No activity, constitutivity, inducibility or stress protection is validated. The separate [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser) addresses coding sequences, not promoter strength. Neither it nor these stress candidates was used in experimental constructs. Its codon table uses draft GCF_000409755.1; future use must reconcile assembly/context rather than treating model outputs as tested constructs.
 
@@ -118,7 +136,11 @@ No activity, constitutivity, inducibility or stress protection is validated. The
 
 Optional historical Platt+AT calibration uses 279 short sequences (93 synthetic positives/186 putative negatives), not Evo2 or the trio. Sampled context/prevalence limits transfer; AT-dependent maps can reorder ranks. Original `calib_xs` maps/cohort are unavailable; older maps are not substitutes. The ordinary deployed mine uses no calibrator.
 
+The historical C. ljungdahlii launchers can skip an interrupted, nonempty partial CSV on resume; `run_calibration_2.sh` now inherits final-06 checkpoint defaults rather than its documented old trial checkpoints. These source-verified reproduction risks do not demonstrate corrupted retained results. See [calibration notes](../pipeline/evaluation/calibration/CALIBRATION_NOTES.md).
+
 Exploratory FDR tracks pool candidate+null member ranks and select minimum window p-values per peak. They differ from ordinary target ranks and do not establish biological peak-FDR≤5%; see the [retained screening report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md).
+
+The FDR launcher needs **at least two members**, despite accepting a one-member configuration before the aligner rejects it. Default trio/two-member subsets are unaffected. Other current reporting/orchestration limits: generated cluster-CV commands hard-code `results/T23` and all three models despite custom preparation `--out`/`--models`, and `report_eval_summary.py` omits CNN-v2 external-evaluation rows. Inspect original metrics/generated commands rather than treating missing summary output as a scientific result; see [evaluation guidance](PIPELINE.md#phase-d--evaluate).
 
 **All deployed members retain 888 wrong-assembly *B. licheniformis* positive windows.** Correction requires re-extraction, new splits and retraining, not relabelling the retained metrics. Other unresolved provenance includes the exact historical Evo2 backbone extraction revision/layer, NTv3 context-overlap, the scientific source of imported six-base QC PWMs and the original packaging generator. The clustering wrapper and installed MMseqs2 package record are recovered, but do not establish the exact historical executable/runtime linkage; [pipeline recovery notes](PIPELINE.md#recover-the-original-clustering-command-and-version) distinguish these claims.
 

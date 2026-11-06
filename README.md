@@ -2,6 +2,31 @@
 
 **HKUST iGEM 2026.** We rank promoter-like DNA in *C. butyricum* DSM 10702 using fine-tuned ProkBERT-mini, a fusion CNN and a logistic probe on frozen Evo2-7B embeddings. Motif annotations then help prioritise sequences for testing. A separate DH5α-trained SVR estimates reporter-core activity; it is not part of the mining ensemble.
 
+## Workflow at a glance
+
+```mermaid
+flowchart TD
+  sources["Curated promoters, published TSS,<br/>silver positives and background negatives"]
+  sources --> data["81-bp windows<br/>MMseqs2 cluster-disjoint splits"]
+  data --> fit["Fit ProkBERT-mini, fusion CNN-v2<br/>and a probe on frozen Evo2-7B features"]
+  genome["Target-genome windows<br/>81 bp, transcription-oriented"]
+  fit --> scores["Three classifier score tracks"]
+  genome --> scores
+  scores --> ranks["Align contig, start and strand<br/>Average member percentile ranks"]
+  ranks --> peaks["Threshold and merge supported peaks"]
+  peaks --> learn["MEME: learn motifs<br/>from top summit sequences"]
+  learn --> scan["FIMO: scan candidate DNA<br/>using the learned motifs"]
+  peaks --> scan
+  scan --> catalogue["Candidate DNA catalogue<br/>with positional motif labels"]
+  catalogue --> cores["Selected 50-bp DNA cores"]
+  reporter["Published DH5alpha reporter data"] --> svr["Separate fitted activity SVR"]
+  cores --> svr
+  svr --> activity["Reporter-context activity estimates<br/>not native-host measurements"]
+```
+
+The independent SVR receives candidate **DNA**, not ensemble scores. Neither the
+ranking nor the motif labels establish promoter activity.
+
 ## Results and downloads
 
 | Output | Result | Interpretation |
@@ -16,7 +41,7 @@
 
 Read **[Results](docs/RESULTS.md)** for protocols and limitations and **[DH5α strength predictions](docs/ECOLI_STRENGTH_PREDICTIONS.md)** for all ten numerical estimates and framing sensitivity. **DL10 is `cand_00101` / `P_prfB`; `pptb_fU` is an independent reference**, despite its older notebook alias.
 
-The team reports plasmid ordering, transformation and GFP testing in *E. coli*. Candidate-linked quantitative assay data and reporter strain were not supplied here; native Cb validation was not reached. Neither the separate codon optimiser nor oxidative-stress candidates were used in experimental constructs. These computational results do not establish improved expression, constitutivity or protection.
+The team reports plasmid ordering, transformation and GFP testing in *E. coli*. Candidate-linked quantitative assay data and reporter strain were not supplied here; native Cb validation was not reached. The separate [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser) and [oxidative-stress workflow](pipeline/mining/oxidative-stress/README.md) were prepared for future constructs, not used in experimental constructs. These computational results do not establish improved expression, constitutivity or protection.
 
 ## Use the models
 
@@ -53,7 +78,7 @@ pipeline/
   datasets/      labels, controls, splits and encodings
   training/      ProkBERT, fusion CNN and frozen-Evo2 probe
   evaluation/    metrics, benchmarks, calibration and FDR
-  mining/        scoring, peaks, motifs, strength and inducible/ source
+  mining/        scoring, peaks, motifs, strength and oxidative-stress/ source
 workflow/        Snakemake files, profiles, inputs and local run outputs
 environments/    conda recipes
 release/         Hugging Face cards, fitted artifacts and uploader
@@ -70,26 +95,12 @@ Project code/documentation is [MIT](LICENSE). Model artifacts, executable upstre
 
 ## Publish source updates
 
-The earlier public-results GitHub/Hugging Face publication is complete. This **new factual SRS correction** is prepared on **`fix/srs-split-documentation`** in the separate `cb-promoter-srs-correction` checkout, based on published `main`. Publish this branch through a pull request to **`main`**; do not stage from the original dirty or prior publication checkouts. Scope staging to these correction paths:
+The SRS documentation correction was already merged in PR #52 (public source commit `7cb586c58529db4f81c0e5e094b2d9d98147cb67`); the live cards inspected in the 2026-11-03 audit matched that publication. It is not a pending publication task.
 
-```bash
-git switch fix/srs-split-documentation
-git add -- README.md docs/MODELS.md docs/RESULTS.md docs/PIPELINE.md \
-  results/README.md results/training_negative_sources.csv \
-  pipeline/datasets/clustering-and-splits/cdhit_splits.py \
-  release/huggingface/README.md \
-  release/huggingface/prokbert-mini-clostridium-promoter/README.md \
-  release/huggingface/cnn-fusion-clostridium-promoter/README.md \
-  release/huggingface/evo2-logreg-clostridium-promoter-probe/README.md
-git diff --cached --stat
-git diff --cached --name-status
-git diff --cached
-# Confirm only the intended public payload is staged before continuing.
-git commit -m "Correct SRS negative split documentation and publish source counts"
-git push -u origin fix/srs-split-documentation
-gh pr create --base main --head fix/srs-split-documentation \
-  --title "Correct SRS negative split documentation" \
-  --body "Document SRS negatives across all splits with retained source counts; distinguish positive-label pins and CNN features without changing models or metrics."
-```
+The source-layout branch is `reorganise`; the GitHub default `main` branch retains the older layout. Historical names such as `T21_xs` identify retained run-output directories, not current source directories. Review the current working tree and index before publishing; do not use a blanket “take theirs” resolution to restore obsolete source directories or undo scientific corrections.
 
-These are manual instructions, not staging or publication actions performed for this correction. Merge the GitHub correction first so the new `main/results/training_negative_sources.csv` link resolves, then **reupload only README.md for the three classifier cards** using the [release instructions](release/huggingface/README.md#publish-these-documentation-changes-only). The independent DH5α card has no incorrect SRS claim and needs no upload. Historical verification/recovery JSON and receipts, weights, splits, metrics and licences remain unchanged. No retraining, full model release or visibility change is required. Keep local wiki/export directories out of the payload.
+For future documentation-only corrections, review and publish only the intended prose/card-source paths through the normal source pull-request process. Preserve unrelated work and immutable historical receipts, metrics, data and weights. A documentation change does not require retraining or a full artifact release.
+
+Keep the separately maintained local wiki and exports out of the GitHub source payload; their ignored local copies are not part of this documentation update.
+
+Files under `release/huggingface/*/README.md` are **local card sources**, not the live Hub cards. Merging GitHub changes does not sync them. If separately authorised to publish cards, use the [README-only release procedure](release/huggingface/README.md#publish-these-documentation-changes-only), review the exact payload and resulting Hub revision, and keep inspected artifact/code revisions pinned. These instructions do not claim that the current local corrections have been uploaded.

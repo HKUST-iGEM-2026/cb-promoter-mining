@@ -15,7 +15,11 @@ The three genome-mining classifiers rank promoter-like DNA; the independent DH5�
 
 Classifier test cohort: 3,053 windows/547 positives; AP is unweighted (all Evo2 test weights equal 1). ProkBERT/CNN metrics are original deployed-run records, while Evo2 was evaluated on recovered saved embeddings, not fresh GPU extraction. The paired ensemble's restricted-genome precision proxy at recall 0.1/0.5 is **74.4/61.6%** for *C. ljungdahlii* and **87.0/76.6%** for *C. autoethanogenum*. This proxy uses incomplete published-TSS catalogues and is not measured biological purity; benchmark genomes supplied silver/putative-negative training windows. The known **888 wrong-assembly B. licheniformis training positives remain in deployed artifacts**.
 
+Fresh CPU FP32 test AP was ProkBERT **0.8259149947673579** and CNN-v2 **0.7255402903111163**; CPU BF16 ProkBERT AP was **0.8248204288011242**. These precision-dependent remeasurements do not replace the GPU-era records; the original GPU runtime was not replayed. [Evaluation protocols](../../docs/RESULTS.md#regime-a--held-out-labelled-windows) retain weighting and leakage caveats.
+
 The target ensemble mine contains **929 regions, 180 placed −10 hits and 45 both-hit candidates**. No native *C. butyricum* activity validation accompanies them. SVR ratios are same-model predictions, not measured fold changes: alternative reference framing puts DL9 at **93.67–474.57%**, a scenario range rather than a confidence interval. **Shortlist DL10 is `cand_00101` / `P_prfB`; `pptb_fU` is an independent reference**, despite an older notebook alias.
+
+The Evo2 Hub `finetune` relationship is inferred metadata, not proof of updated backbone weights: the probe uses frozen embeddings. Preserve its valid base-model attribution; see the [probe card](evo2-logreg-clostridium-promoter-probe/README.md). Restriction-mask boundary behavior, sweep/CV/reporting defects and historical calibration risks are documented in [Pipeline](../../docs/PIPELINE.md), not repaired by these cards. Oxidative target tags `cbut_0001` / `FF104_RS17290` and `cbut_0021` / `FF104_RS17285` require annotation-version reconciliation despite verified stored DNA matches; [Results](../../docs/RESULTS.md#4-oxidative-stress-associated-candidates) gives the unresolved discrepancy.
 
 ### Downloads and reuse
 
@@ -23,9 +27,9 @@ Start with the [public results and downloads index](../../results/README.md) for
 
 ## Publish these documentation changes only
 
-**This is a new factual correction after the completed public-results publication.** Retained checksum-matched T15_xs Parquets show SRS negatives in train/validation/test (**5,505/652/701**), not training-only; only silver/cross-species positive labels trigger the training pin. The [negative-source CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) contains all 12 counts. CNN k-mer frequencies are input features rather than replacement negative generation; Evo2 embeds the same labelled windows and refits its probe on train+validation.
+The SRS correction was already merged in source PR #52 (`7cb586c58529db4f81c0e5e094b2d9d98147cb67`); the live cards inspected on 2026-11-03 matched that publication. It is not pending. Current files here are **local card sources**; subsequent edits do not automatically update live cards.
 
-Publish/merge **`fix/srs-split-documentation`** from the separate `cb-promoter-srs-correction` checkout using the [scoped source instructions](../../README.md#publish-source-updates) first, so the new CSV's `main` URL resolves. Then **reupload README.md only for these three classifier cards**, even though the earlier card publication is complete. No weight reupload, model retraining, full artifact release, checkpoint recovery or repository visibility change is required. Run the following manually from that checkout's repository root:
+For any separately authorised future documentation-only publication, merge the reviewed source correction first so new source links resolve, then upload **only the changed standalone card README.md files**. No weight reupload, retraining, full artifact release or visibility change is required. The following are manual examples for the three classifier cards, not actions performed by editing this repository:
 
 ```bash
 pip install -U huggingface_hub
@@ -40,7 +44,7 @@ hf upload CloBiT/evo2-logreg-clostridium-promoter-probe \
   release/huggingface/evo2-logreg-clostridium-promoter-probe/README.md README.md
 ```
 
-Choose write-authorised CloBiT credentials for those uploads. Each command updates **only `README.md`** in its existing model repository; it does not upload this release guide, reupload weights or change visibility. Review the three resulting Hub cards and their count-artifact links signed out. The independent DH5α card contains no incorrect SRS claim and is unchanged; **do not reupload it for this correction**. Each classifier upload creates a new card revision; keep previously inspected artifact/code revisions pinned rather than replacing them with a documentation revision.
+Choose write-authorised CloBiT credentials only when publication is authorised. Each example updates **only `README.md`** in its existing model repository, not this guide or weights. Upload only cards whose prose changed; if the independent DH5α card changes, use the same README-only pattern for `CloBiT/dh5alpha-promoter-strength-svr`. Review resulting signed-out cards and source links and record the new card revisions. Keep inspected artifact/code revisions pinned rather than replacing them with documentation revisions. No current local correction is claimed uploaded here.
 
 A public download failure is not evidence that an authorised account or duplicate model release is needed: check the exact repository/path/revision and upstream dependency conditions. Write authentication is for publication, not reading these public packages.
 
@@ -85,9 +89,9 @@ Set both checkpoint paths explicitly if their locations differ; the uploader's f
 
 ```bash
 uv run --no-project --with huggingface-hub python \
-  release/huggingface/upload_to_hf.py --only dh5alpha --dry-run
+  release/huggingface/upload_to_hf.py --public --only dh5alpha --dry-run
 uv run --no-project --with huggingface-hub python \
-  release/huggingface/upload_to_hf.py --only dh5alpha
+  release/huggingface/upload_to_hf.py --public --only dh5alpha
 ```
 
 `--dry-run` authenticates with `whoami` and checks source inputs; it uploads nothing but is **not an offline inference test**. `HF_OWNER` defaults to `CloBiT`; changing it does not rewrite fixed CloBiT links in cards. New repositories default to private unless `--public` is supplied. **That flag only affects creation of a new repository; updating an existing repository does not change its visibility.** Existing four repositories are already public, so no visibility action is needed for the present documentation update.
@@ -109,3 +113,17 @@ These are retained artifact/package identities, not proof of every original trai
 Any historical SRS-training-only statement in immutable verification/recovery records is superseded by the checksum-matched negative-source CSV and current cards: SRS is label 0 across all three splits, while silver/cross-species positive labels are training-only. Those historical records/receipts remain byte-for-byte unchanged; the correction changes no model, split, AP, benchmark metric, licence or provenance identity.
 
 The DH5α package's historical read-back matched all 14 payload files and reproduced ten predictions with NumPy alone; fitted NPZ SHA-256: `153f41e1d051d432a2172b21b6e94f07799fa2229a45d795ae974fc8140130a8`. Its [card](dh5alpha-promoter-strength-svr/README.md) and [verification](dh5alpha-promoter-strength-svr/verification.json) retain the conditional model/evidence boundary.
+
+For NumPy-only inference without a Hub download, follow the [local loading instructions](../../docs/ECOLI_STRENGTH_PREDICTIONS.md#loading-the-fitted-model). The repository copy contains the same retained fit and reference inputs.
+
+### Historical publication identities
+
+The authenticated **2026-10-11 19:32 UTC** card/verification update was read back byte-for-byte at the following revisions. These identify historical documentation/evidence, not the current local card sources or replacement model weights.
+
+| Model | Historical card/verification revision | Preceding card/record revision |
+|---|---|---|
+| ProkBERT-mini | `ed99c7879f08e7956a12d55fbdd98d4777fbd5b4` | `12d92590a326b95ce2b97394eaa21057b39a4b56` |
+| CNN-v2 | `b39daa476d18752677c438e8509cd33cb4ee9fd8` | `2cfa144141d1bead5ecceed2571d52af18a12374` |
+| Evo2 probe | `6e521c874dd61517df9b17a56f2a75847a054b87` | `c965e3c7d47b048490bbf800b587a8eb11444698` |
+
+The six card/verification files matched local sources **at that publication**, not the rewritten cards now. Its verification hash is `1b2549072e1bac6e62b19c0954fcfc0a856798fe4a2dd5561d820fbe32b9f0ef`. The preceding ten-file publication record remains at `~/cb-promoter-original-run/verification/huggingface_publication.json`; its verification hash is `6f7bbb5819ce54cec4f9ffa2f8b451ef7a7be2057e98755df7d59ac43cf89e02`. Recovery receipt hash: `da967bd0d64feb9b887dfeec43e3b64f0b66707e8aa81ebb7f0008c8e30eabef`. ProkBERT metrics hash: `63cd7ac371d00dfbaa7ed507e83403693fbb951eb81e9236ee1e4afa0b6bb153`. These historical identities are not evidence that the present corrections have been uploaded.

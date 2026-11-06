@@ -60,6 +60,8 @@ Predictions apply to framed **50-bp cores**, not whole 81-bp inserts or the full
 
 The public [results and downloads index](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/README.md) links full-precision prediction CSV/TSV/JSON, framing-sensitivity results, reference DNA/provenance, named first-ten FASTA/TSV and gene-context files. It also provides the separate mining catalogue: **929 retained regions, 180 placed −10 hits and 45 both-hit candidates** on GCF_014131795.1. The first-ten analysis selects the first ten rows of that 45-candidate subset in catalogue order; the table above reorders them by predicted activity, not mining rank. Motif support and nearby genes are not biological validation.
 
+The catalogue's both-hit labels are positional, not verified σA grammar. Separate 45-candidate selected-core QC has observed `TATAAT`/`TTGATA` consensuses; its six-base reference PWMs have `TATAAT`/`TTGACA` consensuses. Those are distinct from the original five MEME discovery patterns and all 180/333 annotated contexts. The centre-distance/edge-gap diagnostic defect does not change the candidate DNA or independent SVR predictions; see [motif evidence](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/docs/RESULTS.md#coordinates-and-motif-evidence).
+
 ## Download and predict without refitting
 
 Install `huggingface_hub` for the `hf` CLI. The pinned public package supplies the predictor, fitted NPZ/metadata, exact reference and catalogue; inference requires **NumPy only**, not scikit-learn, a GPU, a language model or executable pickle.

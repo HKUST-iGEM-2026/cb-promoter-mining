@@ -1,0 +1,62 @@
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage{siunitx}
+\title{T27 empirical-FDR promoter mine --- \textit{C. butyricum}}
+\date{ensemble: prokbert + cnnv2 + evo2}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\begin{document}
+\maketitle
+\section{Stress-neighborhood FDR screening}\label{stress-neighborhood-fdr-screening}
+
+Historical T27 stress-associated run, separate from the ordinary 929/180/45 catalogue. Candidate/null counts are 1,026/420. Mean member percentiles are computed over each combined candidate+null pool, not ordinary target ranks. The intergenic null is putative; exchangeability, exact composition matching and promoter-free status are not established.
+
+\subsection{Screening rule}\label{screening-rule}
+
+Window p = (count(null score \ensuremath{\geq} candidate score) + 1)/(Nnull + 1). Select p\ensuremath{\leq}0.05, merge same-strand windows, assign each peak its minimum selected p, then apply BH over selected peaks. Selection/minimum p-values do not establish calibrated peak-level or biological FDR\ensuremath{\leq}5\%. An oxidative-stress neighborhood does not prove inducibility.
+
+\subsection{Recorded result}\label{recorded-result}
+
+Null median/p95/p99/max is 0.5189/0.8690/0.9604/0.9945, minimum attainable p 2.38e-03. There are 24 screening loci at q\ensuremath{\leq}0.05 and the same count at q\ensuremath{\leq}0.10. Reported top 24 scores span 0.8797--0.9963, q 1.90e-02--4.51e-02; no summit sequence was truncated.
+
+\subsection{Top 20}\label{top-20}
+
+{\def\LTcaptype{none} % do not increment counter
+\begin{center}
+\begin{tabular}{llrrrrrr}
+\toprule
+candidate\_id & contig & summit & strand & ensemble & $p$ & $q$ & n\_windows \\
+\midrule
+cbut\_0001 & contig\_1 & 3740720 & + & 0.9963 & 2.375e-03 & 1.900e-02 & 9 \\
+cbut\_0002 & contig\_1 & 2363897 & - & 0.9949 & 2.375e-03 & 1.900e-02 & 5 \\
+cbut\_0003 & contig\_1 & 1572280 & + & 0.9855 & 7.126e-03 & 1.900e-02 & 3 \\
+cbut\_0004 & contig\_2 & 130280 & + & 0.9846 & 7.126e-03 & 1.900e-02 & 7 \\
+cbut\_0005 & contig\_1 & 3054087 & - & 0.9802 & 9.501e-03 & 1.900e-02 & 7 \\
+cbut\_0006 & contig\_1 & 1730730 & + & 0.9769 & 9.501e-03 & 1.900e-02 & 3 \\
+cbut\_0007 & contig\_1 & 2354237 & - & 0.9730 & 9.501e-03 & 1.900e-02 & 3 \\
+cbut\_0008 & contig\_2 & 282538 & - & 0.9719 & 1.188e-02 & 1.900e-02 & 3 \\
+cbut\_0009 & contig\_2 & 583558 & - & 0.9714 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0010 & contig\_1 & 1177980 & + & 0.9693 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0011 & contig\_1 & 2140837 & - & 0.9693 & 1.188e-02 & 1.900e-02 & 5 \\
+cbut\_0012 & contig\_1 & 3215247 & - & 0.9693 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0013 & contig\_1 & 3059960 & + & 0.9689 & 1.188e-02 & 1.900e-02 & 4 \\
+cbut\_0014 & contig\_1 & 2592437 & - & 0.9684 & 1.188e-02 & 1.900e-02 & 1 \\
+cbut\_0015 & contig\_1 & 861180 & + & 0.9659 & 1.188e-02 & 1.900e-02 & 6 \\
+cbut\_0016 & contig\_2 & 699238 & - & 0.9525 & 1.663e-02 & 2.217e-02 & 3 \\
+cbut\_0017 & contig\_1 & 2139187 & - & 0.9521 & 1.663e-02 & 2.217e-02 & 5 \\
+cbut\_0018 & contig\_1 & 2946167 & - & 0.9504 & 1.663e-02 & 2.217e-02 & 8 \\
+cbut\_0019 & contig\_1 & 2014217 & - & 0.9458 & 1.900e-02 & 2.400e-02 & 6 \\
+cbut\_0020 & contig\_1 & 1140037 & - & 0.9424 & 2.138e-02 & 2.565e-02 & 2 \\
+\bottomrule
+\end{tabular}
+\end{center}
+}
+
+\subsection{Files and coordinates}\label{files-and-coordinates}
+
+peaks\_fdr.csv stores all peaks; top80\_\allowbreak{}promoters.csv stores the reported sequence subset. top80\_\allowbreak{}promoters\_\allowbreak{}motif.csv adds motif annotations. summit is the 0-based forward-genome start of an 81-bp window, including on the reverse strand; sequence is in reading orientation, not a mapped TSS.
+
+Reproduction needs aligned candidate \textbf{and} null raw member tracks on the same grid/settings. Stored peak tables alone cannot reconstruct pooled ranks/window p-values; a mean of raw null scores is not the pooled-rank null. Motifs and downstream gene associations need biological testing. \href{../../../../../../docs/RESULTS.md\#interpreting-candidates-and-downstream-units}{Interpretation} defines the separate claims.
+
+\end{document}

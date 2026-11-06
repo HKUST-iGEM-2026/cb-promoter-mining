@@ -1,6 +1,8 @@
 # Reproduce the pipeline
 
-Start with [setup](SETUP.md) and source `env.sh`. Run data stages from `workflow/`; root-stage commands below use PROMOTER_REPO. Source scripts live under `pipeline/`, not the obsolete numbered task-source directories. Names such as `T15_xs` and `T21_xs` below are existing data/run-output directories, not instructions to use the former source layout. Commands identify inputs and dependencies, not a one-command recreation of every historical run. Large recovered inputs are local, not committed.
+The pipeline converts heterogeneous promoter/genome sources into aligned classifier inputs, then turns common-coordinate scores into a candidate catalogue. Each phase produces the prerequisite for the next: source curation → labelled windows and splits → model encodings/fits → evaluation → target mining. Start with [setup](SETUP.md) and source `env.sh`; data stages run from `workflow/`, while root-stage commands use PROMOTER_REPO.
+
+The commands identify inputs and dependencies, not a one-command recreation of every historical run. Source scripts live under `pipeline/`; `T15_xs` and `T21_xs` name existing run-output directories, not the former numbered source layout. Large recovered inputs are local, not committed. Preserve original outputs when producing a new run.
 
 For retained numerical outputs and sequences, use the [public results/download index](../results/README.md); rerunning this workflow is not required to inspect them. The [Results guide](RESULTS.md) distinguishes saved-score verification, new inference and biological validation. Project model packages are public and ungated; see [pinned loading and checkpoint staging](MODELS.md#local-checkpoints). Large original split/encoding/score-track recovery is a separate prerequisite, not implied by a successful model download.
 
@@ -16,6 +18,8 @@ snakemake -n results/T14/negative_set.tsv    # plans Phase B up to the negatives
 Use explicit targets. The default legacy DAG reaches obsolete training wiring and optional C. difficile inputs.
 
 ## Phase A — acquire and curate
+
+Curation comes first because a sequence label is only meaningful with its source and evidence attached. This phase stages curated promoters, published starts and separately held-out synthetic sequences. Raw-read acquisition is a different route and must not be mistaken for the published-table labels used in deployment.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -47,7 +51,9 @@ The 20 C. difficile libraries enter a prepared-only TEX/TAP TSSpredator path, no
 
 ## Phase B — build the dataset
 
-The shared 81-bp input is 60 upstream bases, the TSS base and 20 downstream bases for published starts. Other sources are length-normalised without inventing mapped starts. This source convention—not a ProkBERT architectural limit—defines the deployed frame. [Model rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp) explains 78-token ProkBERT encoding, Evo2's per-window 81-bp inputs and the separate NTv3 384-bp context trial.
+The staged sources differ in length, annotation and confidence. Dataset construction first puts their DNA on a **shared 81-bp frame**, then controls related-sequence leakage by assigning whole clusters. Published starts use 60 upstream bases, the start-site base and 20 downstream bases; other sources are normalised without inventing mapped starts. **81 bp follows this source convention, not a ProkBERT length limit** ([capacity and rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp)).
+
+The four background classes test more than a trivial promoter-versus-random distinction, while the 0.3 silver weight reduces the influence of inferred positives. Once the split is fixed, per-model encoding changes representation, not rows, labels or partition membership.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -99,7 +105,7 @@ The splitter deduplicates DNA and pins clusters containing silver or cross-speci
 
 **The training-only rule applies to silver/cross-species positive labels, not SRS negatives.** `train_pin` requires `label == 1` and a silver or cross-species source; an SRS row has label 0 and is not pinned by its silver origin (although a shared train-pinned cluster would still stay in training). SRS is regenerated from the 81-bp silver core with an intended dinucleotide shuffle; the plain-shuffle fallback means neither exact dinucleotide preservation nor motif destruction is guaranteed.
 
-The [negative-source count CSV](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/results/training_negative_sources.csv) counts `label == 0` rows by `source` in retained T15_xs Parquets. All three Parquet SHA-256 values match [training_sources.json](../results/training_sources.json).
+The [negative-source count CSV](../results/training_negative_sources.csv) counts `label == 0` rows by `source` in retained T15_xs Parquets. All three Parquet SHA-256 values match [training_sources.json](../results/training_sources.json).
 
 | Negative source | Train | Validation | Test |
 |---|---:|---:|---:|
@@ -168,7 +174,7 @@ Zero shared cluster IDs is necessary, not proof of no related-sequence or genome
 
 ## Phase C — train
 
-These are the recorded deployed settings; rerunning training does not guarantee bit-identical weights.
+Training now receives a fixed partition and its confidence weights, so differences in representation do not require another split. ProkBERT fine-tunes a pretrained backbone and two-class head; CNN-v2 learns local/composition features from scratch. The commands retain the deployed settings, but rerunning them does not guarantee bit-identical weights.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -189,6 +195,8 @@ python ../pipeline/training/cnn/train_cnn_v2.py \
 ```
 
 ### The Evo2 probe
+
+Evo2 takes a different route: first extract embeddings with a frozen backbone, then fit the scaler/logistic probe on those features. Only the second step trains the classifier parameters, which is why it can run on CPU after the GPU extraction finishes.
 
 ```bash
 cd "$PROMOTER_REPO"
@@ -242,17 +250,13 @@ The recorded result is weighted AP 0.70258010/AUROC 0.89534660. This does not au
 
 ### Checkpoints and sweep
 
-T21_xs is the deployed ProkBERT/CNN-v2 run; T21_final records earlier plain-0.6 comparisons. Keep checkpoint/split identity with every metric. Retune after changing the split:
+T21_xs is the deployed ProkBERT/CNN-v2 run; T21_final records earlier plain-0.6 comparisons. Keep checkpoint/split identity with every metric. **The current `hyperparameter_sweep.py` is not an xs-retuning recipe:** it hard-codes legacy `results/T16/<model>` inputs and exposes no data-directory override. `--out` changes output placement, not input selection; merely preparing `T16_xs` does not make the sweep use it.
 
-```bash
-cd "$PROMOTER_REPO/workflow"
-conda activate "$ENV_MAIN"
-python ../pipeline/training/hyperparameter-sweep/hyperparameter_sweep.py \
-  --models prokbert,cnn_v2 --n-trials 15 --sweep-epochs 4 \
-  --out results/T21
-```
+Running the existing sweep requires the intended legacy encodings at `results/T16` and compatible model dependencies. Selecting xs inputs requires a code correction outside this documentation change; do not rename or overwrite historical datasets to imply equivalence. The explicit `--data-dir results/T16_xs/...` trainer commands above select xs data, but are fixed-setting training, not a sweep. **A wholly failed sweep can exit 0 and print `T21 done`: inspect `n_completed` and non-null `best_val_auprc` plus trial errors before accepting any result.**
 
 ## Phase D — evaluate
+
+Evaluate the labelled-window task before interpreting genomic use, then examine whether ranking recovers published starts. These are different questions, not interchangeable accuracy figures. A good held-out classifier can still exploit composition or produce many unmatched genomic peaks; [Results](RESULTS.md#2-classifier-evaluation) separates those controls and measurements.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -270,6 +274,10 @@ python ../pipeline/evaluation/external-holdout/evaluate_external_holdout.py \
 ```
 
 Loss weighting and AP weighting differ: ProkBERT/CNN-v2 trainers use unweighted AP, whereas the Evo2 probe supplies sample weights. [Results](RESULTS.md) distinguishes these records.
+
+`report_eval_summary.py` currently silently omits CNN-v2 external-evaluation results. Inspect the original evaluation JSON for CNN-v2 metrics; a missing summary row is not evidence of a missing or failed evaluation.
+
+Cluster-CV preparation exposes `--out` and `--models`, but generated job commands still hard-code `results/T23` and schedule all three ProkBERT/CNN/NT models. Only the default path/model layout is wired through; inspect and correct generated commands before submission when customising preparation. No completed cluster-CV output is supplied here.
 
 ### Genome-scale benchmark (Regime C)
 
@@ -298,6 +306,8 @@ TAG=cau FASTA=$PWD/$RC/cau.fna REGIONS=$PWD/$RC/cau_candidate_regions.bed TRUTH=
 
 Wait for each prerequisite job to finish. This is a restricted, same-strand window-coverage benchmark: windows expand ±40 bp; unmatched starts merge at ≤81 bp. Precision proxy is covered TSS/(covered TSS+merged unmatched peaks), not the fraction of called peaks matching. Common aligned coordinates are required before member ranking.
 
+**Restriction boundary caveat:** several current masks accept `[19,100)` against region `[100,200)`, even though exclusive-end touching is not half-open overlap; right-touching `[200,281)` is rejected. The benchmark preserves this historical boundary convention. Saved-track catalogue and paired benchmark replays matched; no change to retained 929/24 counts has been demonstrated. Do not interpret these masks as strict half-open intersection.
+
 ### Calibration (optional; the mine does not use it)
 
 ```bash
@@ -312,7 +322,11 @@ sbatch pipeline/evaluation/calibration/run_calibration_xs.sh   # writes calib_xs
 
 The historical 279-row mixture contains 93 T9 positives and 186 putative negatives. Short sequence context and sampled prevalence limit transfer. Matching original calib_xs maps/cohort remain unavailable; older maps are not substitutes. [Calibration notes](../pipeline/evaluation/calibration/CALIBRATION_NOTES.md) explain score-only/AT models.
 
+Historical calibration reproduction has two additional limits: `C_ljung_scan_xs.sh` and `C_ljung_scan_06.sh` skip any nonempty final CSV on resume although scans stream directly to it, so an interrupted partial track can be mistaken for complete. Check track completeness before reusing it. Also, `run_calibration_2.sh` omits explicit model directories and now selects `T21_final_06` defaults, not the trial checkpoints documented for historical `calib_2`; reproduce that experiment only with the intended checkpoints explicitly selected. These are source-verified job-path risks, not evidence that retained metrics/counts are corrupted; see the [calibration notes](../pipeline/evaluation/calibration/CALIBRATION_NOTES.md).
+
 ## Phase E — mine the target
+
+After selecting the trio, mining applies its ranking rule to the target rather than another labelled test set. Common coordinates are essential: members must rank the same windows before their percentiles are averaged. Peak calling and multi-window support narrow the output, and motif placement adds a separate prioritisation signal; none of these filters measures expression.
 
 ```bash
 cd "$PROMOTER_REPO"
@@ -357,7 +371,7 @@ python pipeline/mining/candidate-table/build_candidate_table.py \
 
 The complete target is GCF_014131795.1. Set TRUTH to an empty string to disable benchmarking. ProkBERT/CNN-v2 and Evo2 tracks are intersected on contig/start/strand before average-tie percentile ranks are averaged. Do not pool independently ranked scanner outputs.
 
-At least five supporting windows define the confident export. Recovered MEME/FIMO 5.3.0 files identify five de-novo motifs learned from the top 500 summit sequences (widths 14/7/8/18/10), then scanned across all 929 windows. The wrapper uses `--norc` without an explicit `--thresh`; the retained original FIMO settings record emitted p≤0.0001 and NRDB background A/C/G/T = 0.282/0.222/0.229/0.267. Builder p≤0.001 and upstream centre bins 3–18/22–42 assign −10/−35 labels without checking motif ID. The width-six `sigma_a_promoter.meme` is QC-only, not this scan's input. Starts are inferred from the 81-bp frame, not RNA mapping; `spacer_bp` is rounded centre separation.
+At least five supporting windows define the confident export. Recovered MEME/FIMO 5.3.0 files identify five de-novo patterns learned from the top 500 summits: `WWWTATGWTATAAT` (14), `AAGGAGG` (7), `TRTTGACA` (8), `TCGCTTGAGGGTGACAAC` (18) and `KADWGAGGTG` (10), then scanned across all 929 windows. Thus discovery did recover a pattern containing `TTGACA`. The wrapper uses `--norc` without an explicit `--thresh`; retained FIMO settings record emitted p≤0.0001 and NRDB background A/C/G/T = 0.282/0.222/0.229/0.267. Builder p≤0.001 and upstream centre bins 3–18/22–42 assign −10/−35 labels without checking motif ID. Separate width-six QC references have `TATAAT`/`TTGACA` consensuses; the best selected cores in the 45 both-hit candidates have observed `TATAAT`/`TTGATA` consensuses. This selected-core QC is not the full 180/333-context annotation or independent activity validation. Starts are inferred from the 81-bp frame, not RNA mapping; `spacer_bp` is rounded centre separation, not edge gap. The `Updated Motif analysis` diagnostic incorrectly compares centre separation with a 15–19-bp edge-gap rule; its flags do not invalidate the reproduced catalogue.
 
 ### Prioritize the candidate table
 
@@ -371,6 +385,10 @@ Sort is motif tier, score, supporting windows, then best motif p-value. Current 
 
 ## Separate analyses
 
-[Oxidative-stress neighbourhood source](../pipeline/mining/inducible/) retains its legacy directory name on `main`. The [published candidate outputs and later motif QC](../results/README.md) are exposed separately under `results/oxidative-stress/`: 31 target entries/30 loci/27 regions produced 24 peaks; 2,000 per-candidate mononucleotide shuffles gave no q≤0.05 result across 48 motif tests. Preserved QC metadata names the original later `pipeline/mining/oxidative-stress/` paths and hashes; those paths are provenance, not executable source locations in this checkout. The retained `inducible/` scripts are not claimed to reproduce that later QC. Neither proximity nor the term “inducible” proves regulation, activity or protection. These candidates and the separate codon optimiser were not used in experimental constructs. [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated biological peak FDR.
+The ordinary catalogue ends at candidate selection. The analyses below ask additional questions about neighbourhoods, null screening, longer context or reporter activity, so their scores/counts must remain distinct from the deployed rank catalogue.
+
+[Oxidative-stress-neighbourhood source and QC scripts](../pipeline/mining/oxidative-stress/) select loci associated with annotated stress-response functions and retain the later motif-QC workflow in this integrated layout. The [published candidate outputs and motif QC](../results/README.md) are exposed separately under `results/oxidative-stress/`: 31 target entries/30 loci/27 regions produced 24 screening peaks; 2,000 per-candidate mononucleotide shuffles gave no q≤0.05 result across 48 motif tests. These are putative constitutive-promoter candidates for future work, separate from the ordinary catalogue. Neither proximity nor the historical term “inducible” proves regulation, activity or protection. These candidates and the separate [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser) were not used in experimental constructs; the optimiser addresses coding sequences, not promoter ranking. The [FDR report](../pipeline/evaluation/empirical-fdr/results/cbut_xs/analysis.md) uses candidate+null pooled ranks, not ordinary target ranks; selected minimum window p-values do not establish calibrated biological peak FDR.
 
 [Long-context positives](../pipeline/datasets/positives-with-context/) are an NTv3 experiment, not the deployed 81-bp dataset. Flanks require overlap/provenance checks. [Candidate interpretation](RESULTS.md#downstream-genes-and-putative-units) distinguishes downstream clusters from transcripts. [DH5α strength](ECOLI_STRENGTH_PREDICTIONS.md) is an independent CPU analysis, not a member score.
+
+The exploratory FDR launcher requires **at least two selected members**: one member passes launcher configuration but is rejected by the track aligner. The default trio and two-member subsets are unaffected.

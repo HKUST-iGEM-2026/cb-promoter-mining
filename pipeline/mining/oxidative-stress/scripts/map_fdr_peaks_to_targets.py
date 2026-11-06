@@ -2,21 +2,21 @@ import pandas as pd
 from pathlib import Path
 
 REGION_BED = Path(
-    "pipeline/mining/inducible/data/regions/"
+    "pipeline/mining/oxidative-stress/data/regions/"
     "CB_oxidative_stress_upstream_300bp.bed"
 )
 
 REGION_CSV = Path(
-    "pipeline/mining/inducible/data/regions/"
+    "pipeline/mining/oxidative-stress/data/regions/"
     "CB_oxidative_stress_upstream_300bp.csv"
 )
 
 PEAKS_CSV = Path(
-    "pipeline/mining/inducible/model_outputs/fdr/results/peaks_fdr.csv"
+    "pipeline/mining/oxidative-stress/model_outputs/fdr/results/peaks_fdr.csv"
 )
 
 OUT_DIR = Path(
-    "pipeline/mining/inducible/model_outputs/fdr/results"
+    "pipeline/mining/oxidative-stress/model_outputs/fdr/results"
 )
 
 OUT_MAPPING = OUT_DIR / "CB_oxidative_stress_promoter_mapping.csv"

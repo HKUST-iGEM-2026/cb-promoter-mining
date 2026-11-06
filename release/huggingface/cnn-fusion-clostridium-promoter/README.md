@@ -35,7 +35,11 @@ HKUST iGEM 2026 from-scratch multi-encoding CNN-v2 for ranking promoter-like DNA
 
 Historical test AP **0.848** uses an earlier checkpoint/split (967/3,318 test positives), not this deployed artifact. The 0.924 SRS control tests discrimination under a supplied shuffle/sampling procedure, not a unique −10/−35 mechanism. Historical matched-step values 63.1/48.2% and 81.2/67.1%, and the step-1 *C. ljungdahlii* result 71.6/51.9%, are separate runs rather than controlled replacements for the table.
 
+Fresh recovered-checkpoint CPU FP32 test AP was **0.7255402903111163** (Torch 2.11/2.15 FP32 scores agreed), close to but unequal to the recorded GPU-era AP. It does not replace the historical metric; the exact original GPU runtime was not replayed.
+
 Genomic scans restrict step-10 windows to 300 bp upstream/50 bp into annotated genes. Same-contig/strand 81-bp windows expand ±40 bp to cover catalogue TSS; unmatched starts at gaps ≤81 bp merge. Precision proxy is **covered TSS / (covered TSS + merged unmatched peaks)**, not measured biological purity or the fraction of calls matching. Truth contains 1,245 *C. ljungdahlii* starts (GCF_000143685.1/NC_014328.1) and 2,885 *C. autoethanogenum* starts (GCF_000484505.1/NC_022592.1). Catalogues are incomplete; compare within a genome/protocol. These strains supplied silver/putative-negative training windows, although published benchmark TSS were withheld.
+
+Current restriction masks accept an exclusive-end-only left touch, contrary to strict half-open overlap. Retained benchmark replay preserves that boundary convention; no retained-count change was demonstrated. See [pipeline caveats](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/docs/PIPELINE.md#genome-scale-benchmark-regime-c).
 
 The target *C. butyricum* DSM 10702 mine (GCF_014131795.1) retained **929 regions**, including **180 with a placed −10 hit** and **45 with both −10/−35 positional hits**. Ensemble scores intersect coordinates, convert member raw scores to average-tie percentiles on that common pool and average them. Mean rank is not probability, strength or unanimity; the independent DH5α SVR is not a fourth member.
 
@@ -46,6 +50,8 @@ The public [results and downloads index](https://github.com/HKUST-iGEM-2026/cb-p
 ## Load a real candidate
 
 Install PyTorch, NumPy, scikit-learn, tqdm and `huggingface_hub` in a compatible environment; see [setup](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/docs/SETUP.md). Review bundled Python before importing it. Pinning the package revision fixes weights and executable feature/model code together; no login is needed.
+
+Importing `train_cnn_v2.py` executes downloaded Python source; `weights_only=True` restricts weight loading but does not sandbox that helper import.
 
 ```python
 import json
@@ -72,7 +78,7 @@ print(scores)  # raw positive-class scores, not expression predictions
 
 ## Training and provenance
 
-The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/validation/test: **44,085/3,052/3,053** rows and **24,001/547/547** positives. Recovered MMseqs2 memberships keep clusters within one split; identity recipe 0.6 is retained but the original invocation/version is not recovered.
+The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/validation/test: **44,085/3,052/3,053** rows and **24,001/547/547** positives. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven.
 
 | Positive source | Windows | Evidence |
 |---|---:|---|

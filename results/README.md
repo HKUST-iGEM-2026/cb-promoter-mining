@@ -12,6 +12,8 @@ This directory contains retained computational outputs for HKUST iGEM 2026 promo
 
 These sets are nested, not additive. `canonical` is the machine label for both positional motif hits, not confirmed σA grammar, constitutive expression or biological activity. Mean percentile ranks are neither promoter probabilities nor expression estimates.
 
+Recovered MEME discovery patterns include `WWWTATGWTATAAT` and `TRTTGACA` among five patterns. Separate width-six QC references have `TATAAT`/`TTGACA` consensuses; selected cores in the 45 both-hit candidates have observed `TATAAT`/`TTGATA` consensuses. That selected-core QC is not all 180 −10/333 −35 contexts. Centre-separation/edge-gap diagnostic flags are not catalogue-validity tests; see [motif evidence](../docs/RESULTS.md#coordinates-and-motif-evidence).
+
 ### DL1–DL10 and reporter sequences
 
 | File | Contents and interpretation |
@@ -33,6 +35,8 @@ The deployed test split contains 547 positive labels among 3,053 windows; the no
 | Fusion CNN-v2 | 0.7255828424 | Historical deployed-run record; [evaluation provenance](../docs/RESULTS.md) |
 | Frozen-Evo2 logistic probe | 0.70258010 | Saved-feature evaluation; [verification record](../release/huggingface/verification.json) |
 
+These are historical GPU-era ProkBERT/CNN records, not exact CPU reproduction claims. Fresh CPU FP32 test AP was **0.8259149947673579 / 0.7255402903111163** respectively; CPU BF16 ProkBERT AP was **0.8248204288011242**. The original GPU runtime was not replayed; historical values remain unchanged. See [evaluation protocols](../docs/RESULTS.md#regime-a--held-out-labelled-windows).
+
 Held-out label classification and genomic ranking are different tasks. In paired restricted scans, the retained three-model ensemble gave:
 
 | Published-TSS benchmark | Precision proxy at recall 0.1 | Precision proxy at recall 0.5 |
@@ -43,6 +47,8 @@ Held-out label classification and genomic ranking are different tasks. In paired
 The [six-model comparison CSV](benchmarks/reported_six_model_genomic_comparison.csv) retains the separate individual-model scan values. Those runs used differing pools/contexts and are not a matched-grid ablation. The paired Evo2 constituent led the ensemble at recall 0.1 in *C. autoethanogenum*; ensemble superiority is not universal.
 
 The precision proxy is covered catalogue TSS / (covered catalogue TSS + unmatched peaks), not measured promoter purity. An 81-bp same-strand window is expanded ±40 bp for matching; unmatched starts separated by at most 81 bp merge into peaks. Truth catalogues are incomplete. Both benchmark genomes supplied silver positives and putative negatives during training, although their published TSS labels were withheld.
+
+Current restriction masks accept an exclusive-end-only left touch, contrary to strict half-open overlap. Replays preserve the historical convention; no retained-count change was demonstrated. See [boundary and reproduction caveats](../docs/PIPELINE.md#genome-scale-benchmark-regime-c).
 
 ## Training-source manifest
 
@@ -92,7 +98,9 @@ This separate screen starts with 31 target entries representing 30 distinct loci
 
 Stored motif annotations comprise two both-hit, sixteen −10-only, one −35-only and five neither-hit windows. Separate reference-PWM QC used 2,000 mononucleotide shuffles per candidate and corrected across 48 candidate × motif comparisons; none passed q ≤ 0.05. This does not prove inactivity, but it does not validate motif enrichment or constitutive expression either. Time constraints prevented using this shortlist in experimental constructs; stress protection remains unmeasured.
 
-These downloads preserve the retained source files byte-for-byte. Paths inside the QC summary identify the historical analysis inputs (`pipeline/mining/oxidative-stress/...`); the corresponding candidate table and motif file are now downloadable here with the same hashes. The source tree also retains historical pipeline inputs under `pipeline/mining/inducible/`; their presence does not imply that every historical script reproduces the later QC.
+**Unresolved annotation provenance:** `cbut_0001` / `FF104_RS17290` and `cbut_0021` / `FF104_RS17285` target associations conflict in strand/coordinates with the dated PGAP annotation used for the ordinary first-ten map. Stored candidate DNA matches remain verified. Reconcile target-list annotation versions before interpreting those associations; no replacement tags are established. [Details](../docs/RESULTS.md#4-oxidative-stress-associated-candidates).
+
+These downloads preserve the retained source files byte-for-byte. Paths inside the QC summary identify the analysis inputs (`pipeline/mining/oxidative-stress/...`); the corresponding candidate table and motif file are also downloadable here with the same hashes. The [oxidative-stress workflow](../pipeline/mining/oxidative-stress/README.md) documents the current source layout and CPU QC command. Reproducing the original neural scans still requires matching genome/annotation inputs, checkpoints and candidate/null score tracks.
 
 ## Reuse and evidence boundary
 

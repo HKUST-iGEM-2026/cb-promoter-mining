@@ -20,6 +20,8 @@ HKUST iGEM 2026 logistic-regression promoter classifier on frozen [Evo2-7B](http
 - **Representation:** current inference mean-pools `blocks.28.mlp.l3` in float32 to 4,096 features, then applies `StandardScaler → LogisticRegression`.
 - **Output:** raw positive-class score (`p_promoter` in the CLI), not calibrated target-genome probability, strength or sigma use.
 
+**Hub metadata clarity:** the valid `base_model: arcinstitute/evo2_7b` attribution can produce an automatic `finetune` relationship. That Hub category does not establish which parameters were updated: only the scaler/logistic probe was fitted, not the backbone. It is not evidence of incorrect training or corrupt weights. Preserve the base-model attribution; see [Hub metadata documentation](https://huggingface.co/docs/hub/en/model-cards#specifying-a-base-model).
+
 ## Results
 
 | Evaluation | Result | Scope |
@@ -36,6 +38,8 @@ HKUST iGEM 2026 logistic-regression promoter classifier on frozen [Evo2-7B](http
 All recovered test weights equal 1, so weighted/unweighted test AP and AUROC coincide; no-skill AP is ≈0.179168. Weighted validation AP selected logistic regression (0.7007 versus random forest about 0.61), then the retained pipeline was refitted on **train+validation: 47,137 rows**. Validation is therefore not held out from this final artifact. `LogisticRegression(max_iter=5000)` otherwise uses the recorded scikit-learn defaults; the backbone was never fine-tuned. Evo2 was not evaluated in the reported SRS composition-control regime.
 
 Genomic scans restrict step-10 windows to 300 bp upstream/50 bp into annotated genes. Same-contig/strand 81-bp windows expand ±40 bp to cover published starts; above-threshold unmatched starts at gaps ≤81 bp merge. Precision proxy is **covered TSS / (covered TSS + merged unmatched peaks)**, not measured biological purity or the fraction of calls matching. Truth contains 1,245 *C. ljungdahlii* starts (GCF_000143685.1/NC_014328.1) and 2,885 *C. autoethanogenum* starts (GCF_000484505.1/NC_022592.1). Catalogues are incomplete. These genomes supplied silver/putative-negative training windows although their published benchmark TSS were withheld; compare within a genome/protocol. The ensemble leads at recall 0.5, not at every reported point. Equal stride does not guarantee identical reverse-strand grids: align coordinates before combining scanner tracks.
+
+Current restriction masks accept an exclusive-end-only left touch, contrary to strict half-open overlap. Retained benchmark replay preserves that boundary convention; no retained-count change was demonstrated. See [pipeline caveats](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/docs/PIPELINE.md#genome-scale-benchmark-regime-c).
 
 The target *C. butyricum* DSM 10702 ensemble mine (GCF_014131795.1) retained **929 regions**, including **180 with a placed −10 hit** and **45 with both −10/−35 positional hits**. Ensemble deployment intersects member coordinates and averages average-tie raw-score percentiles within the shared pool. Mean rank is not probability, expression strength or unanimity. The separate DH5α SVR is not a fourth ensemble member.
 
@@ -64,7 +68,7 @@ For already compatible embeddings, inference only needs the trusted scikit-learn
 
 ## Training data and limitations
 
-The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/validation/test: **44,085/3,052/3,053** rows and **24,001/547/547** positives. Recovered MMseqs2 memberships keep clusters within a split; retained identity recipe 0.6, original invocation/version not recovered.
+The `T15_xs` cohort has **50,190 81-bp windows**, 25,095 per class. Train/validation/test: **44,085/3,052/3,053** rows and **24,001/547/547** positives. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven.
 
 | Positive source | Windows | Evidence |
 |---|---:|---|

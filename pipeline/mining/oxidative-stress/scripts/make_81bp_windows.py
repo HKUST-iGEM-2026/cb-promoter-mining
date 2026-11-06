@@ -1,9 +1,9 @@
 import csv
 
-INPUT_FILE = "pipeline/mining/inducible/data/regions/CB_oxidative_stress_upstream_300bp.csv"
+INPUT_FILE = "pipeline/mining/oxidative-stress/data/regions/CB_oxidative_stress_upstream_300bp.csv"
 
-OUTPUT_CSV = "pipeline/mining/inducible/data/regions/CB_oxidative_stress_81bp_windows.csv"
-OUTPUT_FASTA = "pipeline/mining/inducible/data/regions/CB_oxidative_stress_81bp_windows.fasta"
+OUTPUT_CSV = "pipeline/mining/oxidative-stress/data/regions/CB_oxidative_stress_81bp_windows.csv"
+OUTPUT_FASTA = "pipeline/mining/oxidative-stress/data/regions/CB_oxidative_stress_81bp_windows.fasta"
 
 WINDOW = 81
 STRIDE = 1

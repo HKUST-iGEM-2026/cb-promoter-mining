@@ -33,7 +33,11 @@ HKUST iGEM 2026 fine-tune of [neuralbioinfo/prokbert-mini](https://huggingface.c
 
 The historical test AP **0.884** belongs to an earlier plain-0.6 checkpoint/split (967/3,318 test positives), not the deployed artifact. Do not substitute it for the deployed result.
 
+Fresh recovered-checkpoint CPU FP32 test AP was **0.8259149947673579** (Torch 2.11/2.15 FP32 scores agreed); CPU BF16 AP was **0.8248204288011242**. These differ from the recorded GPU-era test AP and do not replace it. The original GPU kernels/runtime were not replayed, so this is not bit-identical historical reproduction.
+
 Genomic scans restrict step-10 windows to 300 bp upstream/50 bp into annotated genes. Same-contig/strand 81-bp windows expand ±40 bp for published-TSS coverage; unmatched starts at gaps ≤81 bp merge. Precision proxy is **covered TSS / (covered TSS + merged unmatched peaks)**, not measured biological purity or the fraction of calls matching. Reference catalogues are incomplete: 1,245 *C. ljungdahlii* starts (GCF_000143685.1/NC_014328.1) and 2,885 *C. autoethanogenum* starts (GCF_000484505.1/NC_022592.1). Compare within a genome and protocol; these genomes supplied silver/putative-negative training windows, although their published benchmark TSS were withheld.
+
+Current restriction masks accept an exclusive-end-only left touch, contrary to strict half-open overlap. Retained benchmark replay preserves that boundary convention; no retained-count change was demonstrated. See [pipeline caveats](https://github.com/HKUST-iGEM-2026/cb-promoter-mining/blob/main/docs/PIPELINE.md#genome-scale-benchmark-regime-c).
 
 In the target *C. butyricum* DSM 10702 assembly GCF_014131795.1, the ensemble produced **929 retained regions, 180 with a placed −10 hit and 45 with both −10/−35 positional hits**. These are nested computational subsets, not validated promoters. The ensemble intersects member coordinates, converts raw scores to average-tie percentiles on the common pool and averages them; mean rank is neither probability, strength nor unanimity. The independent DH5α SVR is not an ensemble member.
 
@@ -72,7 +76,7 @@ print(f"raw promoter-class score = {score:.3f}")
 
 ## Training and provenance
 
-The `T15_xs` cohort contains **50,190 windows**, 25,095 per class. Train/validation/test counts are **44,085/3,052/3,053**, with **24,001/547/547 positives**. Recovered MMseqs2 memberships keep clusters within one split; the retained identity recipe is 0.6, but the original invocation/version is not recovered.
+The `T15_xs` cohort contains **50,190 windows**, 25,095 per class. Train/validation/test counts are **44,085/3,052/3,053**, with **24,001/547/547 positives**. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven.
 
 | Positive source | Windows | Evidence |
 |---|---:|---|
