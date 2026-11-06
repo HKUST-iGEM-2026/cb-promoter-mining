@@ -6,8 +6,8 @@
 #   source /path/to/cb-promoter-mining/env.sh
 #   conda activate "$ENV_MAIN"        # or $ENV_NT / $ENV_EVO2 / $ENV_MEME
 #
-# Everything below is overridable: export a variable before sourcing and that
-# value wins. Nothing here is specific to any one machine or cluster.
+# Non-empty path and Conda-environment overrides are preserved. PYTHONNOUSERSITE
+# is always forced to 1 for package isolation. No setting is machine-specific.
 
 # --- Repo root -------------------------------------------------------------
 # Resolved from this file's own location, so any clone works.

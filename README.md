@@ -6,6 +6,8 @@ Catalogue tiers help us organise predictions; they do not mean that every promot
 
 The team reports Cb characterisation, iHP-informed decisions and *E. coli* GFP reporter assays. Time constraints meant validation stopped at *E. coli*; native Cb promoter activity is not established. [Results](docs/RESULTS.md) distinguishes this reported work from computational predictions.
 
+For future constructs, we also prepared [promoter candidates for oxidative-stress-associated genes](pipeline/mining/oxidative-stress/README.md) and a separate [codon optimiser](https://github.com/HKUST-iGEM-2026/codon-optimiser). Time constraints prevented using either in experimental constructs. Constitutive activity and any protective effect remain unmeasured; the optimiser is a coding-sequence tool, not another promoter classifier.
+
 ## Repository layout
 
 ```text
@@ -28,7 +30,7 @@ Source archives use Git LFS. Checkpoints and large recovered run inputs are igno
 
 ## Score DNA
 
-The deployed trio is fine-tuned ProkBERT-mini, from-scratch fusion CNN-v2 and a logistic probe on frozen Evo2-7B embeddings. The authenticated CloBiT inventory lists private component packages, not a public promoter-prediction service or a packaged three-model ensemble. Use authorised local checkpoints or obtain access before following the conditional Hub examples in [model loading](docs/MODELS.md).
+The deployed trio is fine-tuned ProkBERT-mini, from-scratch fusion CNN-v2 and a logistic probe on frozen Evo2-7B embeddings. Public CloBiT repositories provide the component models and cards, not a hosted promoter-prediction service or a single packaged three-model ensemble. Download the matching artifacts and follow [model loading](docs/MODELS.md) for local scoring.
 
 From the repository root, with compatible packages and local checkpoints:
 
@@ -53,12 +55,14 @@ uv run --no-project --with numpy==2.5.3 python \
   --top-n 10 --tss-offset 60 --out-prefix dh5alpha_first10
 ```
 
-The [strength guide](docs/ECOLI_STRENGTH_PREDICTIONS.md#loading-the-fitted-model) gives local loading and fitting commands, plus conditional private-package downloads. The output compares predicted activity with a same-model predicted reference, not measured fluorescence or native Cb expression.
+The [strength guide](docs/ECOLI_STRENGTH_PREDICTIONS.md#loading-the-fitted-model) gives local loading and fitting commands, plus public Hub downloads. The output compares predicted activity with a same-model predicted reference, not measured fluorescence or native Cb expression.
 
 ## Read the results
 
 - [929 ranked sequences](results/candidates/g131795_ranked_seq.tsv) and [45 promoters with both −10 and −35 motifs](results/candidates/g131795_tier1_canonical_seq.tsv).
 - [Results](docs/RESULTS.md): benchmark definitions, motif evidence and downstream-unit interpretation.
+- [24 oxidative-stress promoter candidates](pipeline/mining/oxidative-stress/model_outputs/fdr/results/CB_oxidative_stress_final_promoters.csv) and [composition-preserving motif QC](results/oxidative-stress/motif_qc/summary.json), prepared for future use.
+- [First-ten gene-context CSV](results/candidates/g131795_first10_canonical_gene_context.csv), with exact coordinates and inferred coding-locus associations.
 - [Pipeline](docs/PIPELINE.md): stage commands; the legacy default Snakemake target is not an end-to-end recipe.
 
 Here, **silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters. Negative windows are putative negatives, not experimentally established promoter-free DNA.

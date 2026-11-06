@@ -1,16 +1,20 @@
 # Setup
 
-Use [env.sh](../env.sh) and the [conda recipes](../environments/) for the deployed workflow. Root `uv sync` installs the Python ≥3.13 pandas/tabular helper environment, not the Linux/CUDA/bioinformatics stack. CPU classifier scoring needs compatible packages and recovered weights; Evo2 DNA inference also needs its NVIDIA/CUDA runtime and backbone. The [DH5α SVR](ECOLI_STRENGTH_PREDICTIONS.md#reproduction) has a separate pinned CPU environment.
+Choose the computation before choosing an environment. Data preparation and CPU scoring need tabular/ML packages plus the appropriate inputs; training and Evo2 DNA embeddings also need the compatible Linux/NVIDIA/CUDA stack. The [DH5α SVR](ECOLI_STRENGTH_PREDICTIONS.md#reproduction) is an independent pinned CPU workflow and does not need classifier or Evo2 weights.
+
+Use [env.sh](../env.sh) to connect repository paths to the [conda recipes](../environments/). Root `uv sync` installs Python ≥3.13 pandas/tabular helpers, not the complete bioinformatics/GPU stack. The sections below establish paths first, then environments, then staged inputs and jobs so each command has its prerequisites.
 
 ## Paths
 
 ```bash
 git lfs install
-git clone <repository-url> cb-promoter-mining
+git clone --branch reorganise https://github.com/HKUST-iGEM-2026/cb-promoter-mining.git cb-promoter-mining
 cd cb-promoter-mining
 git lfs pull
 source env.sh
 ```
+
+The commands below use the `reorganise` source layout; cloning the default `main` branch can retain older directories and wiring.
 
 | Variable | Default | Contract |
 |---|---|---|
@@ -21,12 +25,14 @@ source env.sh
 | `ENV_MEME` | `promoter-meme` | MEME/FIMO environment |
 | `ENV_NT` | `promoter-nt` | historical NT-v2 only |
 | `HF_HOME` | Hub default unless already set | shared model cache |
-| `PYTHONNOUSERSITE` | `1` | avoid user-site packages shadowing the environment |
+| `PYTHONNOUSERSITE` | `1` (forced) | avoid user-site packages shadowing the environment |
 
 
-Source `env.sh` in each shell and before submission. It preserves overrides; `HF_HUB_OFFLINE` is not set automatically. Environment variables accept names or installed prefixes. Snakemake still uses relative `workflow/results/`; overriding PROMOTER_RESULTS alone does not move every job output.
+Source `env.sh` in each shell and before submission. It preserves non-empty path and Conda-environment overrides, but always sets `PYTHONNOUSERSITE=1`; `HF_HUB_OFFLINE` is not set automatically. The `ENV_*` variables accept environment names or installed prefixes. Snakemake still uses relative `workflow/results/`; overriding PROMOTER_RESULTS alone does not move every job output.
 
 ## Main environment
+
+Use this stack for the core workflow rather than mixing packages from user-site Python and optional model environments. GPU availability must be checked inside the actual allocation: a configured environment does not establish that the job can see a GPU.
 
 The main recipe targets Linux/Python 3.11, with CUDA 12.8 torch 2.11.0+cu128 and torchvision 0.26.0+cu128. Transformers is a range ≥4.56,≤5.3.0, not an exact pin. It is not a native macOS/Apple-GPU recipe.
 
@@ -58,6 +64,8 @@ conda activate promoter-mining
 Prioritising conda libraries can affect SSH/OpenSSL; use an unactivated shell if needed. `python -S` also hides required packages and is not equivalent to PYTHONNOUSERSITE.
 
 ## Additional environments
+
+The extra environments separate incompatible or optional dependencies from the main stack. Install only those needed for the stage you intend to run; preparing an optional environment does not mean its analysis contributed to the deployed labels or catalogue.
 
 ### Evo2
 
@@ -112,6 +120,8 @@ NTv3 uses a separate main-stack supervised path; optional JAX encoding needs [up
 
 ## Stage inputs
 
+An installed environment is only half the prerequisite. Before running stages, distinguish real archives, sequences and checkpoints from LFS pointers or zero-byte placeholders. Scoring needs retained/downloaded weights; reconstruction also needs the original source data and coordinate provenance.
+
 Materialise LFS archives, not pointer files. Zero-byte workflow inputs/annotation TSVs are placeholders, not prepared datasets. [Pipeline](PIPELINE.md#phase-a-acquire-and-curate) gives explicit staging and split commands; do not use the legacy default DAG as an end-to-end recipe.
 
 ```bash
@@ -121,11 +131,13 @@ bash workflow/verify_env.sh
 
 check_state.sh reports sizes/missing outputs but still suggests an obsolete T15.done target. verify_env.sh performs integrity/model smoke work and is not read-only. Inspect its prerequisites before running.
 
-Recovered checkpoints under `workflow/results/T21_xs/` are ignored by git. A fresh clone needs authorised private-Hub downloads. Original splits/encodings/tracks live separately under `~/cb-promoter-original-run/`. [Model evidence](MODELS.md#verified-original-data-and-encodings) records alignment and saved-feature evaluation. Optional original calibration inputs and T22_xs predictions remain unavailable; neither is needed for raw ranks.
+Local checkpoints under `workflow/results/T21_xs/` are ignored by git. For a fresh clone, obtain the released artifacts using the [public Hub download instructions](MODELS.md#public-hugging-face-repositories). Original splits/encodings/tracks live separately under `~/cb-promoter-original-run/`. [Model evidence](MODELS.md#verified-original-data-and-encodings) records alignment and saved-feature evaluation. Optional original calibration inputs and T22_xs predictions remain unavailable; neither is needed for raw ranks.
 
 Retain exact tokenizer/code revisions, solved dependencies and source licences. Do not load untrusted pickles or executable remote code. Recovery does not repair the 888 wrong-assembly training labels.
 
 ## Run jobs
+
+With paths, packages and inputs ready, submit only the stage you intend to execute. Data preparation runs on CPU, while the separate mining/training jobs need the compatible GPU runtime. A submitted Slurm job is not a completed prerequisite for its downstream command.
 
 ```bash
 cd "$PROMOTER_REPO/workflow"
@@ -144,6 +156,7 @@ snakemake --workflow-profile profiles/slurm results/T14/negative_set.tsv
 Submit GPU jobs separately, or use bash on a compatible Linux GPU machine:
 
 ```bash
+cd "$PROMOTER_REPO"
 export SBATCH_ACCOUNT=my-allocation SBATCH_PARTITION=gpu
 sbatch pipeline/mining/genome-scan/mine_3model.sbatch
 ```
@@ -160,7 +173,7 @@ hf download arcinstitute/evo2_7b
 export HF_HOME=/shared/hf_cache HF_HUB_OFFLINE=1
 ```
 
-Also stage private classifiers, trusted remote code/dependencies and genomic inputs. Offline mode cannot supply missing cache entries. Keep FASTA, annotation, BED and truth contig/version identifiers identical.
+Also stage the CloBiT classifier checkpoints, required backbone files, trusted remote code/dependencies and genomic inputs. Offline mode cannot supply missing cache entries. Keep FASTA, annotation, BED and truth contig/version identifiers identical.
 
 ## Documents
 

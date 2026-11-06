@@ -20,7 +20,7 @@ HKUST iGEM 2026 from-scratch CNN-v2, deployed with ProkBERT-mini and the frozen-
 
 One-hot and ENAC branches use kernels 7/5/3, filters 64/128/256, batch normalization and pooling. Dinucleotide/trinucleotide frequencies supply 16/64-d MLP branches. Features concatenate into fusion dimension 256. The helper center-crops/N-pads to 81 bp; supply transcription-oriented 81-bp DNA to retain the nominal offset-60 frame. ENAC width is 5.
 
-The private package requires authorised access and includes its feature/model code:
+The public package includes its feature/model code. The example pins a revision, but importing `train_cnn_v2.py` executes that downloaded Python source: inspect and trust it before running. `weights_only=True` restricts weight loading; it does not sandbox the helper import.
 
 ```python
 import json, sys, torch
@@ -59,7 +59,7 @@ print(scores)  # raw positive-class scores
 
 **Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters.
 
-The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The retained recipe uses identity 0.6; the original invocation/version is not recovered. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
+The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
 
 | Source | Windows | Species | Kind |
 |---|---:|---|---|

@@ -1,7 +1,7 @@
 {
   "inputs": {
-    "meme": "mining-and-motif-annotation/motif-annotation/sigma_a_promoter.meme",
-    "table": "final-candidates/g131795_ranked_seq.tsv",
+    "meme": "pipeline/mining/motif-annotation/sigma_a_promoter.meme",
+    "table": "results/candidates/g131795_ranked_seq.tsv",
     "declared_background_ACGT": [
       0.35,
       0.15,

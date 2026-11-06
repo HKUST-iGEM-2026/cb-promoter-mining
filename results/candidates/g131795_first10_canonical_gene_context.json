@@ -1,0 +1,375 @@
+{
+  "inputs": {
+    "candidates": "g131795_tier1_canonical_seq.tsv",
+    "candidates_sha256": "0c6a0e5764ceff7b6ab5ad1e2d45de85df62d1de82b26c3f60a55caa47c232f2",
+    "annotation": "genomic.gff",
+    "annotation_sha256": "930f3b0d339cd48b70c902b81a4f26cba49bcf478ee344ce2474bc50375af961",
+    "annotation_metadata": {
+      "gff-spec-version": "1.21",
+      "processor": "NCBI annotwriter",
+      "genome-build": "ASM1413179v1",
+      "genome-build-accession": "NCBI_Assembly:GCF_014131795.1",
+      "annotation-date": "04/15/2026 13:09:21",
+      "annotation-source": "NCBI RefSeq GCF_014131795.1-RS_2026_04_15"
+    }
+  },
+  "method": {
+    "candidate_selection": "First 10 rows by ascending priority_rank",
+    "coordinates": "1-based inclusive; candidate TSS is inferred, not experimentally mapped",
+    "association": "Nearest downstream same-strand coding locus; extend through adjacent same-strand coding loci",
+    "max_intervening_bases": 100,
+    "gap_formula": "+ strand: next.start - previous.end - 1; - strand: previous.start - next.end - 1",
+    "multipart_cds": "Group CDS segments by contig and locus_tag; retain segment coordinates",
+    "circular_origin_wrap_inferred": false,
+    "biological_status": "Sequence- and proximity-based hypotheses, not validated promoter targets or operons"
+  },
+  "candidate_count": 10,
+  "member_rows": 11,
+  "associations": [
+    {
+      "candidate_id": "cand_00029",
+      "priority_rank": 1,
+      "contig": "NZ_CP040626.1",
+      "strand": "-",
+      "inferred_tss_1based": 955968,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 953433,
+          "end": 955946,
+          "locus_tag": "FF104_RS03955",
+          "gene": "",
+          "product": "transglycosylase domain-containing protein",
+          "protein_ids": [
+            "WP_035761729.1"
+          ],
+          "cds_segments": [
+            [
+              953433,
+              955946
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 22
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00032",
+      "priority_rank": 2,
+      "contig": "NZ_CP040626.1",
+      "strand": "+",
+      "inferred_tss_1based": 3740781,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "+",
+          "start": 3740851,
+          "end": 3741078,
+          "locus_tag": "FF104_RS17285",
+          "gene": "",
+          "product": "glutaredoxin domain-containing protein",
+          "protein_ids": [
+            "WP_002582591.1"
+          ],
+          "cds_segments": [
+            [
+              3740851,
+              3741078
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 70
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00035",
+      "priority_rank": 3,
+      "contig": "NZ_CP040626.1",
+      "strand": "+",
+      "inferred_tss_1based": 3518571,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "+",
+          "start": 3518589,
+          "end": 3518891,
+          "locus_tag": "FF104_RS16265",
+          "gene": "",
+          "product": "hypothetical protein",
+          "protein_ids": [
+            "WP_002582791.1"
+          ],
+          "cds_segments": [
+            [
+              3518589,
+              3518891
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 18
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00048",
+      "priority_rank": 4,
+      "contig": "NZ_CP040627.1",
+      "strand": "-",
+      "inferred_tss_1based": 338109,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040627.1",
+          "strand": "-",
+          "start": 336088,
+          "end": 338097,
+          "locus_tag": "FF104_RS19570",
+          "gene": "",
+          "product": "methyl-accepting chemotaxis protein",
+          "protein_ids": [
+            "WP_035762109.1"
+          ],
+          "cds_segments": [
+            [
+              336088,
+              338097
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 12
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00072",
+      "priority_rank": 5,
+      "contig": "NZ_CP040626.1",
+      "strand": "-",
+      "inferred_tss_1based": 2835728,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 2834900,
+          "end": 2835595,
+          "locus_tag": "FF104_RS12975",
+          "gene": "",
+          "product": "hypothetical protein",
+          "protein_ids": [
+            "WP_035762807.1"
+          ],
+          "cds_segments": [
+            [
+              2834900,
+              2835595
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 133
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00070",
+      "priority_rank": 6,
+      "contig": "NZ_CP040626.1",
+      "strand": "-",
+      "inferred_tss_1based": 1211538,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 1210820,
+          "end": 1211467,
+          "locus_tag": "FF104_RS05165",
+          "gene": "",
+          "product": "hypothetical protein",
+          "protein_ids": [
+            "WP_002579513.1"
+          ],
+          "cds_segments": [
+            [
+              1210820,
+              1211467
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 71
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00089",
+      "priority_rank": 7,
+      "contig": "NZ_CP040626.1",
+      "strand": "-",
+      "inferred_tss_1based": 3807268,
+      "mapping_status": "associated",
+      "member_count": 2,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 3806612,
+          "end": 3807121,
+          "locus_tag": "FF104_RS17655",
+          "gene": "nrdG",
+          "product": "anaerobic ribonucleoside-triphosphate reductase activating protein",
+          "protein_ids": [
+            "WP_003412323.1"
+          ],
+          "cds_segments": [
+            [
+              3806612,
+              3807121
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 147
+        },
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 3805692,
+          "end": 3806567,
+          "locus_tag": "FF104_RS17650",
+          "gene": "",
+          "product": "aldose 1-epimerase family protein",
+          "protein_ids": [
+            "WP_003412151.1"
+          ],
+          "cds_segments": [
+            [
+              3805692,
+              3806567
+            ]
+          ],
+          "member_order": 2,
+          "gap_from_previous_member_bp": 44,
+          "tss_to_cds_5prime_distance_bp": 701
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00094",
+      "priority_rank": 8,
+      "contig": "NZ_CP040626.1",
+      "strand": "+",
+      "inferred_tss_1based": 879881,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "+",
+          "start": 879908,
+          "end": 880789,
+          "locus_tag": "FF104_RS03625",
+          "gene": "",
+          "product": "ComEC/Rec2 family competence protein",
+          "protein_ids": [
+            "WP_035763635.1"
+          ],
+          "cds_segments": [
+            [
+              879908,
+              880789
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 27
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00098",
+      "priority_rank": 9,
+      "contig": "NZ_CP040627.1",
+      "strand": "-",
+      "inferred_tss_1based": 539309,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040627.1",
+          "strand": "-",
+          "start": 538742,
+          "end": 539185,
+          "locus_tag": "FF104_RS20510",
+          "gene": "",
+          "product": "hypothetical protein",
+          "protein_ids": [
+            "WP_035764307.1"
+          ],
+          "cds_segments": [
+            [
+              538742,
+              539185
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 124
+        }
+      ]
+    },
+    {
+      "candidate_id": "cand_00101",
+      "priority_rank": 10,
+      "contig": "NZ_CP040626.1",
+      "strand": "-",
+      "inferred_tss_1based": 3410738,
+      "mapping_status": "associated",
+      "member_count": 1,
+      "members": [
+        {
+          "contig": "NZ_CP040626.1",
+          "strand": "-",
+          "start": 3409631,
+          "end": 3410732,
+          "locus_tag": "FF104_RS15625",
+          "gene": "prfB",
+          "product": "peptide chain release factor 2",
+          "protein_ids": [
+            "WP_370531944.1"
+          ],
+          "cds_segments": [
+            [
+              3409631,
+              3410659
+            ],
+            [
+              3410661,
+              3410732
+            ]
+          ],
+          "member_order": 1,
+          "gap_from_previous_member_bp": null,
+          "tss_to_cds_5prime_distance_bp": 6
+        }
+      ]
+    }
+  ]
+}

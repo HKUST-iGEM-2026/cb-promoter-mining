@@ -1,0 +1,12 @@
+candidate_id,priority_rank,contig,strand,inferred_tss_1based,mapping_status,member_count,member_order,locus_tag,gene,product,protein_ids,cds_start_1based,cds_end_1based,cds_segments_1based,tss_to_cds_5prime_distance_bp,gap_from_previous_member_bp
+cand_00029,1,NZ_CP040626.1,-,955968,associated,1,1,FF104_RS03955,,transglycosylase domain-containing protein,WP_035761729.1,953433,955946,953433-955946,22,
+cand_00032,2,NZ_CP040626.1,+,3740781,associated,1,1,FF104_RS17285,,glutaredoxin domain-containing protein,WP_002582591.1,3740851,3741078,3740851-3741078,70,
+cand_00035,3,NZ_CP040626.1,+,3518571,associated,1,1,FF104_RS16265,,hypothetical protein,WP_002582791.1,3518589,3518891,3518589-3518891,18,
+cand_00048,4,NZ_CP040627.1,-,338109,associated,1,1,FF104_RS19570,,methyl-accepting chemotaxis protein,WP_035762109.1,336088,338097,336088-338097,12,
+cand_00072,5,NZ_CP040626.1,-,2835728,associated,1,1,FF104_RS12975,,hypothetical protein,WP_035762807.1,2834900,2835595,2834900-2835595,133,
+cand_00070,6,NZ_CP040626.1,-,1211538,associated,1,1,FF104_RS05165,,hypothetical protein,WP_002579513.1,1210820,1211467,1210820-1211467,71,
+cand_00089,7,NZ_CP040626.1,-,3807268,associated,2,1,FF104_RS17655,nrdG,anaerobic ribonucleoside-triphosphate reductase activating protein,WP_003412323.1,3806612,3807121,3806612-3807121,147,
+cand_00089,7,NZ_CP040626.1,-,3807268,associated,2,2,FF104_RS17650,,aldose 1-epimerase family protein,WP_003412151.1,3805692,3806567,3805692-3806567,701,44
+cand_00094,8,NZ_CP040626.1,+,879881,associated,1,1,FF104_RS03625,,ComEC/Rec2 family competence protein,WP_035763635.1,879908,880789,879908-880789,27,
+cand_00098,9,NZ_CP040627.1,-,539309,associated,1,1,FF104_RS20510,,hypothetical protein,WP_035764307.1,538742,539185,538742-539185,124,
+cand_00101,10,NZ_CP040626.1,-,3410738,associated,1,1,FF104_RS15625,prfB,peptide chain release factor 2,WP_370531944.1,3409631,3410732,3409631-3410659;3410661-3410732,6,

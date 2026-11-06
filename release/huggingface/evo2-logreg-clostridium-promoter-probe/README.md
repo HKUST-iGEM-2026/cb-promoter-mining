@@ -27,7 +27,7 @@ model = Evo2("evo2_7b")
 X = embed_sequences(model, seqs, layer="blocks.28.mlp.l3", pool="mean")  # (N, 4096)
 ```
 
-The private package needs authorised access. Match scikit-learn 1.9.0 and load only trusted pickles. apply_probe.py performs DNA-to-score inference; non-81-bp inputs warn rather than reject.
+The probe and its card are publicly available. Match scikit-learn 1.9.0 and load only trusted pickles. apply_probe.py performs DNA-to-score inference; non-81-bp inputs warn rather than reject. Obtain the separately licensed Evo2 backbone before scoring new DNA.
 
 ```bash
 python apply_probe.py --fasta windows.fna --probe evo2_promoter_classifier.pkl --out scores.csv
@@ -50,7 +50,7 @@ python apply_probe.py --fasta windows.fna --probe evo2_promoter_classifier.pkl -
 
 **Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters.
 
-The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The retained recipe uses identity 0.6; the original invocation/version is not recovered. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
+The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
 
 | Source | Windows | Species | Kind |
 |---|---:|---|---|

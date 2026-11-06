@@ -4,8 +4,8 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --time=02:00:00
-#SBATCH --output=pipeline/mining/inducible/logs/cb_evo2_%j.out
-#SBATCH --error=pipeline/mining/inducible/logs/cb_evo2_%j.err
+#SBATCH --output=pipeline/mining/oxidative-stress/logs/cb_evo2_%j.out
+#SBATCH --error=pipeline/mining/oxidative-stress/logs/cb_evo2_%j.err
 
 set -eo pipefail
 
@@ -24,10 +24,10 @@ if [ -n "${HF_HOME:-}" ]; then export HF_HOME; fi
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-0}"   # 1 = require a pre-staged cache
 
 # Input/output paths
-GENOME="pipeline/mining/inducible/bakta/bakta_annotation/DSM10702.fna"
-REGIONS="pipeline/mining/inducible/data/regions/CB_oxidative_stress_upstream_300bp.bed"
+GENOME="pipeline/mining/oxidative-stress/bakta/bakta_annotation/DSM10702.fna"
+REGIONS="pipeline/mining/oxidative-stress/data/regions/CB_oxidative_stress_upstream_300bp.bed"
 PROBE="workflow/results/regimeC/evo2/evo2_probe_xs.pkl"
-OUT="pipeline/mining/inducible/model_outputs/evo2/CB_oxidative_stress_evo2.csv"
+OUT="pipeline/mining/oxidative-stress/model_outputs/evo2/CB_oxidative_stress_evo2.csv"
 
 echo "Starting Evo2 scoring..."
 echo "Python: $(which python)"

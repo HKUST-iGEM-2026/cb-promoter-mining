@@ -19,7 +19,7 @@ HKUST iGEM 2026 fine-tune of [neuralbioinfo/prokbert-mini](https://huggingface.c
 
 ## Load
 
-Input is 81-bp A/C/G/T DNA in transcription orientation, nominal TSS offset 60. The private repository needs authorised access. Pin trusted classifier, tokenizer-file and external-code revisions separately; max_length counts tokens.
+Input is 81-bp A/C/G/T DNA in transcription orientation, nominal TSS offset 60. The model and card are publicly available. Pin trusted classifier, tokenizer-file and external-code revisions separately; max_length counts tokens.
 
 ```python
 import torch
@@ -62,7 +62,7 @@ Load the tokenizer from the base model; it is not duplicated here. External [nbr
 
 **Silver positives** are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped TSS or experimentally measured promoters.
 
-The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The retained recipe uses identity 0.6; the original invocation/version is not recovered. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
+The deployed T15_xs cohort has 50,190 81-bp windows, 25,095 labels of each class. Recovered MMseqs2 memberships keep clusters within one split. The historical outer split command is recovered and specifies identity 0.6; the same-job MMseqs2 executable/build, effective defaults and thread count remain unproven. Train/validation/test are 44,085/3,052/3,053; positive counts 24,001/547/547. Silver positives and cross-species positives are training-only, leaving a test no-skill AP near 0.18.
 
 | Source | Windows | Species | Kind |
 |---|---:|---|---|

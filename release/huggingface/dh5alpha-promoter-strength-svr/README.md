@@ -20,14 +20,15 @@ We fitted the source's 88 eligible records after removing six short controls fro
 
 The model is stored as `model.npz` and `model_metadata.json`. Loading uses `allow_pickle=False` and checks the recorded weight checksum. Inference needs NumPy only; scikit-learn and SciPy are needed only to reproduce the fit. No GPU, remote inference service, pretrained language model or executable pickle is needed.
 
-The published training assay used DH5α, modified pFAB217/p15A, sfGFP, a fixed B0030 5′UTR and LB/kanamycin. A different host, construct, leader or condition can alter reporter activity. The source table's AU have no physical-unit header and should not be interpreted as RFU, validated RPU or transcription-initiation rates.
+The published training assay used DH5α, modified pFAB217/p15A, sfGFP, a fixed B0030 5′UTR and LB/kanamycin. A different host, construct, leader or condition can alter reporter activity. The source table specifies no physical activity unit; we report its numerical scale as **arbitrary units (AU)**, not RFU, validated RPU or transcription-initiation rates.
 
 ## Download and predict
 
-The project repositories are private. Download with an account authorised for `CloBiT/dh5alpha-promoter-strength-svr`; the download CLI requires `huggingface_hub`. The fitted NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree.
+The fitted model and card are publicly available from `CloBiT/dh5alpha-promoter-strength-svr`; downloading the package does not require an authorised account. The download CLI requires `huggingface_hub`. The fitted NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree.
 
 ```bash
-hf download CloBiT/dh5alpha-promoter-strength-svr --local-dir dh5alpha_svr
+hf download CloBiT/dh5alpha-promoter-strength-svr \
+  --revision 0c5202892f4255eb8eb17493bed8d51e04f8cfc4 --local-dir dh5alpha_svr
 uv run --no-project --with numpy==2.5.3 python \
   dh5alpha_svr/predict_dh5alpha_strength.py \
   --model dh5alpha_svr \

@@ -1,6 +1,8 @@
 # DH5α promoter-core strength estimates
 
-Promoter discovery and reporter activity answer different questions. After mining the Cb catalogue, we used a **DH5α-trained SVR** to estimate activity for the first ten promoters with both −10 and −35 motifs, scoring their inferred 50-bp cores. We also retain an older **generic σ70 initiation comparison** below, but its arbitrary units are not interchangeable with the SVR's reporter-activity scale. Neither calculation measures these candidates' expression.
+The genome miner answers where to look for promoter-like DNA; it does not predict how much reporter expression a selected sequence may drive. We therefore used an independent **DH5α-trained SVR** for the first ten candidates with both −10 and −35 motifs. This guide follows the additional decisions that comparison needs: a 50-bp core, a compatible activity scale, a common reference and sensitivity to inferred starts.
+
+An older **generic σ70 initiation comparison** is retained separately below. Its units and mechanism differ from the reporter-trained SVR, so neither its rates nor its maxima enter the SVR ratios. Both computations generate hypotheses for experiments, not measurements of these candidates' expression.
 
 ## DH5α-trained SVR strength estimates
 
@@ -8,9 +10,11 @@ We reproduce the SVR procedure from Wang et al., *Nucleic Acids Research* 48:640
 
 ### Input and scale
 
-Each of the first ten already-oriented 81-bp records with both −10 and −35 motifs supplies `summit_seq[10:60]`, the 50 bases upstream of the assumed TSS offset 60. No padding or second reverse complement is added. Actual DH5α starts are not mapped. Legacy artifact filenames and the machine-readable `canonical` tier value are unchanged.
+The activity model was fitted on 50-bp promoter cores, so the 81-bp discovery window must be converted to that representation. Each of the first ten already-oriented both-hit records supplies `summit_seq[10:60]`: the 50 bases upstream of assumed TSS offset 60. The discovery frame follows a shared source convention, not a ProkBERT-only limit ([input rationale](MODELS.md#why-the-discovery-workflow-uses-81-bp)). No padding or second reverse complement is added, and the actual DH5α start remains unmapped. Legacy filenames and the machine tier `canonical` remain unchanged.
 
-The reference is the exact supplied **149-bp pptb_fU sequence**, labelled DL10 in the notebooks. Its same-model primary core prediction is **6.927284194385597 training-table AU**, set to 1×/100%. No notebook fluorescence or measured J23119 value enters the denominator.
+To compare candidates on one scale, we also predict the exact supplied **149-bp pptb_fU reference**, labelled DL10 in the notebooks, using the same SVR. We report the source table's unspecified numerical activity scale as **arbitrary units (AU)**. The primary reference core gives **6.927284194385597 AU**, set to 1×/100%. This keeps the numerator and denominator within one model; unrelated notebook fluorescence or measured J23119 values do not enter the ratio.
+
+The [new first-ten naming table](../results/candidates/g131795_first10_canonical_named.tsv) uses **DL10 for `cand_00101` / `P_prfB`**. That shortlist label is not the notebook's DL10 reference alias; current wiki tables call the latter `pptb_fU` to avoid conflating them. Original reference metadata and numerical predictions are unchanged.
 
 ```text
 activity = 2 ** predicted_log2_activity
@@ -34,9 +38,11 @@ percent_of_predicted_pptb_fU = 100 * fraction_of_predicted_pptb_fU
 | 10 | `cand_00048` | 3.97501 | 57.38 | 11.33–57.38 |
 
 
-[TSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.tsv), [JSON](../results/candidates/g131795_first10_canonical_dh5alpha_strength.json) and [CSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.csv) preserve original DNA, cores, anchors, model settings and full-precision ratios. CSV separates Primary_relative_strength_pptb_fU_equals_1 from the displayed range and full-precision bounds. AU are the upstream table's unspecified activity units, not RFU, physical rates or validated RPU. Percentages are not capped at 100. cand_00048 lies below the fitted labels' minimum; this does not establish inactivity.
+[TSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.tsv), [JSON](../results/candidates/g131795_first10_canonical_dh5alpha_strength.json) and [CSV](../results/candidates/g131795_first10_canonical_dh5alpha_strength.csv) preserve original DNA, cores, anchors, model settings and full-precision ratios. CSV separates `Primary_relative_strength_pptb_fU_equals_1` from the displayed range and full-precision bounds. AU are the upstream table's unspecified activity units, not RFU, physical rates or validated RPU. Percentages are not capped at 100. `cand_00048` lies below the fitted labels' minimum; this does not establish inactivity.
 
 ### pptb_fU reference framing and uncertainty
+
+The reference DNA is longer than the model's core, so its presumed start determines which 50 bases are scored. Testing alternative starts therefore tests a framing assumption, not uncertainty estimated by the fitted SVR.
 
 The [reference artifact](../results/candidates/pptb_fU_reference.json) preserves DNA and provenance. Promoter Calculator 1.2.4 enumerates 72 contained configurations on the forward reference, choosing offset 113/position 114 at minimum energy −3.4439275934806064. The core is reference[63:113]:
 
@@ -59,13 +65,17 @@ Holding candidate starts at 60, cand_00098 ranges from 0.936689–4.745743× ref
 
 ### Reproduced model and data
 
-Pinned [predictor.py](https://github.com/HaochenW/Deep_promoter/blob/c0e16c8218a983fbb07bf46d59c44109d4371b0e/predictor.py), commit c0e16c8218a983fbb07bf46d59c44109d4371b0e, and the [94-row table](../pipeline/mining/strength-prediction/wang2020-dh5alpha/seq_exp_94.txt) supply the procedure/data. Exclude six short controls and strip cloning overhangs with [5:-1], leaving 83 generated promoters/five random sequences.
+The sequence-to-activity relationship comes from the published reporter table, rather than from the miner's positive/negative labels. The retained procedure below fixes preprocessing and feature order so a reproduced fit is comparable with the saved outputs.
+
+Pinned [predictor.py](https://github.com/HaochenW/Deep_promoter/blob/c0e16c8218a983fbb07bf46d59c44109d4371b0e/predictor.py), commit `c0e16c8218a983fbb07bf46d59c44109d4371b0e`, and the [94-row table](../pipeline/mining/strength-prediction/wang2020-dh5alpha/seq_exp_94.txt) supply the procedure/data. Exclude six short controls and strip cloning overhangs with `[5:-1]`, leaving 83 generated promoters/five random sequences.
 
 Features are float32 T/C/G/A one-hot, flattened to 200 values; target is log2 activity. NumPy permutation seed 2 precedes 5-fold R² grid search over C=[1,10,100,1000], gamma=[0.01,0.1,1,10,100]. RBF SVR uses epsilon 0.1 and refits all 88 rows. Selected C=10/gamma=0.01 gives selection-CV R² **0.266090**, not independent candidate accuracy. The paper's 66/22 split reports held-out Pearson **0.57**.
 
-Our adapter uses raw SVR output/inverse log2, not the upstream maximum-normalized files or swapped CNN/SVR assignments. Data SHA-256 is e81b9316059886846c4e367dd6ae1a0bb196953fcd1a1bc6ac634ed4a1394976; predictor SHA-256 is 37912a418ec1e98b8f935c38731f5365712f6c1e8fe26159c4a366d28d834e68; input for the both-motif subset is 0c6a0e5764ceff7b6ab5ad1e2d45de85df62d1de82b26c3f60a55caa47c232f2. [Upstream MIT notice](../pipeline/mining/strength-prediction/wang2020-dh5alpha/LICENSE) is retained.
+Our adapter uses raw SVR output/inverse log2, not the upstream maximum-normalized files or swapped CNN/SVR assignments. Data SHA-256 is `e81b9316059886846c4e367dd6ae1a0bb196953fcd1a1bc6ac634ed4a1394976`; predictor SHA-256 is `37912a418ec1e98b8f935c38731f5365712f6c1e8fe26159c4a366d28d834e68`; input for the both-motif subset is `0c6a0e5764ceff7b6ab5ad1e2d45de85df62d1de82b26c3f60a55caa47c232f2`. [Upstream MIT notice](../pipeline/mining/strength-prediction/wang2020-dh5alpha/LICENSE) is retained.
 
 ### Reproduction
+
+Use this route when reproducing the fit itself. For scoring with the retained parameters, the later fitted-model route avoids an unnecessary refit and keeps the original artifact unchanged.
 
 From the repository root:
 
@@ -80,11 +90,11 @@ uv pip install --python /tmp/cb-dh5alpha-strength/bin/python \
   --out-prefix results/candidates/g131795_first10_canonical_dh5alpha_strength
 ```
 
-The runner writes TSV/JSON/CSV, checks bundled hashes and records dependencies. Observed stack: Python 3.13.5, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1. No GPU, TensorFlow, private classifier weights or prediction service is needed. `--tss-offset` controls candidate anchors; the reference artifact supplies offset 113.
+The runner writes TSV/JSON/CSV, checks bundled hashes and records dependencies. Observed stack: Python 3.13.5, NumPy 2.5.3, SciPy 1.18.1, scikit-learn 1.9.1. No GPU, TensorFlow, genome-mining classifier weights or prediction service is needed. `--tss-offset` controls candidate anchors; the reference artifact supplies offset 113.
 
 ### Loading the fitted model
 
-The committed local [fitted artifact](../release/huggingface/dh5alpha-promoter-strength-svr/) contains numeric support vectors, coefficients, intercept and gamma in `model.npz`, plus checksum/provenance metadata. Inference uses NumPy and does not execute pickle or repeat fitting. The [private Hub package](https://huggingface.co/CloBiT/dh5alpha-promoter-strength-svr) also exists: an authenticated download of revision `0c5202892f4255eb8eb17493bed8d51e04f8cfc4` reproduced all ten results. Downloads require authorised access. This reporter-activity SVR is separate from the three genome-mining classifiers; there is no public prediction service or packaged ensemble claimed here.
+The committed local [fitted artifact](../release/huggingface/dh5alpha-promoter-strength-svr/) contains numeric support vectors, coefficients, intercept and gamma in `model.npz`, plus checksum/provenance metadata. Inference uses NumPy and does not execute pickle or repeat fitting. The same fit is available from the [public Hub package](https://huggingface.co/CloBiT/dh5alpha-promoter-strength-svr): the verified download at revision `0c5202892f4255eb8eb17493bed8d51e04f8cfc4` reproduced all ten results. This reporter-activity SVR is separate from the three genome-mining classifiers; the package supports local inference, not a hosted prediction service or packaged ensemble.
 
 The local inference route does not depend on Hub access:
 
@@ -101,7 +111,7 @@ The current audit exercised this local NumPy-only route without refitting or upl
 
 To export another reproduction of the unchanged procedure, add `--export-model` with a new output directory to the fitting command above. Do not overwrite the retained fitted artifact when only running inference.
 
-With authorised Hub access, the same retained fit can instead be downloaded at its recorded revision:
+Download the same retained fit from the Hub at its recorded revision:
 
 ```bash
 hf download CloBiT/dh5alpha-promoter-strength-svr \
@@ -138,6 +148,8 @@ Recorded checks matched raw log2/inverse predictions against the pinned source a
 The small fit, inferred starts, leaders, flanks, copy number and actual conditions limit interpretation. These are core predictions, not whole-81-bp candidate or whole-149-bp reference expression. No biological strong/weak/inactive threshold or candidate-specific error interval is supported.
 
 ## Earlier generic σ70 initiation comparison
+
+This earlier calculation asks about modelled initiation energetics rather than learnt reporter-core activity. It is kept as a separate comparison because changing the prediction target changes the interpretation, even when both outputs are called arbitrary units.
 
 Promoter Calculator v1.0 from LaFleur, Hossain and Salis, [doi:10.1038/s41467-022-32829-5](https://doi.org/10.1038/s41467-022-32829-5), is packaged by [Barrick Lab](https://github.com/barricklab/promoter-calculator/tree/0fe5f6f0fb2befc087556afa575f7241afd98fbf) as 1.2.4, commit 0fe5f6f0fb2befc087556afa575f7241afd98fbf. Parameter files match the original Salis implementation. It combines fitted −35/−10, extended −10, spacer, UP, discriminator and transcribed-region terms, choosing minimum-energy configurations per TSS.
 
@@ -184,6 +196,6 @@ uv pip install --python /tmp/cb-ecoli-strength/bin/python \
   --out-prefix results/candidates/g131795_first10_canonical_ecoli_strength
 ```
 
-The runner verifies package version/source and distinguishes target_host from model_organism/host_transfer_status. Observed dependencies also include Biopython 1.88. Source-ranked input SHA-256 is 316940e6e2abb4ed77d4eeeef3cbbf9d1b2c30706da0f1288580d00f75f1f829; the reproducible command uses the matching committed both-motif subset file. Parameter hashes: free_energy_coeffs.npy fddf16b38bf29799481e8a45890b669111e16cf2e3448e99d1934d19a8f0b8e9, model_intercept.npy f7c66a8d838da71a6b2ab17936cd6ff2564e446af8c0676fba95de2116e99a7b.
+The runner verifies package version/source and distinguishes `target_host` from `model_organism`/`host_transfer_status`. Observed dependencies also include Biopython 1.88. Source-ranked input SHA-256 is `316940e6e2abb4ed77d4eeeef3cbbf9d1b2c30706da0f1288580d00f75f1f829`; the reproducible command uses the matching committed both-motif subset file. Parameter hashes: `free_energy_coeffs.npy` `fddf16b38bf29799481e8a45890b669111e16cf2e3448e99d1934d19a8f0b8e9`, `model_intercept.npy` `f7c66a8d838da71a6b2ab17936cd6ff2564e446af8c0676fba95de2116e99a7b`.
 
 Recorded exhaustive checks covered all 200 contained configurations, element/DNA round trips, exponential conversion and unchanged rates after separating host metadata. They verify computation, not expression, sigma use, regulation or cotranscription. Reporter/translation and cellular effects are outside the model. The external package remains [GPL-3.0-or-later](https://github.com/barricklab/promoter-calculator/blob/0fe5f6f0fb2befc087556afa575f7241afd98fbf/LICENSE).

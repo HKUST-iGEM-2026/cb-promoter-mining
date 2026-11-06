@@ -9,11 +9,12 @@ reference sigma70/sigmaA PWMs and found a "cross-element contamination" rate of 
 -35 boxes (they score higher against a -10 PWM than their own -35 PWM) vs only 5.0% for -10
 boxes, and inferred a systematic -35 windowing/extraction bug.
 
-This script re-runs that test on the ACTUAL inputs that live in the repo -- the pipeline's own
-MEME motif model (pipeline/mining/motif-annotation/sigma_a_promoter.meme, canonical TATAAT / TTGACA
-with an AT-rich background baked in) and the delivered candidate table (results/candidates/g131795_ranked_seq.tsv) --
-and adds the controls the score-only test was missing:
-  1. reproduce the contamination rate with the pipeline's own motifs;
+This script re-runs the comparison using the supplied six-base QC reference
+(pipeline/mining/motif-annotation/sigma_a_promoter.meme, TATAAT / TTGACA)
+and the delivered candidate table (results/candidates/g131795_ranked_seq.tsv).
+These PWMs are not the five de-novo motifs used for the original mining scan.
+It adds:
+  1. reproduce cross-PWM preference in the selected contexts;
   2. redo it under the motif file's declared AT-rich background (0.35/0.15) vs uniform 0.25;
   3. a random AT-rich-sequence control (is the flag just detecting AT-richness?);
   4. selected-hit log-odds relative to synthetic AT-rich sequences;
@@ -187,16 +188,17 @@ def _figures(R, m10, m35, P10, P35, bg):
     s10 = [score(s, P10, bg) for s in m10]
     s35 = [score(s, P35, bg) for s in m35]
     fig, ax = plt.subplots(1, 2, figsize=(9, 3.4), sharey=True)
-    ax[0].hist(null10, bins=40, density=True, color="#bbb", alpha=.8, label="random AT-rich")
-    ax[0].hist(s10, bins=40, density=True, color="#2a7", alpha=.6, label="selected -10 contexts")
+    ax[0].hist(null10, bins=40, density=True, color="#bbb", alpha=.8, label="AT-rich null")
+    ax[0].hist(s10, bins=40, density=True, color="#2a7", alpha=.6, label="Selected contexts")
     ax[0].axvline(np.percentile(null10, 95), ls="--", c="k", lw=1)
-    ax[0].set_title("-10 selected contexts vs PWM\n(selection-biased descriptive comparison)"); ax[0].legend(fontsize=8)
-    ax[0].set_xlabel("log-odds (bits, AT-rich bg)")
-    ax[1].hist(null35, bins=40, density=True, color="#bbb", alpha=.8, label="random AT-rich")
-    ax[1].hist(s35, bins=40, density=True, color="#f83", alpha=.6, label="selected -35 contexts")
+    ax[0].set_title("−10 contexts"); ax[0].legend(fontsize=8)
+    ax[0].set_xlabel("PWM log-odds (bits)")
+    ax[0].set_ylabel("Probability density")
+    ax[1].hist(null35, bins=40, density=True, color="#bbb", alpha=.8, label="AT-rich null")
+    ax[1].hist(s35, bins=40, density=True, color="#f83", alpha=.6, label="Selected contexts")
     ax[1].axvline(np.percentile(null35, 95), ls="--", c="k", lw=1)
-    ax[1].set_title("-35 boxes vs -35 motif\n(overlaps the null: little signal)"); ax[1].legend(fontsize=8)
-    ax[1].set_xlabel("log-odds (bits, AT-rich bg)")
+    ax[1].set_title("−35 contexts"); ax[1].legend(fontsize=8)
+    ax[1].set_xlabel("PWM log-odds (bits)")
     fig.tight_layout(); fig.savefig(os.path.join(HERE, "fig2_signal_vs_null.png"), dpi=140); plt.close(fig)
 
     # Fig 3 -- contamination under both backgrounds + random control

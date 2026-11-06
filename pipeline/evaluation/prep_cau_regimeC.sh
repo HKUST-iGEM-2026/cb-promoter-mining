@@ -2,9 +2,9 @@
 # prep_cau_regimeC.sh — login-node prep for the C. autoethanogenum 2nd-validation-genome Regime C scan.
 #
 # C. autoethanogenum DSM 10061 (GCF_000484505.1, chromosome CP006763 / RefSeq NC_022592.1, 4,352,205 bp)
-# is in-genus (taxon 1485) but ~99% ANI to the held-out C. ljungdahlii — so it was deliberately kept OUT
-# of training and is used here as a SECOND held-out validation genome (a de-noised consistency check on
-# the ljungdahlii genome-scale result; its 2,885 TSS give ~289 detected at recall 0.1 vs ljungdahlii's ~125).
+# is an in-genus restricted-scan benchmark. Published TSS labels were withheld, but this genome
+# supplied silver positives and putative-negative training windows; it is not a wholly unseen genome.
+# Its 2,885 TSS give ~289 detected at recall 0.1, compared with ~125 for C. ljungdahlii.
 #
 # This fetches the RefSeq assembly, stamps the FASTA record id into the TSS truth (the tss file is only
 # pos+strand), and builds the restrict-scan candidate regions. Run on the LOGIN node (needs internet for

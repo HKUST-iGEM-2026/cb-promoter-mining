@@ -1,6 +1,6 @@
 # Models
 
-Three complementary sequence representations feed the genome-mining ranking. A separate DH5α-trained SVR estimates reporter activity for 50-bp cores from the first ten promoters with both −10 and −35 motifs; it is not a fourth ensemble member. [Results](RESULTS.md) explains how the benchmark measurements and conditional strength predictions should be interpreted.
+The models answer two questions in sequence. First, three classifiers rank promoter-like DNA so the miner can select genomic regions worth testing. Second, an independent DH5α-trained SVR estimates reporter activity from selected 50-bp cores. Recognition and expression are not the same target, so the SVR is not a fourth ensemble member or a transformation of classifier scores. [Results](RESULTS.md) follows the evidence from held-out classification through genomic ranking to conditional activity predictions.
 
 ## The deployment ensemble
 
@@ -11,9 +11,19 @@ Three complementary sequence representations feed the genome-mining ranking. A s
 | **Evo2-7B probe** | logistic regression on frozen 4096-dimensional embeddings | strongest standalone member in the reported restricted benchmarks |
 
 
-Members read **81-bp transcription-oriented DNA**, nominal TSS offset 60. Silver windows are putative promoter-positive upstream DNA labelled from predicted housekeeping-gene annotations and genomic position, not mapped starts or experimentally measured promoters; curated length normalization does not locate a start. The mine intersects step-10 tracks on contig/start/strand, converts each member's scores to average-tie percentiles in that common pool, then takes their mean. This is neither probability, strength nor unanimity. No calibrator is used. Only strictly increasing score-only transforms preserve ranks without changing ties.
+The three deployed members score the same **81-bp transcription-oriented DNA**. Common framing makes their tracks coordinate-compatible, but their raw score scales differ. The miner therefore intersects step-10 tracks on contig/start/strand, converts each member's scores to average-tie percentiles in that shared pool, and takes their mean. This measures relative ranking, not probability, strength or unanimity. No calibrator is used; only strictly increasing score-only transforms preserve ranks without changing ties.
+
+### Why the discovery workflow uses 81 bp
+
+Published-TSS extraction takes **60 upstream bases, the TSS base and 20 downstream bases**, placing the start at zero-based offset 60. This 81-bp convention covers the upstream recognition region and immediate start-site context and keeps data sources, classifiers and scans on one frame. The [extractor](../pipeline/acquisition/tss-literature/extract_published_tss.py) explicitly matches the existing reference-promoter framing; the [splitter](../pipeline/datasets/clustering-and-splits/cdhit_splits.py) normalises other sources to the same length. Silver windows remain gene-anchored putative positives, and cropping/padding curated sequences does not locate their starts.
+
+**ProkBERT is not restricted to 81 bp.** The [original paper](https://doi.org/10.3389/fmicb.2023.1331233) uses 81-bp promoter examples as a dataset convention and describes longer sequence inputs; the [base-model card](https://huggingface.co/neuralbioinfo/prokbert-mini) advertises approximately 1-kb context. The recovered checkpoint config records `max_position_embeddings=1024`, `kmer=6` and `shift=1`. Overlapping six-mers turn 81 bases into **76 sequence tokens plus CLS/SEP: 78 tokens**, not 81.
+
+A CPU smoke run of that checkpoint accepted untruncated 81-, 161- and 257-bp sequences, producing 78, 158 and 254 tokens and completing classification loss/backpropagation for each. No optimiser step or checkpoint write was performed. This disproves an 81-bp architectural/training-path limit; it does not establish accuracy on longer sequences. No retained window-length comparison establishes 81 bp as optimal, and changing the deployed frame requires compatible data, encodings and evaluation.
 
 ### Architectures
+
+Each representation offers a different input to the same classification task. ProkBERT learns token relationships; CNN-v2 combines local patterns and composition; Evo2 supplies a frozen embedding to a small fitted probe. The settings below identify the retained fits, rather than implying that a larger backbone or a more elaborate representation must perform better.
 
 ProkBERT has six layers/six heads, hidden size 384, overlapping six-base tokens and padding-masked learned attention pooling before its two-class head. The recovered config records float32 and Transformers 5.3.0. Saved training arguments confirm learning rate 4.675283456079137e-05, train/eval batches 16/64, 10 maximum epochs, weight decay 0.07894770663194649 and seed 42. Warmup ratio 0.11090738634337446 is stored in float warmup_steps; warmup_ratio is None. Saved training uses fused AdamW, linear schedule, epoch evaluation/saving and bf16; CPU inference uses float32.
 
@@ -21,11 +31,13 @@ CNN-v2 combines one-hot/ENAC convolution branches (kernels 7/5/3, widths 64/128/
 
 Evo2 uses a trusted StandardScaler→LogisticRegression probe with 4096 features, classes [0,1] and scaler count 47,137. Current DNA inference mean-pools blocks.28.mlp.l3 from evo2_7b; the exact historical extraction revision/layer is not established. Backbone weights stay frozen and are obtained separately.
 
+**Evo2 input length:** the retained completed extraction job `516257` explicitly logs `col='sequence'` for 44,085 training, 3,052 validation and 3,053 test rows. Inspection of the actual three input Parquets finds every `sequence` is 81 bp and no `sequence_context` column. The deployed frozen-embedding probe therefore did **not** stitch examples together or append longer genomic flanks. The extractor's optional `--sequence-col sequence_context` supports a different experiment; its existence does not show it was used. The 384-bp context trial was NTv3. This establishes the deployed input frame, not every historical extraction revision or the backbone's pretraining context.
+
 ## Loading
 
-### Private Hugging Face repositories
+### Public Hugging Face repositories
 
-CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR package all exist as private Hugging Face repositories; downloads require an authorised account/HF_TOKEN. Authenticated weight hashes match recovered local copies. Review executable remote code before trusting it. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree. See [compatible setup](SETUP.md), and do not rely on anonymous download.
+CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR are available from public Hugging Face repositories; project-package downloads do not require an authorised account or HF_TOKEN. Released weight hashes match the recovered local copies. Review executable remote code before trusting it, and follow any separate access or licence conditions for upstream backbones. The fitted DH5α NPZ is also available in `release/huggingface/dh5alpha-promoter-strength-svr` in this source tree. See [compatible setup](SETUP.md).
 
 | Repository | Model-card license |
 |---|---|
@@ -37,7 +49,7 @@ CNN-v2, ProkBERT, the Evo2 probe and the DH5α SVR package all exist as private 
 
 ProkBERT's external tokenizer/model code separately declares CC-BY-NC-ND-4.0. [RegulonDB data terms](../REGULONDB_LICENSE.md) apply to the genome-mining packages, which contain fitted artifacts/helpers rather than large training exports or Evo2 backbone weights. The DH5α package instead uses Wang's small published table and its retained notice. [Release licences](../release/huggingface/README.md#licences) distinguish these sources.
 
-**ProkBERT:** pin tokenizer files and code revisions separately; the inspected revisions below are not proven historical-training revisions. max_length counts tokens, not bases.
+**ProkBERT:** pin tokenizer files and code revisions separately; the inspected revisions below are not proven historical-training revisions. `max_length` counts **tokens**, not DNA bases: this example pads a clean 81-bp input's 78 tokens to width 81, with three masked padding positions. It does not impose an 81-bp limit on the backbone. Keep the deployed input frame even though the architecture can accept longer sequences.
 
 ```python
 import torch
@@ -89,7 +101,7 @@ python apply_probe.py --fasta "$INPUT_FASTA" --out scores.csv
 
 ### DH5α promoter-core activity
 
-We reproduced Wang et al.'s 88-record RBF SVR and packaged the fitted support vectors, coefficients, intercept and gamma as safe NPZ/JSON. Its input is 50-bp position-major T/C/G/A one-hot DNA, and its output is log₂ activity converted back to training-table AU. The first-ten analysis crops `summit_seq[10:60]` from already-oriented 81-bp candidates and compares their predictions with the same-model `pptb_fU` core.
+We reproduced Wang et al.'s 88-record RBF SVR and packaged the fitted support vectors, coefficients, intercept and gamma as safe NPZ/JSON. Its input is 50-bp position-major T/C/G/A one-hot DNA, and its output is log₂ activity converted back to **arbitrary units (AU)** on the training table's unspecified numerical activity scale. The first-ten analysis crops `summit_seq[10:60]` from already-oriented 81-bp candidates and compares their predictions with the same-model `pptb_fU` core.
 
 ```bash
 hf download CloBiT/dh5alpha-promoter-strength-svr \
@@ -101,7 +113,7 @@ uv run --no-project --with numpy==2.5.3 python \
   --out-prefix dh5alpha_first10
 ```
 
-The private package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides the complete results and source assay context.
+The public package includes the exact reference, the input of promoters with both −10 and −35 motifs, first-ten predictions and numerical verification. Cached inference needs no scikit-learn, GPU or service. Its selection-CV R² of 0.266090 is not candidate accuracy, and its 6.927284–35.097146 AU reference-start scenarios are not confidence intervals. [The strength guide](ECOLI_STRENGTH_PREDICTIONS.md) provides the complete results and source assay context.
 ### Local checkpoints
 
 Default root is `workflow/results/`. The mining jobs use this location directly; PROMOTER_RESULTS overrides alone do not relocate every output.
@@ -205,6 +217,8 @@ This checks loading, framing and finite scores. It does not recompute held-out A
 
 ## Model selection
 
+Model selection depends on the intended use. Historical classification scores alone would favour different choices from the restricted genomic ranking. The table compares the selected trio with adding CNN-v1, so readers can see why the extra member was not retained:
+
 | Ensemble | *C. ljungdahlii* @0.1 / @0.5 | *C. autoethanogenum* @0.1 / @0.5 |
 |---|---|---|
 | 3 members | 74.4% / 61.6% | 87.0% / 76.6% |
@@ -214,5 +228,14 @@ This checks loading, framing and finite scores. It does not recompute held-out A
 The trio led at recall 0.5 on both restricted benchmarks; paired Evo2 led slightly at recall 0.1 in C. autoethanogenum. Complementary representations motivated testing, not a measured claim of maximally decorrelated errors.
 
 Historical alternatives were one-hot CNN-v1, NT-v2 query/value LoRA and NTv3 384-bp-context full fine-tuning. NTv3's high reported AP has unresolved context-overlap/provenance limits; an unmasked token-reconstruction or constant-only probe record is not classifier evidence. The off-the-shelf prokbert-mini-promoter baseline is separate from our prokbert-mini training base. Cluster-disjoint CV code exists, but completed CV output is not supplied.
+
+### NTv3 context-length requirement and extraction
+
+The provider's [NTv3 architecture guide](https://github.com/instadeepai/nucleotide-transformer/blob/main/docs/nucleotide_transformer_v3.md) requires input lengths divisible by 128 for the main seven-downsample models. The supervised context run selected 384 bp (3 × 128), not because 384 is the model's only valid length. Its retained preflight records `T15_xs_ctx` and `max_length=384`; the [classifier launcher](../pipeline/training/nucleotide-transformer-v3/current/finetune_ntv3.sbatch) selects `sequence_context`.
+
+For recoverable loci, [context construction](../pipeline/datasets/positives-with-context/build_context_sources.py) uses published-TSS coordinates or searches the source promoter/background region in its matched genome. It extracts a contiguous, strand-oriented 384-bp window. An 81-bp core has 151/152 flanking positions, reversed in order after reverse complementation; the current extraction function was exercised on actual forward/reverse reference loci and a contig-boundary case. Unavailable flanks are represented by N, including [sequence-only source padding](../pipeline/datasets/clustering-and-splits/npad_context.py). N-padding supplies length, not biological context. This describes the construction method; it does not certify every row of an unavailable original context split or repair the separately identified flawed intermediate.
+
+The deployed Evo2 probe instead selected the 81-bp core column. Keeping the deployed members on one frame controls an input difference, but it is not required for score-track combination: the [NTv3 scanner](../pipeline/training/nucleotide-transformer-v3/current/ntv3_genome_scan.py) itself reads 384 bp and reports 81-bp core coordinates. A longer-input Evo2 experiment would require a compatible probe and renewed ensemble evaluation, not automatically retraining every other member. Neither the current evidence nor model architecture establishes 81 bp as an accuracy optimum.
+
 
 The dataset retains 888 incompatible-assembly B. licheniformis positives; all deployed weights remain affected. [Pipeline provenance](PIPELINE.md#genome-assemblies-and-coordinate-provenance) explains the correction/retraining boundary. Target exclusion is supervised only; backbone pretraining exposure is unknown. Motif/rank outputs require biological testing.

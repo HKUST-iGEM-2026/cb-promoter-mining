@@ -2,13 +2,13 @@
 """
 annotate_motifs.py — T31 -10/-35 promoter-architecture annotation with FIMO.
 
-T30 gives one call per locus, but a high ensemble score can come from a real promoter OR from an AT-rich
-stretch that games the models (the project's core false-positive trap). This extracts each call's summit
-window from the genome, scans it with FIMO for the sigma-A -35 (TTGACA) and -10 (TATAAT) boxes, and flags
-whether the call has real promoter ARCHITECTURE: a -35 box upstream of a -10 box at a canonical spacer
-(~17 bp). A canonical hit is strong evidence of a real promoter; a high-scoring call with no -10/-35 is a
-prime AT-trap suspect. The motif background is AT-rich (see sigma_a_promoter.meme), so FIMO does not just
-reward composition.
+T30 gives one call per locus, but an ensemble rank does not establish promoter activity.
+This extracts each call's oriented summit window, scans it with six-base reference
+PWMs for -35-like (TTGACA) and -10-like (TATAAT) patterns, and labels their presence
+and edge-to-edge spacing. A "canonical" label is a sequence-based hypothesis, not
+independent validation of promoter activity, sigma usage or constitutive expression.
+Reference-PWM backgrounds affect scoring; AT-rich DNA can still contain strong hits.
+The ordinary catalogue's original de-novo-motif scan is a separate procedure.
 
 FIMO ships with the MEME suite (the CPU bio env, environment-bio.yml — NOT the main torch env):
     conda activate <bio env with meme>   # provides `fimo`
